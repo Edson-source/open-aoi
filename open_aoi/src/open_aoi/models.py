@@ -18,7 +18,7 @@ from open_aoi.settings import MYSQL_DATABASE, MYSQL_PASSWORD, MYSQL_USER, MYSQL_
 from open_aoi.enums import DefectTypeEnum, RoleEnum, AccessorEnum
 from open_aoi.mixins.control_zone import Mixin as ControlZoneMixin
 from open_aoi.mixins.accessor import Mixin as AccessorMixin
-from open_aoi.mixins.inspection_record import Mixin as InspectionRecordMixin
+from open_aoi.mixins.inspection_record import Mixin as InspectionMixin
 from open_aoi.mixins.template import Mixin as TemplateMixin
 from open_aoi.mixins.camera import Mixin as CameraMixin
 from open_aoi.mixins.inspection_profile import Mixin as InspectionProfileMixin
@@ -110,13 +110,42 @@ class DefectType(Base):
     title: Mapped[str] = mapped_column(String(50), nullable=False)
     description: Mapped[str] = mapped_column(String(200), nullable=False)
 
+    control_handler_list: Mapped[List["ControlHandler"]] = relationship(
+        back_populates="defect_type"
+    )
+
     registry = DefectTypeEnum
+
+
+class ControlHandler(Base):
+    """Database representation of control handler"""
+
+    __tablename__ = "ControlHandler"
+    metadata = metadata_obj
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+
+    title: Mapped[str] = mapped_column(String(50), nullable=False)
+    description: Mapped[str] = mapped_column(String(200), nullable=False)
+
+    handler_blob: Mapped[str] = mapped_column(String(100), nullable=False)
+
+    control_target_list: Mapped[List["ControlTarget"]] = relationship(
+        back_populates="control_handler"
+    )
+
+    defect_type_id: Mapped[int] = mapped_column(
+        ForeignKey("DefectType.id"), nullable=False
+    )
+    defect_type: Mapped["DefectType"] = relationship(
+        back_populates="control_handler_list"
+    )
 
 
 class ControlTarget(Base):
     """
-    Helper object to map defect type to search for in test image to the control zone.
-    Multiple control targets are allowed for single control zone (unique)
+    Helper object to map control handler to the control zone (control handler is unique).
+    Multiple control targets are allowed for single control zone.
     """
 
     __tablename__ = "ControlTarget"
@@ -124,10 +153,12 @@ class ControlTarget(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
-    defect_type_id: Mapped[int] = mapped_column(
-        ForeignKey("DefectType.id"), nullable=False
+    control_handler_id: Mapped[int] = mapped_column(
+        ForeignKey("ControlHandler.id"), nullable=False
     )
-    defect_type: Mapped["DefectType"] = relationship()
+    control_handler: Mapped["ControlHandler"] = relationship(
+        back_populates="control_target_list"
+    )
 
     control_zone_id: Mapped[int] = mapped_column(
         ForeignKey("ControlZone.id"), nullable=False
@@ -137,9 +168,30 @@ class ControlTarget(Base):
     )
 
 
+class ConnectedComponent(Base):
+    """
+    Location description for control zone
+    """
+
+    __tablename__ = "ConnectedComponent"
+    metadata = metadata_obj
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+
+    stat_left: Mapped[int] = mapped_column(Integer, nullable=False)
+    stat_top: Mapped[int] = mapped_column(Integer, nullable=False)
+    stat_width: Mapped[int] = mapped_column(Integer, nullable=False)
+    stat_height: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    control_zone_id: Mapped[int] = mapped_column(
+        ForeignKey("ControlZone.id"), nullable=False
+    )
+    control_zone: Mapped["ControlZone"] = relationship(back_populates="cc")
+
+
 class ControlZone(Base, ControlZoneMixin):
     """
-    Small zone on template where related defect type detection is conducted
+    Small zone on template where related control handler is applied in order to detect defect type
     """
 
     __tablename__ = "ControlZone"
@@ -150,11 +202,9 @@ class ControlZone(Base, ControlZoneMixin):
     template_id: Mapped[int] = mapped_column(ForeignKey("Template.id"), nullable=False)
     template: Mapped["Template"] = relationship(back_populates="control_zone_list")
 
-    top_left_x: Mapped[float] = mapped_column(Numeric(precision=10, scale=2))
-    top_left_y: Mapped[float] = mapped_column(Numeric(precision=10, scale=2))
+    cc: Mapped["ConnectedComponent"] = relationship(back_populates="control_zone")
 
-    bottom_right_x: Mapped[float] = mapped_column(Numeric(precision=10, scale=2))
-    bottom_right_y: Mapped[float] = mapped_column(Numeric(precision=10, scale=2))
+    rotation: Mapped[float] = mapped_column(Numeric(precision=10, scale=2))
 
     control_target_list: Mapped[List["ControlTarget"]] = relationship(
         back_populates="control_zone", cascade="all, delete"
@@ -167,44 +217,45 @@ class ControlZone(Base, ControlZoneMixin):
     created_by: Mapped["Accessor"] = relationship()
 
 
-class Defect(Base):
+class ControlLog(Base):
     """
-    Helper to map defect type that was found to control zone. Multiple defects are allowed.
+    Helper to map defect type that was found to control zone. Multiple control logs are allowed.
     """
 
-    __tablename__ = "Defect"
+    __tablename__ = "ControlLog"
     metadata = metadata_obj
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
-    defect_type_id: Mapped[int] = mapped_column(
-        ForeignKey("DefectType.id"), nullable=False
+    control_target_id: Mapped[int] = mapped_column(
+        ForeignKey("ControlTarget.id"), nullable=False
     )
-    defect_type: Mapped["DefectType"] = relationship()
-
-    inspection_record_id: Mapped[int] = mapped_column(
-        ForeignKey("InspectionRecord.id"), nullable=False
+    control_target: Mapped["ControlTarget"] = relationship()
+    passed: Mapped[bool] = mapped_column(Boolean(), default=False, nullable=False)
+    log: Mapped[str] = mapped_column(String(200), nullable=True)
+    inspection_id: Mapped[int] = mapped_column(
+        ForeignKey("Inspection.id"), nullable=False
     )
-    inspection_record: Mapped["InspectionRecord"] = relationship(
-        back_populates="defect_list"
-    )
+    inspection: Mapped["Inspection"] = relationship(back_populates="control_log_list")
 
 
-class InspectionRecord(Base, InspectionRecordMixin):
+class Inspection(Base, InspectionMixin):
     """
     Connect defect collection with template
     """
 
-    __tablename__ = "InspectionRecord"
+    __tablename__ = "Inspection"
     metadata = metadata_obj
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
-    template_id: Mapped[int] = mapped_column(ForeignKey("Template.id"), nullable=False)
-    template: Mapped["Template"] = relationship(back_populates="inspection_record_list")
+    image_blob: Mapped[str] = mapped_column(String(100), nullable=False)
 
-    defect_list: Mapped[List["Defect"]] = relationship(
-        back_populates="inspection_record", cascade="all, delete"
+    template_id: Mapped[int] = mapped_column(ForeignKey("Template.id"), nullable=False)
+    template: Mapped["Template"] = relationship(back_populates="inspection_list")
+
+    control_log_list: Mapped[List["ControlLog"]] = relationship(
+        back_populates="inspection", cascade="all, delete"
     )
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
@@ -219,15 +270,13 @@ class Template(Base, TemplateMixin):
     metadata = metadata_obj
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    is_active: Mapped[bool] = mapped_column(Boolean(), default=False, nullable=False)
-
-    image_uid: Mapped[str] = mapped_column(String(100), nullable=False)
+    image_blob: Mapped[str] = mapped_column(String(100), nullable=False)
 
     control_zone_list: Mapped[List["ControlZone"]] = relationship(
         back_populates="template", cascade="all, delete"
     )
 
-    inspection_record_list: Mapped[List["InspectionRecord"]] = relationship(
+    inspection_list: Mapped[List["Inspection"]] = relationship(
         back_populates="template", cascade="all, delete"
     )
 
@@ -260,7 +309,6 @@ class Camera(Base, CameraMixin):
 
     # TODO: insert validation ipv4
     ip_address: Mapped[str] = mapped_column(String(15), nullable=False)
-    port: Mapped[str] = mapped_column(Integer, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     created_by_accessor_id: Mapped[int] = mapped_column(
@@ -278,7 +326,8 @@ class InspectionProfile(Base, InspectionProfileMixin):
     metadata = metadata_obj
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    
     title: Mapped[str] = mapped_column(String(TITLE_LIMIT), nullable=False)
     description: Mapped[str] = mapped_column(String(DESCRIPTION_LIMIT), nullable=False)
 

@@ -31,24 +31,31 @@ def _handle_logout_request():
 
 
 def inject_header():
-    ui.left_drawer()
     ui.right_drawer()
+    with ui.left_drawer(top_corner=False, bottom_corner=True).props('bordered'):
+        ui.button("Overview", on_click=lambda: ui.open(HOME_PAGE)).props(
+            "flat"
+        ).tailwind.width("full")
+        ui.button("Devices", on_click=lambda: ui.open(DEVICES_PAGE)).props(
+            "flat"
+        ).tailwind.width("full")
+        ui.button("Settings", on_click=lambda: ui.open(SETTINGS_PAGE)).props(
+            "flat"
+        ).tailwind.width("full")
+        ui.button("Inspection", on_click=lambda: ui.open(INSPECTION_LIVE_PAGE)).props(
+            "flat"
+        ).tailwind.width("full")
+        ui.button("Profiles", on_click=lambda: ui.open(INSPECTION_PROFILE_PAGE)).props(
+            "flat"
+        ).tailwind.width("full")
+        ui.separator()
+        ui.button("Logout", on_click=_handle_logout_request).props(
+            "flat color=negative"
+        ).tailwind.width("full")
     with ui.header(fixed=True).classes("py-1 items-center"):
         ui.markdown("**AOI Portal** | Powered by ROS")
-        ui.badge("offline", color="grey").classes('ml-1').props("rounded")
+        ui.badge("offline", color="grey").classes("ml-1").props("rounded")
         # ui.badge("online", color="red").classes("ml-1").props("rounded")
-        ui.space()
-        with ui.button(icon="menu").props("flat text-color=white"):
-            with ui.menu() as menu:
-                ui.menu_item("Overview", lambda: ui.open(HOME_PAGE))
-                ui.menu_item("Devices", lambda: ui.open(DEVICES_PAGE))
-                ui.menu_item("Settings", lambda: ui.open(SETTINGS_PAGE))
-                ui.menu_item("Inspection", lambda: ui.open(INSPECTION_LIVE_PAGE))
-                ui.menu_item(
-                    "Inspection profiles", lambda: ui.open(INSPECTION_PROFILE_PAGE)
-                )
-                ui.separator()
-                ui.menu_item("Logout", _handle_logout_request)
 
 
 def ensure_access_guard() -> None:

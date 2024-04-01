@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+assert load_dotenv('./.env')
 
 MYSQL_DATABASE = os.environ["MYSQL_DATABASE"]
 assert MYSQL_DATABASE
@@ -18,7 +18,6 @@ try:
     MYSQL_PORT = int(MYSQL_PORT)
 except ValueError:
     raise RuntimeError('Failed to parse mysql port from environment')
-
 
 WEB_INTERFACE_PORT = os.environ["WEB_INTERFACE_PORT"]
 assert WEB_INTERFACE_PORT

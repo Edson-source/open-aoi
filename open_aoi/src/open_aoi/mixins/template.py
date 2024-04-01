@@ -13,5 +13,3 @@ class Mixin:
     def inpaint_zones(self, im: np.ndarray) -> np.ndarray:
         raise NotImplemented()
 
-    def crop_zones(self, im: np.ndarray) -> List[np.ndarray]:
-        raise NotImplemented()

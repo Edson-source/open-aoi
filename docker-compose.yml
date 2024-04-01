@@ -4,15 +4,17 @@ services:
   aoi-ros2:
     container_name: aoi-ros2
     profiles: [inspection]
-    image: aoi-ros2:latest 
+    image: aoi-ros2:latest
     restart: always
     volumes:
-      - aoi-main:/aoi  # For production
+      - aoi:/aoi # For production
     build:
       context: .
       dockerfile: dockerfile.aoi-ros2
-    expose:
-      - 9090  # Ros2 bridge websocket server
+    ports:
+      - 10001:9090 # Ros2 bridge websocket server
+    networks:
+      - aoi
   aoi-mysql:
     container_name: aoi-mysql
     profiles: [core, inspection]
@@ -24,7 +26,9 @@ services:
       MYSQL_USER: $MYSQL_USER
       MYSQL_PASSWORD: $MYSQL_PASSWORD
     ports:
-      - 8081:3306
+      - 10002:3306
+    networks:
+      - aoi
   aoi-adminer:
     container_name: aoi-adminer
     profiles: [core, inspection]
@@ -33,6 +37,27 @@ services:
     depends_on:
       - aoi-mysql
     ports:
-      - 8080:8080
+      - 10003:8080
+    networks:
+      - aoi
+  aoi-minio:
+    container_name: aoi-minio
+    image: docker.io/minio/minio
+    command: server /data --console-address ":9001"
+    profiles: [core, inspection]
+    ports:
+      - 10004:9000
+      - 10005:9001
+    networks:
+      - aoi
+    volumes:
+      - aoi:/data
+    environment:
+      MINIO_ROOT_USER: $MINIO_ROOT_USER
+      MINIO_ROOT_PASSWORD: $MINIO_ROOT_PASSWORD
+      MINIO_DEFAULT_BUCKETS: $MINIO_DEFAULT_BUCKETS
+networks:
+  aoi:
+    driver: bridge
 volumes:
-  aoi-main:
+  aoi:

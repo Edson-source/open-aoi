@@ -10,3 +10,4 @@ dtw-python
 imutils
 python-doctr
 python-doctr[tf]
+minio

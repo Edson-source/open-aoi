@@ -1,4 +1,4 @@
 class Mixin:
     @property
-    def overall_result(self):
+    def overall_passed(self):
         raise NotImplemented()
