@@ -84,6 +84,21 @@ class AccessorController(Controller):
 class TemplateController(Controller):
     model = TemplateModel
 
+    @classmethod
+    def create(
+        cls, title: str, image_blob: str, accessor: AccessorModel
+    ) -> CameraModel:
+        with Session(engine) as session:
+            obj = TemplateModel(
+                title=title,
+                image_blob=image_blob,
+                created_by=accessor,
+                created_at=datetime.now(),
+            )
+            session.add(obj)
+            session.commit()
+            return obj
+
 
 class InspectionProfileController(Controller):
     model = InspectionProfileModel

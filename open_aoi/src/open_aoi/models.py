@@ -274,7 +274,7 @@ class TemplateModel(Base, TemplateMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     title: Mapped[str] = mapped_column(String(TITLE_LIMIT), nullable=False)
-    
+
     image_blob: Mapped[str] = mapped_column(String(100), nullable=False)
 
     control_zone_list: Mapped[List["ControlZoneModel"]] = relationship(
@@ -285,11 +285,8 @@ class TemplateModel(Base, TemplateMixin):
         back_populates="template", cascade="all, delete"
     )
 
-    inspection_profile_id: Mapped[int] = mapped_column(
-        ForeignKey("InspectionProfile.id"), nullable=False
-    )
-    inspection_profile: Mapped["InspectionProfileModel"] = relationship(
-        back_populates="template_list"
+    inspection_profile_list: Mapped["InspectionProfileModel"] = relationship(
+        back_populates="template", cascade="all, delete"
     )
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
@@ -338,15 +335,15 @@ class InspectionProfileModel(Base, InspectionProfileMixin):
 
     identification_code: Mapped[str] = mapped_column(String(CODE_LIMIT), nullable=False)
 
-    # Point to all available templates
-    template_list: Mapped[List["TemplateModel"]] = relationship(
-        back_populates="inspection_profile", cascade="all, delete"
-    )
-
     camera_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("Camera.id"), nullable=True
     )
     camera: Mapped[Optional["CameraModel"]] = relationship()
+
+    template_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("Template.id"), nullable=True
+    )
+    template: Mapped[Optional["TemplateModel"]] = relationship()
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     created_by_accessor_id: Mapped[int] = mapped_column(

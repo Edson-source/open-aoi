@@ -29,7 +29,7 @@ def _handle_create_camera(
         assert description_input.validate()
         assert ip_address_input.validate()
     except AssertionError:
-        ui.notify("Required values are missing")
+        ui.notify("Required values are missing", type="negative")
         return
 
     try:
