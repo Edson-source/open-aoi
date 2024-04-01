@@ -273,6 +273,8 @@ class TemplateModel(Base, TemplateMixin):
     metadata = metadata_obj
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    title: Mapped[str] = mapped_column(String(TITLE_LIMIT), nullable=False)
+    
     image_blob: Mapped[str] = mapped_column(String(100), nullable=False)
 
     control_zone_list: Mapped[List["ControlZoneModel"]] = relationship(

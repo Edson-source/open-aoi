@@ -8,7 +8,9 @@ from open_aoi.models import (
     engine,
     Base,
     CameraModel,
+    TemplateModel,
     AccessorModel,
+    InspectionProfileModel,
 )
 
 
@@ -77,3 +79,11 @@ class AccessorController(Controller):
             q = select(cls.model).where(cls.model.username == username)
             res = session.scalars(q).one_or_none()
         return res
+
+
+class TemplateController(Controller):
+    model = TemplateModel
+
+
+class InspectionProfileController(Controller):
+    model = InspectionProfileModel

@@ -63,57 +63,44 @@ def view() -> Optional[RedirectResponse]:
     with ui.grid(columns=2).classes("w-full"):
         with ui.column():
             ui.label("Camera configuration")
-            camera_title = (
-                ui.input(
-                    label="Camera title",
-                    placeholder=f"Enter any value... [{TITLE_LIMIT}]",
-                    on_change=lambda e: camera_title_display.set_text(
-                        f"[{len(camera_title.value)}/{TITLE_LIMIT}] {camera_title.value}"
-                    ),
-                    validation={
-                        "Title is too long": lambda value: len(value) <= TITLE_LIMIT,
-                        "Title is too short": lambda value: len(value.strip()) != 0,
-                    },
-                )
-                .classes("w-full")
-                .props("clearable")
-            )
+            camera_title = ui.input(
+                label="Camera title",
+                placeholder=f"Enter any value... [{TITLE_LIMIT}]",
+                on_change=lambda e: camera_title_display.set_text(
+                    f"[{len(camera_title.value)}/{TITLE_LIMIT}] {camera_title.value}"
+                ),
+                validation={
+                    "Title is too long": lambda value: len(value) <= TITLE_LIMIT,
+                    "Title is too short": lambda value: len(value.strip()) != 0,
+                },
+            ).classes("w-full")
             camera_title_display = ui.label("").classes("text-secondary")
 
-            camera_description = (
-                ui.input(
-                    label="Camera description",
-                    placeholder=f"Enter any value... [{DESCRIPTION_LIMIT}]",
-                    on_change=lambda e: camera_description_display.set_text(
-                        f"[{len(camera_description.value)}/{DESCRIPTION_LIMIT}] {camera_description.value}"
-                    ),
-                    validation={
-                        "Description is too long": lambda value: len(value)
-                        <= DESCRIPTION_LIMIT,
-                        "Description is too short": lambda value: len(value.strip())
-                        != 0,
-                    },
-                )
-                .classes("w-full")
-                .props("clearable")
-            )
+            camera_description = ui.input(
+                label="Camera description",
+                placeholder=f"Enter any value... [{DESCRIPTION_LIMIT}]",
+                on_change=lambda e: camera_description_display.set_text(
+                    f"[{len(camera_description.value)}/{DESCRIPTION_LIMIT}] {camera_description.value}"
+                ),
+                validation={
+                    "Description is too long": lambda value: len(value)
+                    <= DESCRIPTION_LIMIT,
+                    "Description is too short": lambda value: len(value.strip()) != 0,
+                },
+            ).classes("w-full")
             camera_description_display = ui.label("").classes("text-secondary")
 
-            camera_ip_address = (
-                ui.input(
-                    label="Camera IPV4 address",
-                    placeholder=f"000.000.000.000 [{15}]",
-                    on_change=lambda e: camera_ip_address_display.set_text(
-                        f"[{len(camera_ip_address.value)}/15] {camera_ip_address.value}"
-                    ),
-                    validation={
-                        "IP address is too long": lambda value: len(value) <= 15,
-                        "IP address is too short": lambda value: len(value) > 7,
-                    },
-                )
-                .classes("w-full")
-                .props("clearable")
-            )
+            camera_ip_address = ui.input(
+                label="Camera IPV4 address",
+                placeholder=f"000.000.000.000 [{15}]",
+                on_change=lambda e: camera_ip_address_display.set_text(
+                    f"[{len(camera_ip_address.value)}/15] {camera_ip_address.value}"
+                ),
+                validation={
+                    "IP address is too long": lambda value: len(value) <= 15,
+                    "IP address is too short": lambda value: len(value) > 7,
+                },
+            ).classes("w-full")
             camera_ip_address_display = ui.label("").classes("text-secondary")
 
             with ui.row().classes("w-full"):

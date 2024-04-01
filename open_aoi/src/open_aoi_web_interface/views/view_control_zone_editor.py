@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple
 
 from nicegui import events, ui
 from fastapi.responses import RedirectResponse
