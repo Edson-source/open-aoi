@@ -8,7 +8,7 @@ from open_aoi.exceptions import AuthException
 from open_aoi_web_interface.views.common import (
     ACCESS_PAGE,
     inject_header,
-    ensure_access_guard,
+    access_guard,
 )
 
 from PIL import Image
@@ -117,7 +117,7 @@ class Manager:
 
 def view() -> Optional[RedirectResponse]:
     try:
-        ensure_access_guard()
+        access_guard()
     except AuthException:
         return RedirectResponse(ACCESS_PAGE)
 

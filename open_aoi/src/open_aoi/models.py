@@ -29,17 +29,17 @@ TITLE_LIMIT = 200
 DESCRIPTION_LIMIT = 500
 
 
-class Base(DeclarativeBase):
-    pass
-
-
 metadata_obj = MetaData()
 engine = create_engine(
     f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@localhost:{MYSQL_PORT}/{MYSQL_DATABASE}"
 )
 
 
-class Role(Base):
+class Base(DeclarativeBase):
+    pass
+
+
+class RoleModel(Base):
     """Define accessor rights"""
 
     __tablename__ = "Role"
@@ -77,11 +77,11 @@ class Role(Base):
         Boolean(), default=False, nullable=False
     )
 
-    accessor_list: Mapped[List["Accessor"]] = relationship(back_populates="role")
+    accessor_list: Mapped[List["AccessorModel"]] = relationship(back_populates="role")
     registry = RoleEnum
 
 
-class Accessor(Base, AccessorMixin):
+class AccessorModel(Base, AccessorMixin):
     __tablename__ = "Accessor"
     metadata = metadata_obj
 
@@ -89,17 +89,18 @@ class Accessor(Base, AccessorMixin):
         primary_key=True, nullable=False, autoincrement=True
     )
 
+    username: Mapped[str] = mapped_column(String(50), nullable=False)
     title: Mapped[str] = mapped_column(String(50), nullable=False)
     description: Mapped[str] = mapped_column(String(200), nullable=False)
 
     role_id: Mapped[int] = mapped_column(ForeignKey("Role.id"), nullable=False)
-    role: Mapped["Role"] = relationship()
+    role: Mapped["RoleModel"] = relationship()
 
     hash: Mapped[str] = mapped_column(String(60), nullable=False)
     registry = AccessorEnum
 
 
-class DefectType(Base):
+class DefectTypeModel(Base):
     """Define system wide known error types"""
 
     __tablename__ = "DefectType"
@@ -110,14 +111,14 @@ class DefectType(Base):
     title: Mapped[str] = mapped_column(String(50), nullable=False)
     description: Mapped[str] = mapped_column(String(200), nullable=False)
 
-    control_handler_list: Mapped[List["ControlHandler"]] = relationship(
+    control_handler_list: Mapped[List["ControlHandlerModel"]] = relationship(
         back_populates="defect_type"
     )
 
     registry = DefectTypeEnum
 
 
-class ControlHandler(Base):
+class ControlHandlerModel(Base):
     """Database representation of control handler"""
 
     __tablename__ = "ControlHandler"
@@ -130,19 +131,19 @@ class ControlHandler(Base):
 
     handler_blob: Mapped[str] = mapped_column(String(100), nullable=False)
 
-    control_target_list: Mapped[List["ControlTarget"]] = relationship(
+    control_target_list: Mapped[List["ControlTargetModel"]] = relationship(
         back_populates="control_handler"
     )
 
     defect_type_id: Mapped[int] = mapped_column(
         ForeignKey("DefectType.id"), nullable=False
     )
-    defect_type: Mapped["DefectType"] = relationship(
+    defect_type: Mapped["DefectTypeModel"] = relationship(
         back_populates="control_handler_list"
     )
 
 
-class ControlTarget(Base):
+class ControlTargetModel(Base):
     """
     Helper object to map control handler to the control zone (control handler is unique).
     Multiple control targets are allowed for single control zone.
@@ -156,19 +157,19 @@ class ControlTarget(Base):
     control_handler_id: Mapped[int] = mapped_column(
         ForeignKey("ControlHandler.id"), nullable=False
     )
-    control_handler: Mapped["ControlHandler"] = relationship(
+    control_handler: Mapped["ControlHandlerModel"] = relationship(
         back_populates="control_target_list"
     )
 
     control_zone_id: Mapped[int] = mapped_column(
         ForeignKey("ControlZone.id"), nullable=False
     )
-    control_zone: Mapped["ControlZone"] = relationship(
+    control_zone: Mapped["ControlZoneModel"] = relationship(
         back_populates="control_target_list"
     )
 
 
-class ConnectedComponent(Base):
+class ConnectedComponentModel(Base):
     """
     Location description for control zone
     """
@@ -186,10 +187,10 @@ class ConnectedComponent(Base):
     control_zone_id: Mapped[int] = mapped_column(
         ForeignKey("ControlZone.id"), nullable=False
     )
-    control_zone: Mapped["ControlZone"] = relationship(back_populates="cc")
+    control_zone: Mapped["ControlZoneModel"] = relationship(back_populates="cc")
 
 
-class ControlZone(Base, ControlZoneMixin):
+class ControlZoneModel(Base, ControlZoneMixin):
     """
     Small zone on template where related control handler is applied in order to detect defect type
     """
@@ -200,13 +201,13 @@ class ControlZone(Base, ControlZoneMixin):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
     template_id: Mapped[int] = mapped_column(ForeignKey("Template.id"), nullable=False)
-    template: Mapped["Template"] = relationship(back_populates="control_zone_list")
+    template: Mapped["TemplateModel"] = relationship(back_populates="control_zone_list")
 
-    cc: Mapped["ConnectedComponent"] = relationship(back_populates="control_zone")
+    cc: Mapped["ConnectedComponentModel"] = relationship(back_populates="control_zone")
 
     rotation: Mapped[float] = mapped_column(Numeric(precision=10, scale=2))
 
-    control_target_list: Mapped[List["ControlTarget"]] = relationship(
+    control_target_list: Mapped[List["ControlTargetModel"]] = relationship(
         back_populates="control_zone", cascade="all, delete"
     )
 
@@ -214,10 +215,10 @@ class ControlZone(Base, ControlZoneMixin):
     created_by_accessor_id: Mapped[int] = mapped_column(
         ForeignKey("Accessor.id"), nullable=False
     )
-    created_by: Mapped["Accessor"] = relationship()
+    created_by: Mapped["AccessorModel"] = relationship()
 
 
-class ControlLog(Base):
+class ControlLogModel(Base):
     """
     Helper to map defect type that was found to control zone. Multiple control logs are allowed.
     """
@@ -230,16 +231,18 @@ class ControlLog(Base):
     control_target_id: Mapped[int] = mapped_column(
         ForeignKey("ControlTarget.id"), nullable=False
     )
-    control_target: Mapped["ControlTarget"] = relationship()
+    control_target: Mapped["ControlTargetModel"] = relationship()
     passed: Mapped[bool] = mapped_column(Boolean(), default=False, nullable=False)
     log: Mapped[str] = mapped_column(String(200), nullable=True)
     inspection_id: Mapped[int] = mapped_column(
         ForeignKey("Inspection.id"), nullable=False
     )
-    inspection: Mapped["Inspection"] = relationship(back_populates="control_log_list")
+    inspection: Mapped["InspectionModel"] = relationship(
+        back_populates="control_log_list"
+    )
 
 
-class Inspection(Base, InspectionMixin):
+class InspectionModel(Base, InspectionMixin):
     """
     Connect defect collection with template
     """
@@ -252,16 +255,16 @@ class Inspection(Base, InspectionMixin):
     image_blob: Mapped[str] = mapped_column(String(100), nullable=False)
 
     template_id: Mapped[int] = mapped_column(ForeignKey("Template.id"), nullable=False)
-    template: Mapped["Template"] = relationship(back_populates="inspection_list")
+    template: Mapped["TemplateModel"] = relationship(back_populates="inspection_list")
 
-    control_log_list: Mapped[List["ControlLog"]] = relationship(
+    control_log_list: Mapped[List["ControlLogModel"]] = relationship(
         back_populates="inspection", cascade="all, delete"
     )
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
-class Template(Base, TemplateMixin):
+class TemplateModel(Base, TemplateMixin):
     """
     Main reference image. Aggregate control zones.
     """
@@ -272,18 +275,18 @@ class Template(Base, TemplateMixin):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     image_blob: Mapped[str] = mapped_column(String(100), nullable=False)
 
-    control_zone_list: Mapped[List["ControlZone"]] = relationship(
+    control_zone_list: Mapped[List["ControlZoneModel"]] = relationship(
         back_populates="template", cascade="all, delete"
     )
 
-    inspection_list: Mapped[List["Inspection"]] = relationship(
+    inspection_list: Mapped[List["InspectionModel"]] = relationship(
         back_populates="template", cascade="all, delete"
     )
 
     inspection_profile_id: Mapped[int] = mapped_column(
         ForeignKey("InspectionProfile.id"), nullable=False
     )
-    inspection_profile: Mapped["InspectionProfile"] = relationship(
+    inspection_profile: Mapped["InspectionProfileModel"] = relationship(
         back_populates="template_list"
     )
 
@@ -291,10 +294,10 @@ class Template(Base, TemplateMixin):
     created_by_accessor_id: Mapped[int] = mapped_column(
         ForeignKey("Accessor.id"), nullable=False
     )
-    created_by: Mapped["Accessor"] = relationship()
+    created_by: Mapped["AccessorModel"] = relationship()
 
 
-class Camera(Base, CameraMixin):
+class CameraModel(Base, CameraMixin):
     """
     Represent available cameras
     """
@@ -314,10 +317,10 @@ class Camera(Base, CameraMixin):
     created_by_accessor_id: Mapped[int] = mapped_column(
         ForeignKey("Accessor.id"), nullable=False
     )
-    created_by: Mapped["Accessor"] = relationship()
+    created_by: Mapped["AccessorModel"] = relationship()
 
 
-class InspectionProfile(Base, InspectionProfileMixin):
+class InspectionProfileModel(Base, InspectionProfileMixin):
     """
     Concrete instance of desired test configuration
     """
@@ -327,24 +330,24 @@ class InspectionProfile(Base, InspectionProfileMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    
+
     title: Mapped[str] = mapped_column(String(TITLE_LIMIT), nullable=False)
     description: Mapped[str] = mapped_column(String(DESCRIPTION_LIMIT), nullable=False)
 
     identification_code: Mapped[str] = mapped_column(String(CODE_LIMIT), nullable=False)
 
     # Point to all available templates
-    template_list: Mapped[List["Template"]] = relationship(
+    template_list: Mapped[List["TemplateModel"]] = relationship(
         back_populates="inspection_profile", cascade="all, delete"
     )
 
     camera_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("Camera.id"), nullable=True
     )
-    camera: Mapped[Optional["Camera"]] = relationship()
+    camera: Mapped[Optional["CameraModel"]] = relationship()
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     created_by_accessor_id: Mapped[int] = mapped_column(
         ForeignKey("Accessor.id"), nullable=False
     )
-    created_by: Mapped["Accessor"] = relationship()
+    created_by: Mapped["AccessorModel"] = relationship()

@@ -12,26 +12,26 @@ from open_aoi.settings import (
 if __name__ == "__main__":
     with Session(engine) as session:
         # Defect types
-        dt_missing_component = DefectType(
+        dt_missing_component = DefectTypeModel(
             id=DefectTypeEnum.MISSING_COMPONENT.value,
             title="Missing component",
             description="Component is present on template, but is missing on tested image.",
         )
 
-        dt_wrong_component_orientation = DefectType(
+        dt_wrong_component_orientation = DefectTypeModel(
             id=DefectTypeEnum.WRONG_COMPONENT_ORIENTATION.value,
             title="Wrong component orientation",
             description="Component orientation is different against template.",
         )
 
-        dt_typography = DefectType(
+        dt_typography = DefectTypeModel(
             id=DefectTypeEnum.TYPOGRAFY.value,
             title="Typografy",
             description="Typografy quality issues.",
         )
 
         # Roles
-        r_operator = Role(
+        r_operator = RoleModel(
             id=RoleEnum.OPERATOR.value,
             allow_system_view=True,
             allow_inspection_log_view=True,
@@ -44,7 +44,7 @@ if __name__ == "__main__":
             allow_statistics_view=False,
         )
 
-        r_administrator = Role(
+        r_administrator = RoleModel(
             id=RoleEnum.ADMINISTRATOR.value,
             allow_system_view=True,
             allow_inspection_log_view=True,
@@ -58,19 +58,21 @@ if __name__ == "__main__":
         )
 
         # Accessors
-        a_operator = Accessor(
+        a_operator = AccessorModel(
             id=AccessorEnum.OPERATOR.value,
-            title="Operator",
+            username="operator",
+            title="Operator (default)",
             description="Operator is capable of basic sytem control including inspection requests.",
             role_id=RoleEnum.OPERATOR.value,
-            hash=Accessor._hash_password(AOI_OPERATOR_INITIAL_PASSWORD),
+            hash=AccessorModel._hash_password(AOI_OPERATOR_INITIAL_PASSWORD),
         )
-        a_administrator = Accessor(
+        a_administrator = AccessorModel(
             id=AccessorEnum.ADMINISTRATOR.value,
-            title="Administrator",
+            username="administrator",
+            title="Administrator (default)",
             description="Administrator is granted full access to system including security section and inspection configuration.",
             role_id=RoleEnum.ADMINISTRATOR.value,
-            hash=Accessor._hash_password(AOI_ADMINISTRATOR_INITIAL_PASSWORD),
+            hash=AccessorModel._hash_password(AOI_ADMINISTRATOR_INITIAL_PASSWORD),
         )
 
         session.add_all(

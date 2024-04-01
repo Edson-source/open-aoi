@@ -1,3 +1,5 @@
+import logging
+
 from nicegui import ui
 from open_aoi.settings import STORAGE_SECRET, WEB_INTERFACE_PORT
 
@@ -16,4 +18,7 @@ ui.page(
     title="Control zone editor | AOI Portal",
 )(view_control_zone_editor)
 
-ui.run(port=WEB_INTERFACE_PORT, storage_secret=STORAGE_SECRET)
+logging.basicConfig(level=logging.INFO)
+ui.run(
+    port=WEB_INTERFACE_PORT, storage_secret=STORAGE_SECRET, uvicorn_logging_level="info"
+)

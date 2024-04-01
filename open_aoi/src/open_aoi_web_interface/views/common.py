@@ -1,9 +1,8 @@
 from nicegui import ui, app
+from nicegui.elements.mixins.validation_element import ValidationElement
 
-from open_aoi.enums import AccessorEnum
-from open_aoi.models import Accessor
-from open_aoi.exceptions import AuthException
-from open_aoi_web_interface.views.utils import db_get_accessor
+from open_aoi.controllers import AccessorController
+from open_aoi.models import AccessorModel
 
 
 colors = dict(primary="#3A6B35", secondary="#CBD18F")
@@ -18,7 +17,7 @@ SETTINGS_PAGE = "/settings"
 
 def _handle_logout_request():
     def logout():
-        Accessor.revoke_access(app.storage.user)
+        AccessorModel.revoke_access(app.storage.user)
         ui.open(ACCESS_PAGE)
 
     with ui.dialog() as dialog, ui.card():
@@ -32,7 +31,7 @@ def _handle_logout_request():
 
 def inject_header():
     ui.right_drawer()
-    with ui.left_drawer(top_corner=False, bottom_corner=True).props('bordered'):
+    with ui.left_drawer(top_corner=False, bottom_corner=True).props("bordered"):
         ui.button("Overview", on_click=lambda: ui.open(HOME_PAGE)).props(
             "flat"
         ).tailwind.width("full")
@@ -58,19 +57,7 @@ def inject_header():
         # ui.badge("online", color="red").classes("ml-1").props("rounded")
 
 
-def ensure_access_guard() -> None:
-    operator = db_get_accessor(AccessorEnum.OPERATOR)
-    if operator is None:
-        raise AuthException("Access denied")
-
-    administrator = db_get_accessor(AccessorEnum.ADMINISTRATOR)
-    if administrator is None:
-        raise AuthException("Access denied")
-
-    try:
-        operator.assert_access(app.storage.user)
-    except AuthException:
-        try:
-            administrator.assert_access(app.storage.user)
-        except AuthException:
-            raise AuthException("Access denied")
+def access_guard() -> AccessorModel:
+    accessor_id = AccessorModel.accessor_from_session(app.storage.user)
+    accessor = AccessorController.retrieve(accessor_id)
+    return accessor

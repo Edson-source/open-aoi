@@ -25,6 +25,16 @@ class Mixin:
         except AssertionError as e:
             raise AuthException("Credential test failed") from e
 
+    @staticmethod
+    def accessor_from_session(storage: dict):
+        """Return id of accessor if access is allowed and record exist"""
+        try:
+            assert storage["access_allowed"]
+            assert storage["accessor"] is not None
+        except (AssertionError, KeyError) as e:
+            raise AuthException("Access assertion failed") from e
+        return storage["accessor"]
+
     def assert_access(self, storage: dict):
         """Test storage record for access granted in past"""
         try:
