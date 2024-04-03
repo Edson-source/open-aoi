@@ -13,7 +13,7 @@ INSPECTION_PROFILE_PAGE = "/inspection/profile"
 INSPECTION_LIVE_PAGE = "/inspection/live"
 DEVICES_PAGE = "/devices"
 TEMPLATES_PAGE = "/template"
-SETTINGS_PAGE = "/settings"
+MODULES_PAGE = "/modules"
 
 
 def _handle_logout_request():
@@ -39,7 +39,7 @@ def inject_header():
         ui.button("Devices", on_click=lambda: ui.open(DEVICES_PAGE)).props(
             "flat"
         ).tailwind.width("full")
-        ui.button("Settings", on_click=lambda: ui.open(SETTINGS_PAGE)).props(
+        ui.button("Modules", on_click=lambda: ui.open(MODULES_PAGE)).props(
             "flat"
         ).tailwind.width("full")
         ui.button("Inspection", on_click=lambda: ui.open(INSPECTION_LIVE_PAGE)).props(

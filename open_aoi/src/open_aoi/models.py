@@ -254,8 +254,12 @@ class InspectionModel(Base, InspectionMixin):
 
     image_blob: Mapped[str] = mapped_column(String(100), nullable=False)
 
-    template_id: Mapped[int] = mapped_column(ForeignKey("Template.id"), nullable=False)
-    template: Mapped["TemplateModel"] = relationship(back_populates="inspection_list")
+    inspection_profile_id: Mapped[int] = mapped_column(
+        ForeignKey("InspectionProfile.id"), nullable=False
+    )
+    inspection_profile: Mapped["InspectionProfileModel"] = relationship(
+        back_populates="inspection_list"
+    )
 
     control_log_list: Mapped[List["ControlLogModel"]] = relationship(
         back_populates="inspection", cascade="all, delete"
@@ -278,10 +282,6 @@ class TemplateModel(Base, TemplateMixin):
     image_blob: Mapped[str] = mapped_column(String(100), nullable=False)
 
     control_zone_list: Mapped[List["ControlZoneModel"]] = relationship(
-        back_populates="template", cascade="all, delete"
-    )
-
-    inspection_list: Mapped[List["InspectionModel"]] = relationship(
         back_populates="template", cascade="all, delete"
     )
 
@@ -344,6 +344,10 @@ class InspectionProfileModel(Base, InspectionProfileMixin):
         ForeignKey("Template.id"), nullable=True
     )
     template: Mapped[Optional["TemplateModel"]] = relationship()
+
+    inspection_list: Mapped[List["InspectionModel"]] = relationship(
+        back_populates="inspection_profile", cascade="all, delete"
+    )
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     created_by_accessor_id: Mapped[int] = mapped_column(

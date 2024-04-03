@@ -16,6 +16,10 @@ from open_aoi_web_interface.views.view_control_zone_editor import (
 from open_aoi_web_interface.views.view_inspection_live import (
     view as view_inspection_live,
 )
+from open_aoi_web_interface.views.view_inspection_log import (
+    view as view_inspection_log,
+)
+from open_aoi_web_interface.views.view_modules import view as view_modules
 
 ui.page("/", title="Home | AOI Portal")(view_home)
 ui.page("/access", title="Access | AOI Portal")(view_access)
@@ -29,6 +33,14 @@ ui.page("/inspection/profile", title="Inspection profiles | AOI Portal")(
     view_inspection_profile
 )
 ui.page("/inspection/live", title="Inspection | AOI Portal")(view_inspection_live)
+ui.page(
+    "/profile/{profile_id}/inspection/{inspection_id}",
+    title="Inspection log | AOI Portal",
+)(view_inspection_log)
+ui.page(
+    "/modules",
+    title="Modules | AOI Portal",
+)(view_modules)
 ui.page(
     "/template/test/control_zone",
     title="Control zone editor | AOI Portal",
