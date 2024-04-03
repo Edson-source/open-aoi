@@ -1,0 +1,113 @@
+import logging
+from typing import Optional
+from uuid import uuid4
+
+from nicegui import ui, app
+from fastapi.responses import RedirectResponse
+from PIL import Image
+
+from open_aoi.exceptions import AuthException
+from open_aoi.models import TITLE_LIMIT, DESCRIPTION_LIMIT, AccessorModel, TemplateModel
+from open_aoi_web_interface.views.common import (
+    inject_header,
+    ACCESS_PAGE,
+    access_guard,
+)
+from open_aoi_web_interface.settings import INSPECTION_LIVE_LOG_DEPTH
+
+logger = logging.getLogger("ui.devices")
+
+im = "/home/egor/Downloads/drawcore_ocr_damaged.bmp"
+im = Image.open(im)
+
+
+def _handle_trigger_inspection():
+    pass
+
+
+def _handle_update_image():
+    pass
+
+
+def view() -> Optional[RedirectResponse]:
+    try:
+        accessor = access_guard()
+    except AuthException:
+        return RedirectResponse(ACCESS_PAGE)
+
+    inject_header()
+
+    with ui.grid(columns=2).classes("w-full"):
+        with ui.column():
+            ui.label("Inspection")
+            ii = ui.interactive_image(im)
+
+            with ui.row().classes("w-full"):
+                with ui.column():
+                    ui.label("PCB")
+                    ui.label("Test")
+                    ui.label("Test")
+                ui.space()
+                ui.button("Test")
+            ui.separator()
+            ui.label("Profile: ABC, Template: ABC")
+            ii = ui.interactive_image(im)
+
+        with ui.column():
+            ui.label("Results")
+            columns = [
+                {
+                    "name": "timestamp",
+                    "label": "Timestamp",
+                    "field": "timestamp",
+                    "required": True,
+                    "align": "left",
+                },
+                {
+                    "name": "code",
+                    "label": "Code",
+                    "field": "code",
+                    "required": True,
+                    "align": "left",
+                },
+                {
+                    "name": "log",
+                    "label": "Log",
+                    "field": "log",
+                    "required": True,
+                    "align": "left",
+                },
+                {
+                    "name": "result",
+                    "label": "Result",
+                    "field": "result",
+                    "required": True,
+                    "align": "left",
+                },
+                {
+                    "name": "url",
+                    "label": "URL",
+                    "field": "url",
+                    "required": True,
+                    "align": "left",
+                },
+            ]
+            rows = [
+                {
+                    "timestamp": "123",
+                    "code": "pcb123",
+                    "log": "its dead",
+                    "result": False,
+                    "url": "123",
+                },
+            ]
+            t = ui.table(columns=columns, rows=rows, row_key="name").classes("w-full")
+            t.rows.append(
+                {
+                    "timestamp": "123",
+                    "code": "pcb123",
+                    "log": "its dead",
+                    "result": False,
+                    "url": "123",
+                }
+            )

@@ -12,6 +12,7 @@ ACCESS_PAGE = "/access"
 INSPECTION_PROFILE_PAGE = "/inspection/profile"
 INSPECTION_LIVE_PAGE = "/inspection/live"
 DEVICES_PAGE = "/devices"
+TEMPLATES_PAGE = "/template"
 SETTINGS_PAGE = "/settings"
 
 
@@ -45,6 +46,9 @@ def inject_header():
             "flat"
         ).tailwind.width("full")
         ui.button("Profiles", on_click=lambda: ui.open(INSPECTION_PROFILE_PAGE)).props(
+            "flat"
+        ).tailwind.width("full")
+        ui.button("Templates", on_click=lambda: ui.open(TEMPLATES_PAGE)).props(
             "flat"
         ).tailwind.width("full")
         ui.separator()
