@@ -11,6 +11,7 @@ from open_aoi.models import (
     TemplateModel,
     AccessorModel,
     InspectionProfileModel,
+    ControlHandlerModel,
 )
 
 
@@ -102,3 +103,7 @@ class TemplateController(Controller):
 
 class InspectionProfileController(Controller):
     model = InspectionProfileModel
+
+
+class ControlHandlerController(Controller):
+    model = ControlHandlerModel

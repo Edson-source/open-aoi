@@ -7,14 +7,14 @@ from fastapi.responses import RedirectResponse
 from PIL import Image
 
 from open_aoi.exceptions import AuthException
-from open_aoi.models import AccessorModel, TemplateModel
+from open_aoi.models import AccessorModel
 from open_aoi_web_interface.views.common import (
     inject_header,
     ACCESS_PAGE,
     access_guard,
 )
 
-logger = logging.getLogger("ui.devices")
+logger = logging.getLogger("ui.modules")
 
 
 def _handle_trigger_inspection():
@@ -37,4 +37,4 @@ def view() -> Optional[RedirectResponse]:
         ui.label("Modules")
         ui.upload(
             on_upload=lambda e: ui.notify(f"Uploaded {e.name}"), max_files=1
-        ).classes("max-w-full")
+        ).classes("w-full")

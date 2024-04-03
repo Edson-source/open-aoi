@@ -8,10 +8,10 @@ class General(Exception, ABC):
 class SecurityException(General, ABC):
     """Base exception for security issues"""
 
-    pass
-
 
 class AuthException(SecurityException):
     """Raised on auth attempt fail"""
 
-    pass
+
+class IntegrityError(General):
+    """Raised if internal integrity was violated"""
