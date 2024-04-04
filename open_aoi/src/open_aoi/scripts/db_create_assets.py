@@ -13,19 +13,16 @@ if __name__ == "__main__":
     with Session(engine) as session:
         # Defect types
         dt_missing_component = DefectTypeModel(
-            id=DefectTypeEnum.MISSING_COMPONENT.value,
             title="Missing component",
             description="Component is present on template, but is missing on tested image.",
         )
 
         dt_wrong_component_orientation = DefectTypeModel(
-            id=DefectTypeEnum.WRONG_COMPONENT_ORIENTATION.value,
             title="Wrong component orientation",
             description="Component orientation is different against template.",
         )
 
         dt_typography = DefectTypeModel(
-            id=DefectTypeEnum.TYPOGRAFY.value,
             title="Typografy",
             description="Typografy quality issues.",
         )

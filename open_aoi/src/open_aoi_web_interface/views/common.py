@@ -1,3 +1,4 @@
+from typing import Optional
 from nicegui import ui, app
 
 from open_aoi.controllers.accessor import AccessorController
@@ -8,22 +9,26 @@ from open_aoi_web_interface.settings import *
 colors = dict(primary="#3A6B35", secondary="#CBD18F")
 
 
+def confirm(msg: str, callback: callable):
+    with ui.dialog() as dialog, ui.card():
+        ui.label(msg)
+        with ui.row().classes("w-full justify-end"):
+            ui.button("Cancel", on_click=dialog.close, color="white")
+            ui.button("Confirm action", on_click=callback, color="primary")
+
+    dialog.open()
+
+
 def _handle_logout_request():
     def logout():
         AccessorController.revoke_session_access(app.storage.user)
         ui.open(ACCESS_PAGE)
 
-    with ui.dialog() as dialog, ui.card():
-        ui.label("You are about to logout. Are you sure?")
-        with ui.row().classes("w-full justify-end"):
-            ui.button("Cancel", on_click=dialog.close, color="white")
-            ui.button("Confirm", on_click=logout, color="primary")
-
-    dialog.open()
+    confirm("You are about to logout. Are you sure?", logout)
 
 
 def inject_header():
-    ui.right_drawer()
+    ui.right_drawer().props("bordered")
     with ui.left_drawer(top_corner=False, bottom_corner=True).props("bordered"):
         ui.button("Overview", on_click=lambda: ui.open(HOME_PAGE)).props(
             "flat align=left icon=home"
@@ -51,6 +56,25 @@ def inject_header():
         ui.markdown("**AOI Portal** | Powered by ROS")
         ui.badge("offline", color="grey").classes("ml-1").props("rounded")
         # ui.badge("online", color="red").classes("ml-1").props("rounded")
+
+
+def inject_text_field(
+    label: str, placeholder: str, limit: int, validation: Optional[dict] = dict()
+):
+    field = ui.input(
+        label=label,
+        placeholder=f"{placeholder} [{limit}]",
+        on_change=lambda e: field_display.set_text(
+            f"[{len(field.value)}/{limit}] {field.value}"
+        ),
+        validation={
+            "Title is too long": lambda value: len(value) <= limit,
+            "Title is too short": lambda value: len(value.strip()) != 0,
+            **validation,
+        },
+    ).classes("w-full")
+    field_display = ui.label("").classes("text-secondary")
+    return field
 
 
 def access_guard() -> AccessorModel:

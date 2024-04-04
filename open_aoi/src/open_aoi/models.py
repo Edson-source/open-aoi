@@ -15,7 +15,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase, relationship
 
 from open_aoi.settings import MYSQL_DATABASE, MYSQL_PASSWORD, MYSQL_USER, MYSQL_PORT
-from open_aoi.enums import DefectTypeEnum, RoleEnum, AccessorEnum
+from open_aoi.enums import RoleEnum, AccessorEnum
 from open_aoi.mixins.control_zone import ImageManipulationMixin
 from open_aoi.mixins.accessor import AccessorAuthMixin, AccessorSessionCredentialsMixin
 from open_aoi.mixins.inspection import InspectionStatisticsMixin
@@ -115,8 +115,6 @@ class DefectTypeModel(Base):
         back_populates="defect_type"
     )
 
-    registry = DefectTypeEnum
-
 
 class ControlHandlerModel(Base, ModuleSourceMixin):
     """Database representation of control handler"""
@@ -129,7 +127,9 @@ class ControlHandlerModel(Base, ModuleSourceMixin):
     title: Mapped[str] = mapped_column(String(50), nullable=False)
     description: Mapped[str] = mapped_column(String(200), nullable=False)
 
-    handler_blob: Mapped[str] = mapped_column(String(100), nullable=False)
+    handler_blob: Mapped[str] = mapped_column(
+        String(100), nullable=True
+    )  # If null, should not be used!
 
     control_target_list: Mapped[List["ControlTargetModel"]] = relationship(
         back_populates="control_handler"
@@ -208,7 +208,7 @@ class ControlZoneModel(Base, ImageManipulationMixin):
     rotation: Mapped[float] = mapped_column(Numeric(precision=10, scale=2))
 
     control_target_list: Mapped[List["ControlTargetModel"]] = relationship(
-        back_populates="control_zone", cascade="all, delete"
+        back_populates="control_zone"
     )
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
@@ -262,7 +262,7 @@ class InspectionModel(Base, InspectionStatisticsMixin):
     )
 
     control_log_list: Mapped[List["ControlLogModel"]] = relationship(
-        back_populates="inspection", cascade="all, delete"
+        back_populates="inspection"
     )
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
@@ -282,11 +282,11 @@ class TemplateModel(Base, ImageSourceMixin):
     image_blob: Mapped[str] = mapped_column(String(100), nullable=False)
 
     control_zone_list: Mapped[List["ControlZoneModel"]] = relationship(
-        back_populates="template", cascade="all, delete"
+        back_populates="template"
     )
 
     inspection_profile_list: Mapped["InspectionProfileModel"] = relationship(
-        back_populates="template", cascade="all, delete"
+        back_populates="template"
     )
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
@@ -346,7 +346,7 @@ class InspectionProfileModel(Base):
     template: Mapped[Optional["TemplateModel"]] = relationship()
 
     inspection_list: Mapped[List["InspectionModel"]] = relationship(
-        back_populates="inspection_profile", cascade="all, delete"
+        back_populates="inspection_profile"
     )
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

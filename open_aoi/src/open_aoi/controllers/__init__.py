@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from open_aoi.models import engine, Base
+from open_aoi.exceptions import IntegrityError
 
 
 class Controller:
@@ -18,25 +19,40 @@ class Controller:
         return res
 
     @classmethod
-    def delete(cls, obj: Base) -> Base:
+    def delete(cls, obj: Base):
         with Session(engine) as session:
-            session.delete(obj)
-            session.commit()
+            if cls.allow_delete_hook(session, obj.id):
+                session.query(cls._model).filter(cls._model.id == obj.id).delete()
+                session.commit()
+            else:
+                raise IntegrityError(
+                    "Unable to delete. Object is a dependency for other objects."
+                )
 
     @classmethod
-    def delete_by_id(cls, id: int) -> Base:
+    def delete_by_id(cls, id: int):
         with Session(engine) as session:
-            q = select(cls._model).where(cls._model.id == id).one()
-            session.delete(q)
-            session.commit()
+            if cls.allow_delete_hook(session, id):
+                session.query(cls._model).filter(cls._model.id == id).delete()
+                session.commit()
+            else:
+                raise IntegrityError(
+                    "Unable to delete. Object is a dependency for other objects."
+                )
 
     @classmethod
     def list(cls) -> List[Base]:
         with Session(engine) as session:
-            q = select(cls._model)
-            res = session.scalars(q).all()
-        return res
+            return session.query(cls._model).all()
+
+    @classmethod
+    def list_nested(cls) -> List[Base]:
+        raise NotImplemented()
 
     @classmethod
     def create(cls, *args, **kwargs):
+        raise NotImplemented()
+
+    @classmethod
+    def allow_delete_hook(cls, session: Session, id: int) -> bool:
         raise NotImplemented()

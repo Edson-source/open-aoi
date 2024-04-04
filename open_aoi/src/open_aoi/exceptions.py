@@ -15,3 +15,7 @@ class AuthException(SecurityException):
 
 class IntegrityError(General):
     """Raised if internal integrity was violated"""
+
+
+class ConnectivityError(General):
+    """Raised if connection to resource could not be established"""
