@@ -27,3 +27,11 @@ class Module:
 
     def process(self):
         raise NotImplemented()
+
+
+class ControlHandlerController(Controller):
+    model = ControlHandlerModel
+
+    @classmethod
+    def create(cls):
+        raise NotImplemented()
