@@ -7,13 +7,13 @@ from open_aoi.models import engine, Base
 
 
 class Controller:
-    model: Base
+    _model: Base
     engine = engine
 
     @classmethod
     def retrieve(cls, id: int) -> Base:
         with Session(engine) as session:
-            q = select(cls.model).where(cls.model.id == id)
+            q = select(cls._model).where(cls._model.id == id)
             res = session.scalars(q).one_or_none()
         return res
 
@@ -26,14 +26,14 @@ class Controller:
     @classmethod
     def delete_by_id(cls, id: int) -> Base:
         with Session(engine) as session:
-            q = select(cls.model).where(cls.model.id == id).one()
+            q = select(cls._model).where(cls._model.id == id).one()
             session.delete(q)
             session.commit()
 
     @classmethod
     def list(cls) -> List[Base]:
         with Session(engine) as session:
-            q = select(cls.model)
+            q = select(cls._model)
             res = session.scalars(q).all()
         return res
 

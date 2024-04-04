@@ -1,13 +1,9 @@
 import numpy as np
 
+from open_aoi.mixins import Mixin
 
-class Mixin:
-    def set_top_left_coordinates(self, x: float, y: float) -> None:
-        pass
 
-    def set_bottom_right_coordinates(self, x: float, y: float) -> None:
-        pass
-
+class ImageManipulationMixin(Mixin):
     def inpaint(self, im: np.ndarray) -> np.ndarray:
         pass
 

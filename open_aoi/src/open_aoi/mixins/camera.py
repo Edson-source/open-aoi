@@ -1,7 +1,8 @@
 import numpy as np
+from open_aoi.mixins import Mixin
 
 
-class Mixin:
+class CameraControlMixin(Mixin):
     def test(self) -> bool:
         raise NotImplemented()
 

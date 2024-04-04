@@ -1,5 +1,6 @@
 from datetime import datetime
 from sqlalchemy.orm import Session
+
 from open_aoi.models import (
     CameraModel,
     AccessorModel,
@@ -8,7 +9,7 @@ from open_aoi.controllers import Controller
 
 
 class CameraController(Controller):
-    model = CameraModel
+    _model = CameraModel
 
     @classmethod
     def create(

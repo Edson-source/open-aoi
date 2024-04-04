@@ -1,7 +1,9 @@
 import numpy as np
-from typing import List
 
-class Mixin:
+from open_aoi.mixins import Mixin
+
+
+class ImageSourceMixin(Mixin):
     image: np.ndarray
 
     def assign_image(self, im: np.ndarray) -> str:
@@ -12,4 +14,3 @@ class Mixin:
 
     def inpaint_zones(self, im: np.ndarray) -> np.ndarray:
         raise NotImplemented()
-

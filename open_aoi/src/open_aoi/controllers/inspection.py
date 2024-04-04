@@ -1,4 +1,6 @@
+from open_aoi.controllers import Controller
+from open_aoi.models import InspectionProfileModel
+
 
 class InspectionProfileController(Controller):
-    model = InspectionProfileModel
-
+    _model = InspectionProfileModel

@@ -6,7 +6,7 @@ from open_aoi.controllers import Controller
 
 
 class TemplateController(Controller):
-    model = TemplateModel
+    _model = TemplateModel
 
     @classmethod
     def create(

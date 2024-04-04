@@ -1,24 +1,16 @@
 from nicegui import ui, app
-from nicegui.elements.mixins.validation_element import ValidationElement
 
-from open_aoi.controllers import AccessorController
+from open_aoi.controllers.accessor import AccessorController
 from open_aoi.models import AccessorModel
+from open_aoi_web_interface.settings import *
 
 
 colors = dict(primary="#3A6B35", secondary="#CBD18F")
 
-HOME_PAGE = "/"
-ACCESS_PAGE = "/access"
-INSPECTION_PROFILE_PAGE = "/inspection/profile"
-INSPECTION_LIVE_PAGE = "/inspection/live"
-DEVICES_PAGE = "/devices"
-TEMPLATES_PAGE = "/template"
-MODULES_PAGE = "/modules"
-
 
 def _handle_logout_request():
     def logout():
-        AccessorModel.revoke_access(app.storage.user)
+        AccessorController.revoke_session_access(app.storage.user)
         ui.open(ACCESS_PAGE)
 
     with ui.dialog() as dialog, ui.card():
@@ -34,26 +26,26 @@ def inject_header():
     ui.right_drawer()
     with ui.left_drawer(top_corner=False, bottom_corner=True).props("bordered"):
         ui.button("Overview", on_click=lambda: ui.open(HOME_PAGE)).props(
-            "flat"
+            "flat align=left icon=home"
         ).tailwind.width("full")
         ui.button("Devices", on_click=lambda: ui.open(DEVICES_PAGE)).props(
-            "flat"
+            "flat align=left icon=photo_camera"
         ).tailwind.width("full")
         ui.button("Modules", on_click=lambda: ui.open(MODULES_PAGE)).props(
-            "flat"
+            "flat align=left icon=widgets"
         ).tailwind.width("full")
-        ui.button("Inspection", on_click=lambda: ui.open(INSPECTION_LIVE_PAGE)).props(
-            "flat"
+        ui.button("Inspect", on_click=lambda: ui.open(INSPECTION_PAGE)).props(
+            "flat align=left icon=compare"
         ).tailwind.width("full")
-        ui.button("Profiles", on_click=lambda: ui.open(INSPECTION_PROFILE_PAGE)).props(
-            "flat"
-        ).tailwind.width("full")
-        ui.button("Templates", on_click=lambda: ui.open(TEMPLATES_PAGE)).props(
-            "flat"
-        ).tailwind.width("full")
+        ui.button(
+            "Inspection profiles", on_click=lambda: ui.open(INSPECTION_PROFILE_PAGE)
+        ).props("flat align=left icon=cameraswitch").tailwind.width("full")
+        ui.button(
+            "Inspection templates", on_click=lambda: ui.open(TEMPLATES_PAGE)
+        ).props("flat align=left icon=tune").tailwind.width("full")
         ui.separator()
         ui.button("Logout", on_click=_handle_logout_request).props(
-            "flat color=negative"
+            "flat color=negative align=left icon=logout"
         ).tailwind.width("full")
     with ui.header(fixed=True).classes("py-1 items-center"):
         ui.markdown("**AOI Portal** | Powered by ROS")
@@ -62,6 +54,4 @@ def inject_header():
 
 
 def access_guard() -> AccessorModel:
-    accessor_id = AccessorModel.accessor_from_session(app.storage.user)
-    accessor = AccessorController.retrieve(accessor_id)
-    return accessor
+    return AccessorController.identify_session_accessor(app.storage.user)

@@ -16,12 +16,12 @@ from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase, relationship
 
 from open_aoi.settings import MYSQL_DATABASE, MYSQL_PASSWORD, MYSQL_USER, MYSQL_PORT
 from open_aoi.enums import DefectTypeEnum, RoleEnum, AccessorEnum
-from open_aoi.mixins.control_zone import Mixin as ControlZoneMixin
-from open_aoi.mixins.accessor import Mixin as AccessorMixin
-from open_aoi.mixins.inspection_record import Mixin as InspectionMixin
-from open_aoi.mixins.template import Mixin as TemplateMixin
-from open_aoi.mixins.camera import Mixin as CameraMixin
-from open_aoi.mixins.inspection_profile import Mixin as InspectionProfileMixin
+from open_aoi.mixins.control_zone import ImageManipulationMixin
+from open_aoi.mixins.accessor import AccessorAuthMixin, AccessorSessionCredentialsMixin
+from open_aoi.mixins.inspection import InspectionStatisticsMixin
+from open_aoi.mixins.template import ImageSourceMixin
+from open_aoi.mixins.camera import CameraControlMixin
+from open_aoi.mixins.control_handler import ModuleSourceMixin
 
 
 CODE_LIMIT = 100
@@ -81,7 +81,7 @@ class RoleModel(Base):
     registry = RoleEnum
 
 
-class AccessorModel(Base, AccessorMixin):
+class AccessorModel(Base, AccessorAuthMixin, AccessorSessionCredentialsMixin):
     __tablename__ = "Accessor"
     metadata = metadata_obj
 
@@ -118,7 +118,7 @@ class DefectTypeModel(Base):
     registry = DefectTypeEnum
 
 
-class ControlHandlerModel(Base):
+class ControlHandlerModel(Base, ModuleSourceMixin):
     """Database representation of control handler"""
 
     __tablename__ = "ControlHandler"
@@ -190,7 +190,7 @@ class ConnectedComponentModel(Base):
     control_zone: Mapped["ControlZoneModel"] = relationship(back_populates="cc")
 
 
-class ControlZoneModel(Base, ControlZoneMixin):
+class ControlZoneModel(Base, ImageManipulationMixin):
     """
     Small zone on template where related control handler is applied in order to detect defect type
     """
@@ -242,7 +242,7 @@ class ControlLogModel(Base):
     )
 
 
-class InspectionModel(Base, InspectionMixin):
+class InspectionModel(Base, InspectionStatisticsMixin):
     """
     Connect defect collection with template
     """
@@ -268,7 +268,7 @@ class InspectionModel(Base, InspectionMixin):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
-class TemplateModel(Base, TemplateMixin):
+class TemplateModel(Base, ImageSourceMixin):
     """
     Main reference image. Aggregate control zones.
     """
@@ -296,7 +296,7 @@ class TemplateModel(Base, TemplateMixin):
     created_by: Mapped["AccessorModel"] = relationship()
 
 
-class CameraModel(Base, CameraMixin):
+class CameraModel(Base, CameraControlMixin):
     """
     Represent available cameras
     """
@@ -319,7 +319,7 @@ class CameraModel(Base, CameraMixin):
     created_by: Mapped["AccessorModel"] = relationship()
 
 
-class InspectionProfileModel(Base, InspectionProfileMixin):
+class InspectionProfileModel(Base):
     """
     Concrete instance of desired test configuration
     """
