@@ -3,7 +3,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from open_aoi.controllers import Controller
-from open_aoi.models import ControlHandlerModel, DefectTypeModel, ControlTargetModel
+from open_aoi.models import (
+    Base,
+    ControlHandlerModel,
+    DefectTypeModel,
+    ControlTargetModel,
+)
 
 
 class ControlHandlerController(Controller):
@@ -41,6 +46,10 @@ class ControlHandlerController(Controller):
             .where(ControlTargetModel.control_handler_id == id)
             .exists()
         ).scalar()
+
+    @classmethod
+    def post_delete_hook(cls, obj: ControlHandlerModel):
+        obj.destroy_source()
 
     @classmethod
     def publish_source(cls, obj: ControlHandlerModel, content: bytes):

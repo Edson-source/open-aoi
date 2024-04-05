@@ -24,6 +24,7 @@ class Controller:
             if cls.allow_delete_hook(session, obj.id):
                 session.query(cls._model).filter(cls._model.id == obj.id).delete()
                 session.commit()
+                cls.post_delete_hook(obj)
             else:
                 raise IntegrityError(
                     "Unable to delete. Object is a dependency for other objects."
@@ -33,8 +34,10 @@ class Controller:
     def delete_by_id(cls, id: int):
         with Session(engine) as session:
             if cls.allow_delete_hook(session, id):
+                obj = cls.retrieve(id)
                 session.query(cls._model).filter(cls._model.id == id).delete()
                 session.commit()
+                cls.post_delete_hook(obj)
             else:
                 raise IntegrityError(
                     "Unable to delete. Object is a dependency for other objects."
@@ -55,4 +58,8 @@ class Controller:
 
     @classmethod
     def allow_delete_hook(cls, session: Session, id: int) -> bool:
+        raise NotImplemented()
+
+    @classmethod
+    def post_delete_hook(cls, obj: Base):
         raise NotImplemented()

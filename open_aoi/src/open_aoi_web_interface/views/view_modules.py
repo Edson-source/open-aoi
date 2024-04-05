@@ -1,4 +1,3 @@
-# TODO: drop blob on delete!
 # TODO: access control
 import logging
 from typing import Optional

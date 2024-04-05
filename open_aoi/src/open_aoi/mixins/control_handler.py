@@ -87,6 +87,15 @@ class ModuleSourceMixin(Mixin):
 
         return Module(self._dynamic_import(source), source)
 
+    def destroy_source(self):
+        assert getattr(self, "handler_blob") is not None
+        client = self._client
+
+        if not client.bucket_exists(self._bucket_name):
+            raise IntegrityError("Module does not exist")
+
+        client.remove_object(self._bucket_name, self.handler_blob)
+
     @classmethod
     def test_store_connection(cls):
         try:
