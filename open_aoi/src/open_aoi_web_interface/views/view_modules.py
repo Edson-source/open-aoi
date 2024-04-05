@@ -1,4 +1,3 @@
-# TODO: On upload rerender module list
 # TODO: drop blob on delete!
 # TODO: access control
 import logging
@@ -59,7 +58,7 @@ def view() -> Optional[RedirectResponse]:
     # -------------------------------------------------------------------------
     # Handlers
     # Handlers: defect type
-    def _handle_defect_type_create(*callbacks: callable):
+    def _handle_defect_type_create():
         try:
             assert defect_type_title_input.validate()
             assert defect_type_description_input.validate()
@@ -76,10 +75,11 @@ def view() -> Optional[RedirectResponse]:
             return
 
         ui.notify("New defect type created", type="positive")
-        for callback in callbacks:
-            callback()
 
-    def _handle_defect_type_delete(defect_type_id: int, *callbacks: callable):
+        _inject_defect_list()
+        _update_module_type_defect_selection()
+
+    def _handle_defect_type_delete(defect_type_id: int):
         def _execute():
             try:
                 DefectTypeController.delete_by_id(defect_type_id)
@@ -88,8 +88,9 @@ def view() -> Optional[RedirectResponse]:
                 return
 
             ui.notify("Deleted!", type="positive")
-            for callback in callbacks:
-                callback()
+
+            _inject_defect_list()
+            _update_module_type_defect_selection()
 
         confirm("Are you sure?", _execute)
 
@@ -123,6 +124,8 @@ def view() -> Optional[RedirectResponse]:
 
         ui.notify(f"Uploaded {e.name}")
 
+        _inject_module_list()
+
     def _handle_module_download_request(control_handler_id: int):
         try:
             control_handler = ControlHandlerController.retrieve(control_handler_id)
@@ -133,7 +136,7 @@ def view() -> Optional[RedirectResponse]:
 
         ui.download(source, "module.py")
 
-    def _handle_module_create(*callbacks: callable):
+    def _handle_module_create():
         try:
             assert module_title_input.validate()
             assert module_description_input.validate()
@@ -156,10 +159,10 @@ def view() -> Optional[RedirectResponse]:
             return
 
         ui.notify("New module created", type="positive")
-        for callback in callbacks:
-            callback()
 
-    def _handle_module_delete(control_handler_id: int, *callbacks: callable):
+        _inject_module_list()
+
+    def _handle_module_delete(control_handler_id: int):
         def _execute():
             try:
                 ControlHandlerController.delete_by_id(control_handler_id)
@@ -168,8 +171,7 @@ def view() -> Optional[RedirectResponse]:
                 return
             ui.notify("Deleted!", type="positive")
 
-            for callback in callbacks:
-                callback()
+            _inject_module_list()
 
         confirm("Are you sure?", _execute)
 
@@ -198,9 +200,7 @@ def view() -> Optional[RedirectResponse]:
                                     ui.button(
                                         on_click=(
                                             lambda d_t: lambda: _handle_defect_type_delete(
-                                                d_t.id,
-                                                _inject_defect_list,
-                                                _update_module_type_defect_selection,
+                                                d_t.id
                                             )
                                         )(defect_type),
                                         icon="close",
@@ -262,7 +262,6 @@ def view() -> Optional[RedirectResponse]:
                                             on_click=(
                                                 lambda c_h: lambda: _handle_module_delete(
                                                     c_h.id,
-                                                    _inject_module_list,
                                                 )
                                             )(control_handler),
                                             icon="close",
@@ -337,11 +336,7 @@ def view() -> Optional[RedirectResponse]:
                 with ui.row().classes("w-full"):
                     ui.space()
                     ui.button(
-                        "Create",
-                        color="positive",
-                        on_click=lambda: _handle_module_create(
-                            _inject_module_list,
-                        ),
+                        "Create", color="positive", on_click=_handle_module_create
                     )
             with ui.row() as modules_container:
                 _inject_module_list()
