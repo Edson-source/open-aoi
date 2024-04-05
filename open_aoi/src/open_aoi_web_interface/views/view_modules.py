@@ -1,5 +1,6 @@
-# TODO: FIX LAMBDA VALUEs!
 # TODO: On upload rerender module list
+# TODO: drop blob on delete!
+# TODO: access control
 import logging
 from typing import Optional
 
@@ -21,6 +22,8 @@ from open_aoi_web_interface.views.common import (
 logger = logging.getLogger("ui.modules")
 
 
+ICON_VALID_MODULE = "🟢"
+ICON_INVALID_MODULE = "🟡"
 IS_STORE_CONNECTED = True
 
 
@@ -64,9 +67,14 @@ def view() -> Optional[RedirectResponse]:
             ui.notify("Some required parameters are missing")
             return
 
-        DefectTypeController.create(
-            defect_type_title_input.value, defect_type_description_input.value
-        )
+        try:
+            DefectTypeController.create(
+                defect_type_title_input.value, defect_type_description_input.value
+            )
+        except:
+            ui.notify("Failed to create defect type!", type="negative")
+            return
+
         ui.notify("New defect type created", type="positive")
         for callback in callbacks:
             callback()
@@ -90,9 +98,9 @@ def view() -> Optional[RedirectResponse]:
         with ui.dialog() as dialog, ui.card().classes("w-[600px]"):
             ui.markdown("#### **Upload source**")
             ui.upload(
-                on_upload=lambda e: _handle_module_upload_process(
-                    e, control_handler_id
-                ),
+                on_upload=(
+                    lambda c_h_id: lambda e: _handle_module_upload_process(e, c_h_id)
+                )(control_handler_id),
                 max_files=1,
             ).classes("w-full")
             with ui.row().classes("w-full justify-end"):
@@ -101,20 +109,28 @@ def view() -> Optional[RedirectResponse]:
         dialog.open()
 
     def _handle_module_upload_process(e, control_handler_id: int):
-        logger.info(f"Received: {e.name}")
         content = e.content.read()
         valid, error = ControlHandlerController.validate_source(content)
         if not valid:
             ui.notify(error, type="negative")
             return
-        control_handler = ControlHandlerController.retrieve(control_handler_id)
-        ControlHandlerController.publish_source(control_handler, content)
+        try:
+            control_handler = ControlHandlerController.retrieve(control_handler_id)
+            ControlHandlerController.publish_source(control_handler, content)
+        except:
+            ui.notify("Failed to upload module source!")
+            return
+
         ui.notify(f"Uploaded {e.name}")
 
     def _handle_module_download_request(control_handler_id: int):
-        print(control_handler_id)
-        control_handler = ControlHandlerController.retrieve(control_handler_id)
-        source = ControlHandlerController.materialize_for_download(control_handler)
+        try:
+            control_handler = ControlHandlerController.retrieve(control_handler_id)
+            source = ControlHandlerController.materialize_for_download(control_handler)
+        except:
+            ui.notify("Failed to obtain module source!")
+            return
+
         ui.download(source, "module.py")
 
     def _handle_module_create(*callbacks: callable):
@@ -126,12 +142,18 @@ def view() -> Optional[RedirectResponse]:
             ui.notify("Some required parameters are missing")
             return
 
-        defect_type = DefectTypeController.retrieve(module_defect_type_selection.value)
-        control_handler = ControlHandlerController.create(
-            title=module_title_input.value,
-            description=module_description_input.value,
-            defect_type=defect_type,
-        )
+        try:
+            defect_type = DefectTypeController.retrieve(
+                module_defect_type_selection.value
+            )
+            ControlHandlerController.create(
+                title=module_title_input.value,
+                description=module_description_input.value,
+                defect_type=defect_type,
+            )
+        except:
+            ui.notify("Failed to create module!", type="negative")
+            return
 
         ui.notify("New module created", type="positive")
         for callback in callbacks:
@@ -145,6 +167,7 @@ def view() -> Optional[RedirectResponse]:
                 ui.notify(str(e), type="negative")
                 return
             ui.notify("Deleted!", type="positive")
+
             for callback in callbacks:
                 callback()
 
@@ -154,13 +177,18 @@ def view() -> Optional[RedirectResponse]:
     def _inject_defect_list():
         defect_types_container.clear()
 
-        defect_types = DefectTypeController.list()
+        try:
+            defect_types = DefectTypeController.list()
+        except:
+            ui.notify("Failed to get defect types", type="negative")
+            return
+
         with defect_types_container:
             if len(defect_types):
                 with ui.scroll_area().classes("w-full"):
                     with ui.list().classes("w-full"):
                         for defect_type in defect_types:
-                            with ui.item().classes("w-full"):
+                            with ui.item().props("clickable").classes("w-full"):
                                 with ui.item_section():
                                     ui.item_label(defect_type.title)
                                     ui.item_label(defect_type.description).props(
@@ -168,11 +196,13 @@ def view() -> Optional[RedirectResponse]:
                                     )
                                 with ui.item_section().props("side"):
                                     ui.button(
-                                        on_click=lambda: _handle_defect_type_delete(
-                                            defect_type.id,
-                                            lambda: _inject_defect_list(),
-                                            lambda: _update_module_type_defect_selection(),
-                                        ),
+                                        on_click=(
+                                            lambda d_t: lambda: _handle_defect_type_delete(
+                                                d_t.id,
+                                                _inject_defect_list,
+                                                _update_module_type_defect_selection,
+                                            )
+                                        )(defect_type),
                                         icon="close",
                                         color="negative",
                                     ).props(
@@ -185,16 +215,21 @@ def view() -> Optional[RedirectResponse]:
     def _inject_module_list():
         modules_container.clear()
 
-        control_handlers = ControlHandlerController.list_nested()
+        try:
+            control_handlers = ControlHandlerController.list_nested()
+        except:
+            ui.notify("Failed to get modules!", type="negative")
+            return
+
         with modules_container:
             if len(control_handlers):
                 with ui.scroll_area().classes("w-full"):
                     with ui.list().classes("w-full"):
                         for control_handler in control_handlers:
-                            with ui.item().classes("w-full"):
+                            with ui.item().props("clickable").classes("w-full"):
                                 with ui.item_section():
                                     ui.item_label(
-                                        f"{'🟢' if control_handler.handler_blob is not None else '🟡'} {control_handler.defect_type.title} | {control_handler.title}"
+                                        f"{ICON_INVALID_MODULE if control_handler.handler_blob is None else ICON_VALID_MODULE} {control_handler.defect_type.title} | {control_handler.title}"
                                     )
                                     ui.item_label(control_handler.description).props(
                                         "caption"
@@ -202,17 +237,21 @@ def view() -> Optional[RedirectResponse]:
                                 with ui.item_section().props("side"):
                                     with ui.row():
                                         ui.button(
-                                            on_click=lambda: _handle_module_upload_request(
-                                                control_handler.id
-                                            ),
+                                            on_click=(
+                                                lambda c_h: lambda: _handle_module_upload_request(
+                                                    c_h.id
+                                                )
+                                            )(control_handler),
                                             icon="upload",
                                         ).props(
                                             "size=sm",
                                         )
                                         download = ui.button(
-                                            on_click=lambda: _handle_module_download_request(
-                                                control_handler.id,
-                                            ),
+                                            on_click=(
+                                                lambda c_h: lambda: _handle_module_download_request(
+                                                    c_h.id,
+                                                )
+                                            )(control_handler),
                                             icon="download",
                                         ).props(
                                             "size=sm",
@@ -220,10 +259,12 @@ def view() -> Optional[RedirectResponse]:
                                         if control_handler.handler_blob is None:
                                             download.disable()
                                         ui.button(
-                                            on_click=lambda: _handle_module_delete(
-                                                control_handler.id,
-                                                lambda: _inject_module_list(),
-                                            ),
+                                            on_click=(
+                                                lambda c_h: lambda: _handle_module_delete(
+                                                    c_h.id,
+                                                    _inject_module_list,
+                                                )
+                                            )(control_handler),
                                             icon="close",
                                             color="negative",
                                         ).props(
@@ -235,7 +276,12 @@ def view() -> Optional[RedirectResponse]:
 
     # Other
     def _update_module_type_defect_selection():
-        defect_types = DefectTypeController.list()
+        try:
+            defect_types = DefectTypeController.list()
+        except:
+            ui.notify("Failed to get defect types!", type="negative")
+            return
+
         options = dict([(dt.id, dt.title) for dt in defect_types])
         module_defect_type_selection.set_options(options)
 
@@ -260,14 +306,13 @@ def view() -> Optional[RedirectResponse]:
                         "Create",
                         color="positive",
                         on_click=lambda: _handle_defect_type_create(
-                            lambda: _inject_defect_list(),
-                            lambda: _update_module_type_defect_selection(),
+                            _inject_defect_list,
+                            _update_module_type_defect_selection,
                         ),
                     )
             with ui.row() as defect_types_container:
                 _inject_defect_list()
 
-        ui.separator()
         ui.markdown("##### **Modules**")
         ui.markdown(
             "Upload custom inspection code here! For more information please refer user manual."
@@ -295,7 +340,7 @@ def view() -> Optional[RedirectResponse]:
                         "Create",
                         color="positive",
                         on_click=lambda: _handle_module_create(
-                            lambda: _inject_module_list(),
+                            _inject_module_list,
                         ),
                     )
             with ui.row() as modules_container:
