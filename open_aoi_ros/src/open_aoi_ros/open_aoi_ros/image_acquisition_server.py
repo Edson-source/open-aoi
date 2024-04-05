@@ -22,7 +22,6 @@ EMULATION_DIR = "./assets"
 
 class Service(Node):
     camera_ip_address: str = ""
-    camera_exposure_us: int = 4000
 
     camera_enabled: bool = False
     camera_emulation_mode: bool = False
@@ -36,7 +35,7 @@ class Service(Node):
         # --- Services ---
         self.acquire_image_service = self.create_service(
             ImageAcquisition,
-            f"{NODE_NAME}/image/acquire",
+            f"{NODE_NAME}/capture",
             self.acquire_image,
         )
 
@@ -77,71 +76,82 @@ class Service(Node):
             ),
         )
 
-        self.declare_parameter(
-            "camera_exposure_us",
-            value=self.camera_exposure_us,
-            descriptor=ParameterDescriptor(
-                name="Camera exposure time [us]",
-                type=rclpy.Parameter.Type.INTEGER.value,
-                description="Camera exposure time in microseconds. Not applied in emulation mode.",
-            ),
-        )
         self.add_on_set_parameters_callback(self._update_parameters)
-        
+
         self.logger = self.get_logger()
 
         self._reload_service()
 
+    def _set_status(self, msg: str):
+        self.service_status = msg
+
     def _update_parameters(self, parameters: List[rclpy.Parameter]):
+        self.logger.info("Parameters update triggered")
         for p in parameters:
+            self.logger.info(
+                f"Parameter {p.name}: {getattr(self, p.name)} -> {p.value}"
+            )
             setattr(self, p.name, p.value)
 
         self._reload_service()
         return SetParametersResult(successful=True, reason="")
 
     def _reload_service(self):
-        try:
-            if self.camera_enabled:
-                self._acquire_camera()
-        except RuntimeError as e:
-            self.service_status = str(e)
-            return
+        self.logger.info("Service reload requested")
+        self.logger.info(f"Service enabled: {self.camera_enabled}")
+        if self.camera_enabled:
+            self._acquire_camera()
 
     def _acquire_camera(self):
+        self.logger.info("Camera connection requested")
         if self.camera is not None:
+            self.logger.info("Existing camera detected. Closing...")
             self.camera.Close()
 
         # Emulation
         if self.camera_emulation_mode:
-            os.environ["PYLON_CAMEMU"] = "1"
-            tlf: pylon.TlFactory = pylon.TlFactory.GetInstance()
-            self.camera = pylon.InstantCamera(tlf.CreateFirstDevice())
-            self.camera.Open()
-            self.camera.ImageFilename = EMULATION_DIR
-            self.camera.ImageFileMode = "On"
-            self.camera.TestImageSelector = "Off"
-            self.camera.Height = 2048
-            self.camera.Width = 2592
-            self.service_status = "Connected to camera: EMULATION"
+            self.logger.info("Running emulation mode")
+            try:
+                os.environ["PYLON_CAMEMU"] = "1"
+                tlf: pylon.TlFactory = pylon.TlFactory.GetInstance()
+                self.camera = pylon.InstantCamera(tlf.CreateFirstDevice())
+                self.camera.Open()
+                self.camera.ImageFilename = EMULATION_DIR
+                self.camera.ImageFileMode = "On"
+                self.camera.TestImageSelector = "Off"
+                self.camera.Height = 2048
+                self.camera.Width = 2592
+                self.service_status = "Connected to camera: EMULATION"
+            except Exception as e:
+                self.logger.exception(e)
+                self._set_status("Failed to setup emulator")
+                return
         # Real camera
         else:
-            tlf: pylon.TlFactory = pylon.TlFactory.GetInstance()
-            for dev_info in tlf.EnumerateDevices():
-                if (
-                    dev_info.GetDeviceClass() == "BaslerGigE"
-                    and dev_info.GetIpAddress() == self.camera_ip_address
-                ):
-                    self.camera = pylon.InstantCamera(tlf.CreateDevice(dev_info))
-                    break
-            else:
-                raise RuntimeError(
-                    f"Failed to acquire camera with IP: {self.camera_ip_address}"
-                )
-            self.camera.Open()
-            self.camera.ExposureTime = self.camera_exposure_us
-            self.service_status = f"Connected to camera: {self.camera_ip_address}"
+            self.logger.info(f"Running with real camera: {self.camera_ip_address}")
+            try:
+                tlf: pylon.TlFactory = pylon.TlFactory.GetInstance()
+                for dev_info in tlf.EnumerateDevices():
+                    if (
+                        dev_info.GetDeviceClass() == "BaslerGigE"
+                        and dev_info.GetIpAddress() == self.camera_ip_address
+                    ):
+                        self.camera = pylon.InstantCamera(tlf.CreateDevice(dev_info))
+                        break
+                else:
+                    self._set_status(
+                        f"Failed to acquire camera with IP: {self.camera_ip_address}"
+                    )
+                    return
+                self.camera.Open()
+                self.service_status = f"Connected to camera: {self.camera_ip_address}"
+            except Exception as e:
+                self.logger.exception(e)
+                self._set_status("Failed to setup camera")
+                return
 
     def _image_to_message(self, im: np.ndarray):
+        self.logger.info("Converting image to message")
         # TODO: speed up
         msg = Image()
 
@@ -157,6 +167,7 @@ class Service(Node):
         return msg
 
     def expose_status(self, request_class, response_class):
+        self.logger.info("Status requested")
         return ServiceStatus.Response(status=self.service_status)
 
     def acquire_image(self, request_class, response_class):
@@ -169,19 +180,27 @@ class Service(Node):
                 error_description="Capture image called before camera initialization",
             )
 
-        try:    
+        try:
             grab_result = self.camera.GrabOne(1000)
             if grab_result.GrabSucceeded():
                 # Access the image data
                 image = grab_result.Array
+                grab_result.Release()
                 return ImageAcquisition.Response(
                     image=self._image_to_message(image),
                     error="NONE",
                     error_description="",
                 )
             else:
-                print("Error: ", grab_result.ErrorCode, grab_result.ErrorDescription)
-            grab_result.Release()
+                grab_result.Release()
+                self.logger.error(
+                    "Error: ", grab_result.ErrorCode, grab_result.ErrorDescription
+                )
+                return ImageAcquisition.Response(
+                    image=self._image_to_message(np.zeros((1, 1, 1))),
+                    error="CAMERA_GENERAL",
+                    error_description="Capture image failed",
+                )
         except Exception as e:
             self.logger.exception(e)
             return ImageAcquisition.Response(
@@ -190,12 +209,14 @@ class Service(Node):
                 error_description="Capture image failed",
             )
 
+
 def main():
     rclpy.init()
     service = Service()
 
     rclpy.spin(service)
     rclpy.shutdown()
+
 
 if __name__ == "__main__":
     main()

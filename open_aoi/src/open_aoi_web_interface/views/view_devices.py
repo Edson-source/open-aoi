@@ -6,7 +6,10 @@ from fastapi.responses import RedirectResponse
 from PIL import Image
 
 from open_aoi.exceptions import AuthException
-from open_aoi.controllers import CameraController
+from open_aoi.controllers.camera import CameraController
+from open_aoi.controllers.ros_services.image_acquisition import (
+    ROSImageAcquisitionService,
+)
 from open_aoi.models import TITLE_LIMIT, DESCRIPTION_LIMIT, AccessorModel, CameraModel
 from open_aoi_web_interface.views.common import (
     inject_header,
@@ -117,8 +120,8 @@ def view() -> Optional[RedirectResponse]:
                 )
 
         with ui.column():
-            im = "/home/egor/Downloads/drawcore_ocr_damaged.bmp"
-            im = Image.open(im)
+            ros_image_acquisition = ROSImageAcquisitionService(emulator=True)
+            im, error, error_description = ros_image_acquisition.capture()
 
             # TODO: provide image navigation
             with ui.interactive_image(im) as ii:

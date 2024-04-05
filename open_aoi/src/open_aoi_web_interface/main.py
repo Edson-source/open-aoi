@@ -6,8 +6,8 @@ from open_aoi_web_interface.settings import *
 
 # from open_aoi_web_interface.views.view_access import view as view_access
 from open_aoi_web_interface.views.view_home import view as view_home
+from open_aoi_web_interface.views.view_devices import view as view_devices
 
-# from open_aoi_web_interface.views.view_devices import view as view_devices
 # from open_aoi_web_interface.views.view_inspection_profile import (
 #     view as view_inspection_profile,
 # )
@@ -24,8 +24,8 @@ from open_aoi_web_interface.views.view_home import view as view_home
 from open_aoi_web_interface.views.view_modules import view as view_modules
 
 ui.page("/", title="Home | AOI Portal")(view_home)
+ui.page(DEVICES_PAGE, title="Devices | AOI Portal")(view_devices)
 # ui.page("/access", title="Access | AOI Portal")(view_access)
-# ui.page("/devices", title="Devices | AOI Portal")(view_devices)
 # ui.page("/template/{template_id}", title="Template | AOI Portal")(view_template)
 # ui.page("/template", title="Template | AOI Portal")(view_template)
 # ui.page("/inspection/profile/{profile_id}", title="Inspection profiles | AOI Portal")(

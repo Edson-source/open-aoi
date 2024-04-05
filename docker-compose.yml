@@ -12,9 +12,8 @@ services:
       context: .
       dockerfile: dockerfile.aoi-ros2
     ports:
-      - 10001:9090 # Ros2 bridge websocket server
-    networks:
-      - aoi
+      - 10001:9090 # Ros2 bridge
+      - 443:443 # Ros2 bridge websocket protocol
   aoi-mysql:
     container_name: aoi-mysql
     profiles: [core, inspection]
@@ -27,8 +26,6 @@ services:
       MYSQL_PASSWORD: $MYSQL_PASSWORD
     ports:
       - 10002:3306
-    networks:
-      - aoi
   aoi-adminer:
     container_name: aoi-adminer
     profiles: [core, inspection]
@@ -38,8 +35,6 @@ services:
       - aoi-mysql
     ports:
       - 10003:8080
-    networks:
-      - aoi
   aoi-minio:
     container_name: aoi-minio
     image: docker.io/minio/minio
@@ -48,16 +43,11 @@ services:
     ports:
       - 10004:9000
       - 10005:9001
-    networks:
-      - aoi
     volumes:
       - aoi:/data
     environment:
       MINIO_ROOT_USER: $MINIO_ROOT_USER
       MINIO_ROOT_PASSWORD: $MINIO_ROOT_PASSWORD
       MINIO_DEFAULT_BUCKETS: $MINIO_DEFAULT_BUCKETS
-networks:
-  aoi:
-    driver: bridge
 volumes:
   aoi:

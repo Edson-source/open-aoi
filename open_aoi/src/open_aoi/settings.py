@@ -19,6 +19,13 @@ try:
 except ValueError:
     raise RuntimeError("Failed to parse mysql port from environment")
 
+ROS_PORT = os.environ["ROS_PORT"]
+assert ROS_PORT
+try:
+    ROS_PORT = int(ROS_PORT)
+except ValueError:
+    raise RuntimeError("Failed to parse ROS port from environment")
+
 WEB_INTERFACE_PORT = os.environ["WEB_INTERFACE_PORT"]
 assert WEB_INTERFACE_PORT
 try:

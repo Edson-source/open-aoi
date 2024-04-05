@@ -19,3 +19,7 @@ class IntegrityError(General):
 
 class ConnectivityError(General):
     """Raised if connection to resource could not be established"""
+
+
+class ROSServiceError(General):
+    """Raised if ROS service fails"""
