@@ -190,10 +190,12 @@ class Service(Node):
                 error_description="Capture image failed",
             )
 
-
-if __name__ == "__main__":
+def main():
     rclpy.init()
     service = Service()
 
     rclpy.spin(service)
     rclpy.shutdown()
+
+if __name__ == "__main__":
+    main()
