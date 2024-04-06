@@ -1,5 +1,7 @@
 version: "3.1"
-
+env_file:
+  - path: ./open_aoi/.env
+    required: true
 services:
   aoi-ros2:
     container_name: aoi-ros2

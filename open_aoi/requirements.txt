@@ -1,10 +1,2 @@
-python-dotenv
-opencv-python
-nicegui
-roslibpy
-sqlalchemy
-pymysql
-cryptography
-bcrypt
-pillow
-minio
+open_aoi==0.0.5
+pypylon

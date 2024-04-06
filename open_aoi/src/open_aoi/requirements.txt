@@ -1,0 +1,10 @@
+python-dotenv
+opencv-python
+nicegui
+roslibpy
+sqlalchemy
+pymysql
+cryptography
+bcrypt
+pillow
+minio
