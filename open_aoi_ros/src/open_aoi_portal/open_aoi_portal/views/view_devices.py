@@ -57,42 +57,42 @@ def get_view(node: Node):
         def _handle_delete_camera(camera: CameraModel):
             try:
                 CameraController.delete(camera)
-            except:
+            except Exception as e:
+                logger.exception(e)
                 ui.notify("Failed to delete camera!", type="negative")
                 return
             ui.notify("Camera was deleted!", type="positive")
             _inject_camera_list()
 
         def _handle_capture_image():
-            node.publish_image_acquisition_service_parameters(
-                camera_ip_address="123", camera_emulation_mode=True
-            )
-            # try:
-            #     assert camera_ip_address.validate()
-            # except AssertionError:
-            #     ui.notify("IP is missing", type="negative")
-            #     return
-            # capture_image.disable()
-            # try:
-            #     # ros_image_acquisition = ROSImageAcquisitionService(
-            #     #     camera_ip=camera_ip_address.value.strip(), emulator=True
-            #     # )
-            #     im, error, error_description = ros_image_acquisition.capture()
-            # except ROSServiceError as e:
-            #     ui.notify(str(e), type="warning")
-            #     capture_image.enable()
-            #     return
+            try:
+                assert camera_ip_address.validate()
+            except AssertionError:
+                ui.notify("IP is missing", type="negative")
+                return
+            capture_image.disable()
+            try:
+                im, error, error_description = node.capture_image(
+                    camera_ip_address=camera_ip_address.value.strip(),
+                    camera_emulation_mode=True,
+                )
+            except ROSServiceError as e:
+                ui.notify(str(e), type="warning")
+                capture_image.enable()
+                return
 
-            # if error != ROSImageAcquisitionService.ERROR_NONE:
-            #     ui.notify(error_description, type="negative")
-            #     capture_image.enable()
-            #     return
+            if error != node.CAMERA_ERROR_NONE:
+                ui.notify(error_description, type="negative")
+                capture_image.enable()
+                return
 
-            # im = "/home/egor/Downloads/drawcore_ocr_damaged.bmp"
-            # im = Image.open(im)
-            # print(im)
-            # # test_image.set_source(im)
-            # capture_image.enable()
+            with ui.dialog() as dialog, ui.card():
+                ui.interactive_image(im)
+                with ui.row().classes("w-full justify-end"):
+                    ui.button("Close", on_click=dialog.close, color="white")
+
+            dialog.open()
+            capture_image.enable()
 
         # Local injections
         def _inject_camera_list():
@@ -122,8 +122,9 @@ def get_view(node: Node):
                                         )(camera),
                                     ).props("size=sm")
             else:
-                with ui.card().classes("w-full bg-primary text-white"):
-                    ui.markdown("**No cameras to show**")
+                with camera_list_container:
+                    with ui.card().classes("w-full bg-primary text-white"):
+                        ui.markdown("**No cameras to show**")
 
         # ------------------------------------
 
@@ -132,7 +133,6 @@ def get_view(node: Node):
         ui.markdown("#### **Devices**")
         with ui.column().classes("w-full"):
             ui.markdown("##### **Create new device**")
-
             camera_title = inject_text_field(
                 "Camera title", "Enter any value...", TITLE_LIMIT
             )
@@ -151,11 +151,9 @@ def get_view(node: Node):
             with ui.row().classes("w-full"):
                 ui.space()
                 capture_image = ui.button(
-                    "Capture image", on_click=_handle_capture_image
+                    "Capture image", on_click=_handle_capture_image, icon='photo_camera'
                 )
                 ui.button("Save", on_click=_handle_create_camera)
-
-            test_image = ui.interactive_image()
 
         ui.markdown("##### **Registered devices**")
 

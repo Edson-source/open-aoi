@@ -1,5 +1,6 @@
 import base64
 import pickle
+import numpy as np
 from typing import Optional, Tuple
 
 import rclpy
@@ -17,9 +18,9 @@ class ROSImageAcquisitionClient:
     image_acquisition_get_status_cli: Client
     image_acquisition_set_parameters_cli: Client
 
-    ERROR_NONE = "NONE"
+    CAMERA_ERROR_NONE = "NONE"
 
-    def publish_image_acquisition_service_parameters(
+    def _publish_image_acquisition_service_parameters(
         self,
         camera_ip_address: Optional[str] = None,
         camera_emulation_mode: bool = False,
@@ -62,23 +63,28 @@ class ROSImageAcquisitionClient:
                     pass
                 return False
 
-    # def capture(self) -> Tuple[Image.Image, str, str]:
-    #     try:
-    #         self._publish_service_parameters()
-    #         ros = self._get_ros_client()
-    #         service = roslibpy.Service(
-    #             ros,
-    #             f"{self._service_name}/capture",
-    #             "open_aoi_interfaces/ImageAcquisition",
-    #         )
-    #         request = roslibpy.ServiceRequest()
-    #         response = service.call(request, timeout=10)
+    def capture_image(
+        self,
+        camera_ip_address: Optional[str] = None,
+        camera_emulation_mode: bool = False,
+    ) -> Tuple[Image.Image, str, str]:
+        try:
+            self._publish_image_acquisition_service_parameters(
+                camera_ip_address, camera_emulation_mode
+            )
+            req = ImageAcquisition.Request()
 
-    #         error = response["error"]
-    #         error_description = response["error_description"]
-    #         im = pickle.loads(base64.decodebytes(response["image"]["data"].encode()))
-    #         im = Image.fromarray(im)
+            self.future = self.image_acquisition_capture_cli.call_async(req)
+            while rclpy.ok():
+                if self.future.done():
+                    response = self.future.result()
+                    error = response.error
+                    error_description = response.error_description
 
-    #         return im, error, error_description
-    #     except:
-    #         raise ROSServiceError("Failed to obtain service status")
+                    data = np.array(response.image.data)
+                    data = data.reshape((response.image.height, response.image.width))
+                    im = Image.fromarray(data)
+
+                    return im, error, error_description
+        except:
+            raise ROSServiceError("Failed to obtain service status")

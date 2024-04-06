@@ -19,7 +19,7 @@ from sensor_msgs.msg import Image
 from open_aoi_ros_interfaces.srv import ImageAcquisition, ServiceStatus
 
 NODE_NAME = "image_acquisition"
-EMULATION_DIR = "./assets"
+EMULATION_DIR = "./emulation"
 
 
 class Service(Node):
@@ -167,9 +167,8 @@ class Service(Node):
 
         msg.encoding = "bgr8"
         msg.height, msg.width = im.shape[:2]
-        msg.step = msg.width * 3
-
-        msg.data = pickle.dumps(im)
+        msg.step = msg.width
+        msg.data = im.flatten().astype(int).tolist()
 
         return msg
 
