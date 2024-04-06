@@ -4,7 +4,7 @@ from typing import Optional, Tuple
 
 import rclpy
 from rclpy.client import Client
-from rclpy.parameter import Parameter, ParameterType, ParameterValue
+from rcl_interfaces.msg import Parameter, ParameterType, ParameterValue
 from rcl_interfaces.srv._set_parameters import SetParameters
 from PIL import Image
 
@@ -14,8 +14,8 @@ from open_aoi_ros_interfaces.srv import ImageAcquisition
 
 class ROSImageAcquisitionClient:
     image_acquisition_capture_cli: Client
-    image_acquisition_status_cli: Client
-    image_acquisition_parameters_cli: Client
+    image_acquisition_get_status_cli: Client
+    image_acquisition_set_parameters_cli: Client
 
     ERROR_NONE = "NONE"
 
@@ -27,11 +27,10 @@ class ROSImageAcquisitionClient:
         # https://github.com/ros-planning/navigation2/issues/2415#issuecomment-1028468173
         req = SetParameters.Request()
         parameters = []
-
         for param_name, param_value in [
-            ["camera_enabled", True],
             ["camera_emulation_mode", camera_emulation_mode],
             ["camera_ip_address", camera_ip_address],
+            ["camera_enabled", True],
         ]:
             if isinstance(param_value, float):
                 val = ParameterValue(
@@ -51,9 +50,9 @@ class ROSImageAcquisitionClient:
                 )
             parameters.append(Parameter(name=param_name, value=val))
         req.parameters = parameters
-        self.future = self.image_acquisition_parameters_cli.call_async(self.req)
+
+        self.future = self.image_acquisition_set_parameters_cli.call_async(req)
         while rclpy.ok():
-            rclpy.spin_once(self)
             if self.future.done():
                 try:
                     response = self.future.result()

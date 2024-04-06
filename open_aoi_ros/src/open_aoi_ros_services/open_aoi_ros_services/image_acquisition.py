@@ -89,13 +89,18 @@ class Service(Node):
 
     def _update_parameters(self, parameters: List[rclpy.Parameter]):
         self.logger.info("Parameters update triggered")
+        reload = False
         for p in parameters:
             self.logger.info(
                 f"Parameter {p.name}: {getattr(self, p.name)} -> {p.value}"
             )
             setattr(self, p.name, p.value)
-
-        self._reload_service()
+            if p.name == "camera_enabled":
+                reload = True
+        if (
+            reload
+        ):  # This function is triggered multiple times for unknown reason - reload services only once though
+            self._reload_service()
         return SetParametersResult(successful=True, reason="")
 
     def _reload_service(self):

@@ -37,6 +37,8 @@ from rcl_interfaces.srv._set_parameters import SetParameters
 #     view as view_inspection_log,
 # )
 
+logging.basicConfig(level=logging.INFO)
+
 
 class AOIPortalNode(Node, ROSImageAcquisitionClient):
     image_acquisition_capture_cli: ServiceClient
@@ -46,28 +48,6 @@ class AOIPortalNode(Node, ROSImageAcquisitionClient):
     def __init__(self) -> None:
         super().__init__("open_aoi_portal")
         self.logger = self.get_logger()
-
-        def acquire_service(name: str, property_name: str, msg):
-            cli = self.create_client(msg, name)
-            setattr(self, property_name, cli)
-            while not cli.wait_for_service(timeout_sec=1.0):
-                self.logger.info(f"Service {name} not available, waiting again...")
-
-        acquire_service(
-            "image_acquisition/capture",
-            "image_acquisition_capture_cli",
-            ImageAcquisition,
-        )
-        acquire_service(
-            "image_acquisition/get_status",
-            "image_acquisition_get_status_cli",
-            ServiceStatus,
-        )
-        acquire_service(
-            "image_acquisition/set_parameters",
-            "image_acquisition_set_parameters_cli",
-            SetParameters,
-        )
 
         with Client.auto_index_client:
             ui.page(HOME_PAGE, title=f"Home | {APP_TITLE}")(get_view_home(self))
@@ -96,7 +76,27 @@ class AOIPortalNode(Node, ROSImageAcquisitionClient):
             #     title="Control zone editor | AOI Portal",
             # )(view_control_zone_editor)
 
-            logging.basicConfig(level=logging.INFO)
+        def acquire_service(name: str, property_name: str, msg):
+            cli = self.create_client(msg, name)
+            setattr(self, property_name, cli)
+            while not cli.wait_for_service(timeout_sec=1.0):
+                self.logger.info(f"Service {name} not available, waiting again...")
+
+        acquire_service(
+            "image_acquisition/capture",
+            "image_acquisition_capture_cli",
+            ImageAcquisition,
+        )
+        acquire_service(
+            "image_acquisition/get_status",
+            "image_acquisition_get_status_cli",
+            ServiceStatus,
+        )
+        acquire_service(
+            "image_acquisition/set_parameters",
+            "image_acquisition_set_parameters_cli",
+            SetParameters,
+        )
 
 
 def main() -> None:
