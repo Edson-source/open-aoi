@@ -16,22 +16,6 @@ try:
 except ValueError:
     raise RuntimeError("Failed to parse mysql port from environment")
 
-ROS_PORT = os.environ["ROS_PORT"]
-assert ROS_PORT
-try:
-    ROS_PORT = int(ROS_PORT)
-except ValueError:
-    raise RuntimeError("Failed to parse ROS port from environment")
-
-WEB_INTERFACE_PORT = os.environ["WEB_INTERFACE_PORT"]
-assert WEB_INTERFACE_PORT
-try:
-    WEB_INTERFACE_PORT = int(WEB_INTERFACE_PORT)
-except ValueError:
-    raise RuntimeError("Failed to parse web port from environment")
-
-ALLOW_SIMULATION_NODE = os.environ["SIMULATION"] == "1"
-
 AOI_OPERATOR_INITIAL_PASSWORD = os.environ["AOI_OPERATOR_INITIAL_PASSWORD"]
 assert AOI_OPERATOR_INITIAL_PASSWORD
 
