@@ -1,6 +1,5 @@
 INSPECTION_LIVE_LOG_DEPTH = 100
 
-
 HOME_PAGE = "/"
 ACCESS_PAGE = "/access"
 INSPECTION_PROFILE_PAGE = "/inspection/profile"

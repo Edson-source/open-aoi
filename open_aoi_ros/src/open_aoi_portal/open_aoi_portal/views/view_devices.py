@@ -12,8 +12,8 @@ from open_aoi.controllers.ros_services.image_acquisition import (
     ROSImageAcquisitionService,
 )
 from open_aoi.models import TITLE_LIMIT, DESCRIPTION_LIMIT, CameraModel
-from open_aoi_web_interface.settings import ACCESS_PAGE
-from open_aoi_web_interface.views.common import (
+from open_aoi_portal.settings import ACCESS_PAGE
+from open_aoi_portal.views.common import (
     inject_header,
     inject_text_field,
     access_guard,

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "open_aoi"
-version="0.0.6"
+version="0.0.7"
 authors = [
   { name="Cherniaev Egor", email="chrnyaevek@gmail.com" },
 ]
@@ -12,7 +12,7 @@ description = "Support python package for Open AOI system project."
 keywords=["automated optical inspection", "pcb", "computer vision"]
 readme = "README.md"
 requires-python = ">=3.7"
-dependencies = ["python-dotenv", "opencv-python", "nicegui", "roslibpy", "sqlalchemy", "pymysql", "cryptography", "bcrypt", "pillow", "minio"]
+dependencies = ["opencv-python", "nicegui", "roslibpy", "sqlalchemy", "pymysql", "cryptography", "bcrypt", "pillow", "minio"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",

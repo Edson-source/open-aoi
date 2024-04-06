@@ -5,7 +5,7 @@ from fastapi.responses import RedirectResponse
 
 from open_aoi.controllers.accessor import AccessorController
 from open_aoi.exceptions import AuthException
-from open_aoi_web_interface.views.common import HOME_PAGE
+from open_aoi_portal.views.common import HOME_PAGE
 
 logger = logging.getLogger("ui.access")
 

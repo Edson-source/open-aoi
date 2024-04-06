@@ -9,7 +9,7 @@ from PIL import Image
 from open_aoi.exceptions import AuthException
 from open_aoi.controllers import TemplateController
 from open_aoi.models import TITLE_LIMIT, DESCRIPTION_LIMIT, AccessorModel, TemplateModel
-from open_aoi_web_interface.views.common import (
+from open_aoi_portal.views.common import (
     inject_header,
     ACCESS_PAGE,
     access_guard,

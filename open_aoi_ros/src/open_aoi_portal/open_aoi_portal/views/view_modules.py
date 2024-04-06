@@ -9,7 +9,7 @@ from open_aoi.models import TITLE_LIMIT, DESCRIPTION_LIMIT
 from open_aoi.exceptions import AuthException, ConnectivityError, IntegrityError
 from open_aoi.controllers.control_handler import ControlHandlerController
 from open_aoi.controllers.defect_type import DefectTypeController
-from open_aoi_web_interface.views.common import (
+from open_aoi_portal.views.common import (
     confirm,
     inject_header,
     inject_text_field,

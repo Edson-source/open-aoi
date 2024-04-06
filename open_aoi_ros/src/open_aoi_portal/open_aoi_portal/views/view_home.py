@@ -5,7 +5,7 @@ from nicegui import ui
 from fastapi.responses import RedirectResponse
 
 from open_aoi.exceptions import AuthException
-from open_aoi_web_interface.views.common import (
+from open_aoi_portal.views.common import (
     inject_header,
     ACCESS_PAGE,
     access_guard,

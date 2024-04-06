@@ -12,7 +12,7 @@ from open_aoi.controllers import (
     InspectionProfileController,
 )
 from open_aoi.models import TITLE_LIMIT, DESCRIPTION_LIMIT, CODE_LIMIT, TemplateModel
-from open_aoi_web_interface.views.common import (
+from open_aoi_portal.views.common import (
     inject_header,
     ACCESS_PAGE,
     access_guard,

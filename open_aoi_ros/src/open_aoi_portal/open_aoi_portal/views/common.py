@@ -3,7 +3,7 @@ from nicegui import ui, app
 
 from open_aoi.controllers.accessor import AccessorController
 from open_aoi.models import AccessorModel
-from open_aoi_web_interface.settings import *
+from open_aoi_portal.settings import *
 
 
 colors = dict(primary="#3A6B35", secondary="#CBD18F")

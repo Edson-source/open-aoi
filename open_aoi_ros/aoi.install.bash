@@ -6,15 +6,16 @@
 # see `echo $PYTHONPATH`):
 # >>> source /opt/ros/foxy/setup.bash && source install/setup.bash
 
-WORKSPACE_SITE_PACKAGES="install/open_aoi_ros/lib/python3.8/site-packages"
+SITE_PACKAGES="install/open_aoi_ros_services/lib/python3.8/site-packages"
+REQUIREMENTS="requirements.txt"
 
 # Exit on error
 set -e
 
-# Install python dependencies
-if test -d $WORKSPACE_SITE_PACKAGES; then
-    echo 'Install python dependencies'
-    pip3 install -r requirements.txt --target=$WORKSPACE_SITE_PACKAGES
+# Install python dependencies: ROS services
+if test -d $SITE_PACKAGES; then
+    echo "Install python dependencies for AOI ROS services"
+    pip3 install -r $REQUIREMENTS --target=$SITE_PACKAGES
 else
-    echo "Unable to install dependencies - ament workspace is not initialized. Not found: $WORKSPACE_SITE_PACKAGES"
+    echo "Unable to install dependencies - ament workspace is not initialized. Not found: $SITE_PACKAGES"
 fi

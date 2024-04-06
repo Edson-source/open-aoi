@@ -15,7 +15,7 @@ setup(
     maintainer_email="chrnyaevek@gmail.com",
     entry_points={
         "console_scripts": [
-            f"open_aoi_portal = {package_name}.node:main"
+            f"app = {package_name}.app:main"
         ],
     },
 )
