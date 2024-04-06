@@ -4,7 +4,7 @@ from open_aoi.settings import ROS_PORT
 from open_aoi.exceptions import ROSServiceError
 
 
-SINGLETON_ROS = roslibpy.Ros(host="localhost", port=ROS_PORT)
+SINGLETON_ROS = roslibpy.Ros(host="localhost", port=ROS_PORT, is_secure=True)
 
 
 class Service:

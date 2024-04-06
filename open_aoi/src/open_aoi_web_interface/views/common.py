@@ -68,8 +68,8 @@ def inject_text_field(
             f"[{len(field.value)}/{limit}] {field.value}"
         ),
         validation={
-            "Title is too long": lambda value: len(value) <= limit,
-            "Title is too short": lambda value: len(value.strip()) != 0,
+            "Value is too long": lambda value: len(value) <= limit,
+            "Value is too short": lambda value: len(value.strip()) != 0,
             **validation,
         },
     ).classes("w-full")

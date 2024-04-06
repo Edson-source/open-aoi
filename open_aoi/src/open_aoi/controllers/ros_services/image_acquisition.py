@@ -12,6 +12,8 @@ from open_aoi.exceptions import ROSServiceError
 class ROSImageAcquisitionService(Service):
     _service_name = "image_acquisition"
 
+    ERROR_NONE = "NONE"
+
     def __init__(self, camera_ip: Optional[str] = None, emulator: bool = False) -> None:
         super().__init__()
         self.camera_ip = camera_ip

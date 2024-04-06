@@ -3,8 +3,7 @@ from typing import Optional
 from nicegui import ui, app
 from fastapi.responses import RedirectResponse
 
-from open_aoi.enums import AccessorEnum
-from open_aoi.controllers import AccessorController
+from open_aoi.controllers.accessor import AccessorController
 from open_aoi.exceptions import AuthException
 from open_aoi_web_interface.views.common import HOME_PAGE
 
@@ -12,7 +11,7 @@ logger = logging.getLogger("ui.access")
 
 
 def _handle_access_request(username_input: ui.input, password_input: ui.input):
-    accessor = AccessorController.select_by_username(username_input.value)
+    accessor = AccessorController.retrieve_by_username(username_input.value)
     try:
         accessor.test_credentials(password=password_input.value)
     except AuthException:
@@ -20,7 +19,7 @@ def _handle_access_request(username_input: ui.input, password_input: ui.input):
         ui.notify("Invalid credentials", type="negative")
     else:
         # Allow access
-        accessor.grant_access(app.storage.user)
+        accessor.grant_session_access(app.storage.user)
         ui.open(HOME_PAGE)
 
 
@@ -44,4 +43,4 @@ async def view() -> Optional[RedirectResponse]:
     with ui.header(fixed=True).classes("py-1"):
         ui.markdown("**AOI Portal** | Powered by ROS")
     with ui.footer(fixed=True).classes("py-2"):
-        ui.label("Created by @Cherniaev.public")
+        ui.label("Created with Love")
