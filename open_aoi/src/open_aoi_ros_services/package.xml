@@ -1,12 +1,14 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>open_aoi_ros</name>
+  <name>open_aoi_ros_services</name>
   <version>0.0.1</version>
   <description>Set of inspection services for Open AOI</description>
   <maintainer email="chrnyaevek@gmail.com">egor</maintainer>
   <license>Apache License 2.0</license>
-  <exec_depend>rclpy</exec_depend>
+  
+  <depend>rclpy</depend>
+  
   <export>
     <build_type>ament_python</build_type>
   </export>

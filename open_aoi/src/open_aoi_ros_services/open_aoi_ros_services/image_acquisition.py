@@ -6,15 +6,17 @@
 
 import os
 import pickle
+import numpy as np
 from typing import List, Optional
 
-import rclpy
-import numpy as np
 from pypylon import pylon
+
+import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import Image
 from rcl_interfaces.msg import ParameterDescriptor, SetParametersResult
-from open_aoi_interfaces.srv import ImageAcquisition, ServiceStatus
+from sensor_msgs.msg import Image
+
+from open_aoi_ros_interfaces.srv import ImageAcquisition, ServiceStatus
 
 NODE_NAME = "image_acquisition"
 EMULATION_DIR = "./assets"

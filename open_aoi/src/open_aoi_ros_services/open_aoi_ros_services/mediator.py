@@ -10,7 +10,7 @@ import numpy as np
 from rclpy.node import Node
 
 
-from open_aoi_interfaces.srv import ServiceStatus
+from open_aoi_ros_interfaces.srv import ServiceStatus
 
 NODE_NAME = "mediator"
 BLOB_STORAGE_DIR = "./assets/storage"
