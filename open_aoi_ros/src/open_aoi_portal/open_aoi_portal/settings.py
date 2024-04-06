@@ -1,3 +1,5 @@
+APP_TITLE = "Open AOI Portal"
+
 INSPECTION_LIVE_LOG_DEPTH = 100
 
 HOME_PAGE = "/"

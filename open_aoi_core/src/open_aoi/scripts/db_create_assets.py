@@ -1,5 +1,9 @@
 """Scripts create system wide known records in DB"""
 
+from dotenv import load_dotenv
+
+assert load_dotenv(".env")
+
 from sqlalchemy.orm import Session
 
 from open_aoi.models import *

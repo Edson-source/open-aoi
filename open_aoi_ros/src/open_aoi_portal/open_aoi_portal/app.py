@@ -7,16 +7,21 @@ import threading
 from pathlib import Path
 
 import rclpy
+from rclpy.client import Client as ServiceClient
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from nicegui import Client, app, ui, ui_run
 from open_aoi.settings import STORAGE_SECRET, WEB_INTERFACE_PORT
 
 from open_aoi_portal.settings import *
-from open_aoi_portal.views.view_home import view as view_home
-from open_aoi_portal.views.view_access import view as view_access
-from open_aoi_portal.views.view_devices import view as view_devices
-from open_aoi_portal.views.view_modules import view as view_modules
+from open_aoi_portal.views.view_home import get_view as get_view_home
+from open_aoi_portal.views.view_access import get_view as get_view_access
+from open_aoi_portal.views.view_devices import get_view as get_view_devices
+from open_aoi_portal.views.view_modules import get_view as get_view_modules
+
+from open_aoi_portal.clients.image_acquisition import ROSImageAcquisitionClient
+from open_aoi_ros_interfaces.srv import ImageAcquisition, ServiceStatus
+from rcl_interfaces.srv._set_parameters import SetParameters
 
 # from views.view_inspection_profile import (
 #     view as view_inspection_profile,
@@ -33,18 +38,46 @@ from open_aoi_portal.views.view_modules import view as view_modules
 # )
 
 
-class AOIPortalNode(Node):
+class AOIPortalNode(Node, ROSImageAcquisitionClient):
+    image_acquisition_capture_cli: ServiceClient
+    image_acquisition_set_parameters_cli: ServiceClient
+    image_acquisition_get_status_cli: ServiceClient
+
     def __init__(self) -> None:
         super().__init__("open_aoi_portal")
+        self.logger = self.get_logger()
+
+        def acquire_service(name: str, property_name: str, msg):
+            cli = self.create_client(msg, name)
+            setattr(self, property_name, cli)
+            while not cli.wait_for_service(timeout_sec=1.0):
+                self.logger.info(f"Service {name} not available, waiting again...")
+
+        acquire_service(
+            "image_acquisition/capture",
+            "image_acquisition_capture_cli",
+            ImageAcquisition,
+        )
+        acquire_service(
+            "image_acquisition/get_status",
+            "image_acquisition_get_status_cli",
+            ServiceStatus,
+        )
+        acquire_service(
+            "image_acquisition/set_parameters",
+            "image_acquisition_set_parameters_cli",
+            SetParameters,
+        )
 
         with Client.auto_index_client:
-            ui.page(HOME_PAGE, title="Home | AOI Portal")(view_home)
-            ui.page(ACCESS_PAGE, title="Access | AOI Portal")(view_access)
-            ui.page(DEVICES_PAGE, title="Devices | AOI Portal")(view_devices)
-            ui.page(
-                MODULES_PAGE,
-                title="Modules | AOI Portal",
-            )(view_modules)
+            ui.page(HOME_PAGE, title=f"Home | {APP_TITLE}")(get_view_home(self))
+            ui.page(ACCESS_PAGE, title=f"Access | {APP_TITLE}")(get_view_access(self))
+            ui.page(DEVICES_PAGE, title=f"Devices | {APP_TITLE}")(
+                get_view_devices(self)
+            )
+            ui.page(MODULES_PAGE, title=f"Modules | {APP_TITLE}")(
+                get_view_modules(self)
+            )
             # ui.page("/template/{template_id}", title="Template | AOI Portal")(view_template)
             # ui.page("/template", title="Template | AOI Portal")(view_template)
             # ui.page("/inspection/profile/{profile_id}", title="Inspection profiles | AOI Portal")(
@@ -87,6 +120,6 @@ ui.run(
     storage_secret=STORAGE_SECRET,
     uvicorn_logging_level="info",
     favicon="🚀",
-    title="Open AOI Portal",
+    title=APP_TITLE,
     uvicorn_reload_dirs=str(Path(__file__).parent.resolve()),
 )

@@ -1,7 +1,7 @@
 import logging
 from typing import Optional
 
-from nicegui import ui
+from rclpy.node import Node
 from fastapi.responses import RedirectResponse
 
 from open_aoi.exceptions import AuthException
@@ -14,10 +14,13 @@ from open_aoi_portal.views.common import (
 logger = logging.getLogger("ui.home")
 
 
-def view() -> Optional[RedirectResponse]:
-    try:
-        access_guard()
-    except AuthException:
-        return RedirectResponse(ACCESS_PAGE)
+def get_view(node: Node):
+    def view() -> Optional[RedirectResponse]:
+        try:
+            access_guard()
+        except AuthException:
+            return RedirectResponse(ACCESS_PAGE)
 
-    inject_header()
+        inject_header()
+
+    return view

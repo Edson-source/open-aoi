@@ -43,7 +43,7 @@ class Service(Node):
 
         self.status_service = self.create_service(
             ServiceStatus,
-            f"{NODE_NAME}/status",
+            f"{NODE_NAME}/get_status",
             self.expose_status,
         )
 
