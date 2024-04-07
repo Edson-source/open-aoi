@@ -29,7 +29,6 @@ from PIL import Image
 logger = logging.getLogger("ui.control_zone_editor")
 
 
-
 class Manager:
     # Image coordinate system
     _viewport_offset: Tuple[int, int] = [0, 0]  # (Xpx, Ypx), change to move view port
