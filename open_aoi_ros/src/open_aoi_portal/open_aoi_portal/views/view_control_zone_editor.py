@@ -1,18 +1,53 @@
+# TODO: fix left lower to right upper
 import logging
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
+
+import numpy as np
+import cv2 as cv
 
 from rclpy.node import Node
 from nicegui import events, ui, app
 from fastapi.responses import RedirectResponse
 
+from open_aoi.models import TITLE_LIMIT
 from open_aoi.exceptions import AuthException
 from open_aoi.controllers.accessor import AccessorController
 from open_aoi.controllers.template import TemplateController
-from open_aoi_portal.views.common import ACCESS_PAGE, inject_header, get_session, scale
+from open_aoi.controllers.connected_component import ConnectedComponentController
+from open_aoi.controllers.control_zone import ControlZoneController
+from open_aoi.controllers.control_handler import ControlHandlerController
+from open_aoi.controllers.control_target import ControlTargetController
+from open_aoi_portal.views.common import (
+    ACCESS_PAGE,
+    inject_header,
+    inject_text_field,
+    get_session,
+    confirm,
+    scale,
+)
 
 from PIL import Image
 
 logger = logging.getLogger("ui.control_zone_editor")
+
+
+def crop_stat_cv(im: np.ndarray, cv_stat_value: List[int]) -> np.ndarray:
+    # Function parse CV connected component detection statics (values)
+    # to cut out component from provided image
+    t = cv_stat_value[cv.CC_STAT_TOP]
+    l = cv_stat_value[cv.CC_STAT_LEFT]
+
+    w = cv_stat_value[cv.CC_STAT_WIDTH]
+    h = cv_stat_value[cv.CC_STAT_HEIGHT]
+
+    return im[t : t + h, l : l + w]
+
+
+def crop_stat_image(im: Image.Image, cv_stat_value: List[int]) -> Image.Image:
+    # Wrapper for cropping PIL images
+    im = np.array(im)
+    im = crop_stat_cv(im, cv_stat_value)
+    return Image.fromarray(im)
 
 
 class Manager:
@@ -80,6 +115,30 @@ class Manager:
                         icon="zoom_out",
                         on_click=lambda: self._zoom(1.1),
                     ).props("size=small round")
+
+    def control_zone(self):
+        if self._global_p1 is None or self._global_p2 is None:
+            return None
+
+        left_upper = (
+            self._global_p1
+            if self._global_p1[0] < self._global_p2[0]
+            and self._global_p1[1] < self._global_p2[1]
+            else self._global_p2
+        )
+        right_lower = (
+            self._global_p1
+            if self._global_p1[0] >= self._global_p2[0]
+            and self._global_p1[1] >= self._global_p2[1]
+            else self._global_p2
+        )
+
+        return [  # Convert to CV coordinates
+            left_upper[0],
+            left_upper[1],
+            right_lower[0] - left_upper[0],
+            right_lower[1] - left_upper[1],
+        ]
 
     def _move_viewport(self, by: int, axis: int):
         self._clear_points()
@@ -202,18 +261,144 @@ def get_view(node: Node):
         session = get_session()
         access_controller = AccessorController(session)
         template_controller = TemplateController(session)
+        control_zone_controller = ControlZoneController(session)
+        connected_component_controller = ConnectedComponentController(session)
+        control_handler_controller = ControlHandlerController(session)
+        control_target_controller = ControlTargetController(session)
+
         try:
-            access_controller.identify_session_accessor(app.storage.user)
+            accessor = access_controller.identify_session_accessor(app.storage.user)
         except AuthException:
             return RedirectResponse(ACCESS_PAGE)
 
         inject_header()
 
+        # -----------------------------------
+        # Handlers
+        def _handle_control_zone_create():
+            cc = manager.control_zone()
+            logger.info(str(cc))
+            try:
+                assert control_zone_title.validate()
+                assert control_handler_selection.validate()
+                assert cc is not None
+            except AssertionError:
+                ui.notify(
+                    "Control zone require a title. control handler and selected zone in the template image.",
+                    type="negative",
+                )
+                return
+
+            try:
+                control_handler = control_handler_controller.retrieve(
+                    control_handler_selection.value
+                )
+                control_zone = control_zone_controller.create(
+                    control_zone_title.value.strip(), template, accessor
+                )
+                connected_component = connected_component_controller.create(
+                    cc[0], cc[1], cc[2], cc[3], control_zone
+                )
+                control_target = control_target_controller.create(
+                    control_handler, control_zone
+                )
+                control_zone_controller.commit()
+            except Exception as e:
+                logger.exception(e)
+                ui.notify("Failed to create control zone!", type="negative")
+                return
+
+            ui.notify("Control zone created.", type="positive")
+            _inject_control_zone_list()
+
+        def _handle_control_zone_delete(control_zone):
+            def execute():
+                try:
+                    for control_target in control_zone.control_target_list:
+                        control_target_controller.delete(control_target)
+                    connected_component_controller.delete(control_zone.cc)
+                    control_zone_controller.delete(control_zone)
+                    control_zone_controller.commit()
+                except Exception as e:
+                    logger.exception(e)
+                    ui.notify(
+                        "Failed to delete control zone as it is a dependency!",
+                        type="negative",
+                    )
+                    return
+                ui.notify("Control zone deleted!", type="positive")
+                _inject_control_zone_list()
+
+            confirm("Are you sure?", execute)
+
+        def _handle_control_zone_preview(control_zone):
+            stat = [
+                control_zone.cc.stat_left,
+                control_zone.cc.stat_top,
+                control_zone.cc.stat_width,
+                control_zone.cc.stat_height,
+            ]
+            cropped = crop_stat_image(im, stat)
+            with ui.dialog() as dialog, ui.card():
+                ui.interactive_image(cropped)
+                with ui.row().classes("w-full justify-end"):
+                    ui.button("Close", on_click=dialog.close, color="white")
+
+            dialog.open()
+
+        # Local injections
+        def _inject_control_zone_list():
+            control_zone_container.clear()
+
+            try:
+                # TODO: filter with where
+                control_zone_list = [
+                    cz
+                    for cz in control_zone_controller.list()
+                    if cz.template_id == template.id
+                ]
+            except:
+                ui.notify("Failed to list control zones!", type="negative")
+                return
+
+            if len(control_zone_list):
+                with control_zone_container:
+                    for control_zone in control_zone_list:
+                        with ui.item().classes("w-full").props("clickable"):
+                            with ui.item_section():
+                                with ui.row():
+                                    ui.label(f"{control_zone.title}")
+                                    ui.space()
+                                    ui.button(
+                                        icon="preview",
+                                        on_click=(
+                                            lambda cz: lambda: _handle_control_zone_preview(
+                                                cz
+                                            )
+                                        )(control_zone),
+                                    ).props("size=sm")
+                                    ui.button(
+                                        "Remove",
+                                        color="negative",
+                                        on_click=(
+                                            lambda cz: lambda: _handle_control_zone_delete(
+                                                cz
+                                            )
+                                        )(control_zone),
+                                    ).props("size=sm")
+            else:
+                with control_zone_container:
+                    with ui.card().classes("w-full bg-primary text-white"):
+                        ui.markdown("**No zones to show**")
+
+        # -----------------------------------
+
         try:
             template = template_controller.retrieve(template_id)
+            control_handler_list = control_handler_controller.list()
         except Exception as e:
             logger.exception(e)
-            ui.notify("Failed to get template!", type="negative")
+            ui.notify("Failed to get data fro database!", type="negative")
             return
 
         with ui.column().classes("w-full"):
@@ -234,7 +419,27 @@ def get_view(node: Node):
                 return
 
             manager = Manager(im, [100, im.size[0]])
-            with ui.row().classes("justify-center w-full"):
-                manager.create_ui()
+            with ui.grid(columns=4).classes("justify-left w-full"):
+                with ui.column().classes("col-span-3"):
+                    manager.create_ui()
+                with ui.list().classes("col-span-1").props(
+                    "dense"
+                ) as control_zone_container:
+                    _inject_control_zone_list()
+
+            control_zone_title = inject_text_field(
+                "Title", "Enter short name for this control zone", TITLE_LIMIT
+            )
+            control_handler_selection = ui.select(
+                label="Control handler (module)",
+                options=dict([(ch.id, ch.title) for ch in control_handler_list]),
+                validation={"Value is required": lambda value: value is not None},
+            ).classes("w-full")
+
+            with ui.row().classes("w-full"):
+                ui.space()
+                ui.button(
+                    "Save", on_click=_handle_control_zone_create, color="positive"
+                )
 
     return view
