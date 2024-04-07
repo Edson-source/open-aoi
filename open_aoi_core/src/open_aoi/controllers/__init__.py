@@ -3,63 +3,53 @@ from typing import List
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
-from open_aoi.models import engine, Base
+from open_aoi.models import Base
 from open_aoi.exceptions import IntegrityError
 
 
 class Controller:
     _model: Base
-    engine = engine
 
-    @classmethod
-    def retrieve(cls, id: int) -> Base:
-        with Session(engine) as session:
-            q = select(cls._model).where(cls._model.id == id)
-            res = session.scalars(q).one_or_none()
+    def __init__(self, session: Session):
+        self.session = session
+
+    def retrieve(self, id: int) -> Base:
+        q = select(self._model).where(self._model.id == id)
+        res = self.session.scalars(q).one_or_none()
         return res
 
-    @classmethod
-    def delete(cls, obj: Base):
-        with Session(engine) as session:
-            if cls.allow_delete_hook(session, obj.id):
-                session.query(cls._model).filter(cls._model.id == obj.id).delete()
-                session.commit()
-                cls.post_delete_hook(obj)
-            else:
-                raise IntegrityError(
-                    "Unable to delete. Object is a dependency for other objects."
-                )
+    def delete(self, obj: Base):
+        if self.allow_delete_hook(obj.id):
+            self.session.query(self._model).filter(self._model.id == obj.id).delete()
+            self.session.commit()
+            self.post_delete_hook(obj)
+        else:
+            raise IntegrityError(
+                "Unable to delete. Object is a dependency for other objects."
+            )
 
-    @classmethod
-    def delete_by_id(cls, id: int):
-        with Session(engine) as session:
-            if cls.allow_delete_hook(session, id):
-                obj = cls.retrieve(id)
-                session.query(cls._model).filter(cls._model.id == id).delete()
-                session.commit()
-                cls.post_delete_hook(obj)
-            else:
-                raise IntegrityError(
-                    "Unable to delete. Object is a dependency for other objects."
-                )
+    def delete_by_id(self, id: int):
+        if self.allow_delete_hook(id):
+            obj = self.retrieve(id)
+            self.session.query(self._model).filter(self._model.id == id).delete()
+            self.session.commit()
+            self.post_delete_hook(obj)
+        else:
+            raise IntegrityError(
+                "Unable to delete. Object is a dependency for other objects."
+            )
 
-    @classmethod
-    def list(cls) -> List[Base]:
-        with Session(engine) as session:
-            return session.query(cls._model).all()
+    def list(self) -> List[Base]:
+        return self.session.query(self._model).all()
 
-    @classmethod
-    def list_nested(cls) -> List[Base]:
-        raise NotImplemented()
+    def list_nested(self) -> List[Base]:
+        raise NotImplementedError()
 
-    @classmethod
-    def create(cls, *args, **kwargs):
-        raise NotImplemented()
+    def create(self, *args, **kwargs):
+        raise NotImplementedError()
 
-    @classmethod
-    def allow_delete_hook(cls, session: Session, id: int) -> bool:
-        raise NotImplemented()
+    def allow_delete_hook(self, id: int) -> bool:
+        raise NotImplementedError()
 
-    @classmethod
-    def post_delete_hook(cls, obj: Base):
-        raise NotImplemented()
+    def post_delete_hook(self, obj: Base):
+        pass

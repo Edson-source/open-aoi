@@ -4,13 +4,13 @@ from open_aoi.mixins import Mixin
 
 class CameraControlMixin(Mixin):
     def test(self) -> bool:
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def start(self) -> bool:
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def stop(self) -> bool:
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def capture(self) -> np.ndarray:
-        raise NotImplemented()
+        raise NotImplementedError()
