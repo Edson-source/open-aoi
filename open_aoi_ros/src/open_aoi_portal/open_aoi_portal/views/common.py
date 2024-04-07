@@ -1,6 +1,7 @@
 from typing import Optional
 from nicegui import ui, app
 from sqlalchemy.orm import Session
+from PIL import Image
 
 from open_aoi.controllers.accessor import AccessorController
 from open_aoi.models import AccessorModel, engine
@@ -15,6 +16,15 @@ def confirm(msg: str, callback: callable):
             ui.button("Confirm action", on_click=callback, color="primary")
 
     dialog.open()
+
+
+def scale(im: Image, to_width: int):
+    width, height = im.size
+    ratio = height / width
+    width = to_width
+    height = int(width * ratio)
+    im = im.resize((width, height))
+    return im
 
 
 def _handle_logout_request():

@@ -19,17 +19,15 @@ from open_aoi_portal.views.view_access import get_view as get_view_access
 from open_aoi_portal.views.view_devices import get_view as get_view_devices
 from open_aoi_portal.views.view_modules import get_view as get_view_modules
 from open_aoi_portal.views.view_template import get_view as get_view_template
-
+from open_aoi_portal.views.view_control_zone_editor import (
+    get_view as get_control_zone_editor_view,
+)
 from open_aoi_portal.clients.image_acquisition import ROSImageAcquisitionClient
 from open_aoi_ros_interfaces.srv import ImageAcquisition, ServiceStatus
 from rcl_interfaces.srv._set_parameters import SetParameters
 
 # from views.view_inspection_profile import (
 #     view as view_inspection_profile,
-# )
-# from views.view_template import view as view_template
-# from views.view_control_zone_editor import (
-#     view as view_control_zone_editor,
 # )
 # from views.view_inspection_live import (
 #     view as view_inspection_live,
@@ -62,6 +60,11 @@ class AOIPortalNode(Node, ROSImageAcquisitionClient):
             ui.page(TEMPLATES_PAGE, title="Template | AOI Portal")(
                 get_view_template(self)
             )
+            ui.page(
+                CONTROL_ZONE_PAGE,
+                title="Control zone editor | AOI Portal",
+            )(get_control_zone_editor_view(self))
+
             # ui.page("/inspection/profile/{profile_id}", title="Inspection profiles | AOI Portal")(
             #     view_inspection_profile
             # )
@@ -73,10 +76,6 @@ class AOIPortalNode(Node, ROSImageAcquisitionClient):
             #     "/profile/{profile_id}/inspection/{inspection_id}",
             #     title="Inspection log | AOI Portal",
             # )(view_inspection_log)
-            # ui.page(
-            #     "/template/test/control_zone",
-            #     title="Control zone editor | AOI Portal",
-            # )(view_control_zone_editor)
 
         def acquire_service(name: str, property_name: str, msg):
             cli = self.create_client(msg, name)

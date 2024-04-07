@@ -32,6 +32,7 @@ def generate_launch_description():
     return LaunchDescription(
         [
             aoi_launch_description(),
-            RegisterEventHandler(event_handler=OnProcessExit(on_exit=on_exit_restart)),
+            # TODO
+            # RegisterEventHandler(event_handler=OnProcessExit(on_exit=on_exit_restart)),
         ]
     )

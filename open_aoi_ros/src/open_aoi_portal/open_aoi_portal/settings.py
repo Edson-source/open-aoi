@@ -4,8 +4,9 @@ INSPECTION_LIVE_LOG_DEPTH = 100
 
 HOME_PAGE = "/"
 ACCESS_PAGE = "/access"
+MODULES_PAGE = "/modules"
+TEMPLATES_PAGE = "/template"
+CONTROL_ZONE_PAGE = "/template/{template_id}/control_zone"
 INSPECTION_PROFILE_PAGE = "/inspection/profile"
 INSPECTION_PAGE = "/inspection"
 DEVICES_PAGE = "/devices"
-TEMPLATES_PAGE = "/template"
-MODULES_PAGE = "/modules"

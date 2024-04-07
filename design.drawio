@@ -1467,7 +1467,7 @@
         </mxGraphModel>
     </diagram>
     <diagram id="yDLCLKDNR_7XaFpHkL00" name="Class diagrams (web app)">
-        <mxGraphModel dx="2427" dy="160" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+        <mxGraphModel dx="3585" dy="398" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -1604,11 +1604,11 @@
                         <mxPoint x="23" y="74" as="offset"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="QSkxO42XYq3uHnfdb1xi-5" style="edgeStyle=orthogonalEdgeStyle;html=1;startArrow=none;startFill=0;endArrow=none;endFill=0;startSize=14;endSize=12;" parent="1" source="7vm_UOZ-z58TjhwR6AwK-4" edge="1">
+                <mxCell id="QSkxO42XYq3uHnfdb1xi-5" style="edgeStyle=orthogonalEdgeStyle;html=1;startArrow=none;startFill=0;endArrow=none;endFill=0;startSize=14;endSize=12;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="7vm_UOZ-z58TjhwR6AwK-4" edge="1" target="QSkxO42XYq3uHnfdb1xi-1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="810" y="2221.8"/>
-                            <mxPoint x="1025" y="2221.8"/>
+                            <mxPoint x="810" y="2222"/>
+                            <mxPoint x="1025" y="2222"/>
                         </Array>
                         <mxPoint x="1025.032258064516" y="2079.8" as="targetPoint"/>
                     </mxGeometry>

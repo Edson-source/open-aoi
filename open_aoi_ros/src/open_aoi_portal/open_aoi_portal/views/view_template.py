@@ -1,8 +1,6 @@
 import logging
-from uuid import uuid4
 from typing import Optional
 
-from PIL import Image
 from rclpy.node import Node
 from nicegui import ui, app
 from fastapi.responses import RedirectResponse
@@ -13,11 +11,13 @@ from open_aoi.controllers.accessor import AccessorController
 from open_aoi.controllers.camera import CameraController
 from open_aoi.models import TITLE_LIMIT
 from open_aoi_portal.views.common import (
+    scale,
     confirm,
     inject_header,
     inject_text_field,
     get_session,
     ACCESS_PAGE,
+    CONTROL_ZONE_PAGE,
 )
 
 logger = logging.getLogger("ui.devices")
@@ -71,11 +71,7 @@ def get_view(node: Node):
                 ui.notify("Failed to open template!", type="negative")
                 return
 
-            width, height = im.size
-            ratio = height / width
-            width = 600
-            height = int(width * ratio)
-            im = im.resize((width, height))
+            im = scale(im, 600)
 
             with ui.dialog() as dialog, ui.card():
                 ui.interactive_image(im)
@@ -115,15 +111,8 @@ def get_view(node: Node):
                 capture_image.enable()
                 return
 
-            # Reduce size, NiceGUI is not able to handle large images
-            width, height = im.size
-            ratio = height / width
-            width = 1000
-            height = int(width * ratio)
-            im = im.resize((width, height))
-
             template_image = im
-            template_image_element.set_source(im)
+            template_image_element.set_source(scale(im, 1000))
 
             capture_image.enable()
 
@@ -140,6 +129,16 @@ def get_view(node: Node):
                                 with ui.row():
                                     ui.label(template.title)
                                     ui.space()
+                                    ui.button(
+                                        icon="edit",
+                                        on_click=(
+                                            lambda t: lambda: ui.open(
+                                                CONTROL_ZONE_PAGE.format(
+                                                    template_id=t.id
+                                                )
+                                            )
+                                        )(template),
+                                    ).props("size=sm")
                                     ui.button(
                                         icon="preview",
                                         on_click=(
