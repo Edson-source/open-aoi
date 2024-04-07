@@ -62,7 +62,7 @@ class ModuleSourceMixin(Mixin):
         blob.seek(0)
         client.put_object(self._bucket_name, handler_blob, blob, len(content))
 
-        return handler_blob
+        self.handler_blob = handler_blob
 
     def materialize_source(self) -> Module:
         assert getattr(self, "handler_blob") is not None
@@ -85,6 +85,8 @@ class ModuleSourceMixin(Mixin):
             raise IntegrityError("Module does not exist")
 
         client.remove_object(self._bucket_name, self.handler_blob)
+        
+        self.handler_blob = None
 
     @classmethod
     def validate_source(cls, source: bytes) -> Tuple[bool, Optional[str]]:
@@ -104,21 +106,3 @@ class ModuleSourceMixin(Mixin):
         ctx = {}
         exec(source.decode(), ctx, ctx)
         return ctx
-
-
-if __name__ == "__main__":
-    m = ModuleSourceMixin()
-
-    source = """
-parameters = []
-process = lambda: print('hello open-aoi!')
-""".encode()
-
-    print(m.validate_source(source))
-
-    handler_blob = m.publish_source(source)
-    print(f"Module uploaded as: {handler_blob}")
-
-    m.handler_blob = handler_blob
-    materialized = m.materialize_handler_source()
-    print(materialized)

@@ -21,5 +21,4 @@ class DefectTypeController(Controller):
             description=description,
         )
         self.session.add(obj)
-        self.session.commit()
         return obj

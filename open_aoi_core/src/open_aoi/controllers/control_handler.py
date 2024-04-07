@@ -24,7 +24,6 @@ class ControlHandlerController(Controller):
             title=title, description=description, defect_type=defect_type
         )
         self.session.add(obj)
-        self.session.commit()
         return obj
 
     def list_nested(self) -> List[ControlHandlerModel]:
@@ -42,16 +41,7 @@ class ControlHandlerController(Controller):
         ).scalar()
 
     def post_delete_hook(self, obj: ControlHandlerModel):
-        obj.destroy_source()
+        if obj.is_valid:
+            obj.destroy_source()
 
-    def publish_source(self, obj: ControlHandlerModel, content: bytes):
-        obj.handler_blob = obj.publish_source(content)
-        self.session.add(obj)
-        self.session.commit()
-
-    def materialize_for_download(self, obj: ControlHandlerModel) -> bytes:
-        module = obj.materialize_source()
-        return module._source
-
-    validate_source = _model.validate_source
     test_store_connection = _model.test_store_connection

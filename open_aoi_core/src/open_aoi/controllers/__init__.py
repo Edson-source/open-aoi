@@ -21,7 +21,6 @@ class Controller:
     def delete(self, obj: Base):
         if self.allow_delete_hook(obj.id):
             self.session.query(self._model).filter(self._model.id == obj.id).delete()
-            self.session.commit()
             self.post_delete_hook(obj)
         else:
             raise IntegrityError(
@@ -32,12 +31,14 @@ class Controller:
         if self.allow_delete_hook(id):
             obj = self.retrieve(id)
             self.session.query(self._model).filter(self._model.id == id).delete()
-            self.session.commit()
             self.post_delete_hook(obj)
         else:
             raise IntegrityError(
                 "Unable to delete. Object is a dependency for other objects."
             )
+
+    def commit(self):
+        self.session.commit()
 
     def list(self) -> List[Base]:
         return self.session.query(self._model).all()

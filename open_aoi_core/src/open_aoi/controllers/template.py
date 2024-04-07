@@ -27,7 +27,6 @@ class TemplateController(Controller):
             created_at=datetime.now(),
         )
         self.session.add(obj)
-        self.session.commit()
         return obj
 
     def allow_delete_hook(self, id: int) -> bool:
