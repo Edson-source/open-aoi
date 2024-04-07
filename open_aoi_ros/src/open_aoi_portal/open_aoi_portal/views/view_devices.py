@@ -3,15 +3,13 @@ from typing import Optional
 
 from rclpy.node import Node
 from nicegui import ui, app
-from sqlalchemy.orm import Session
 from fastapi.responses import RedirectResponse
 
-from open_aoi.exceptions import AuthException
+from open_aoi_portal.settings import ACCESS_PAGE
+from open_aoi.exceptions import AuthException, ROSServiceError
 from open_aoi.controllers.camera import CameraController
 from open_aoi.controllers.accessor import AccessorController
-from open_aoi.exceptions import ROSServiceError
 from open_aoi.models import TITLE_LIMIT, DESCRIPTION_LIMIT, CameraModel
-from open_aoi_portal.settings import ACCESS_PAGE
 from open_aoi_portal.views.common import inject_header, inject_text_field, get_session
 
 logger = logging.getLogger("ui.devices")

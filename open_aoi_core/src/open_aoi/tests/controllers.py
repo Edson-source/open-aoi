@@ -24,7 +24,7 @@ class TemplateDatabaseTestCase(unittest.TestCase):
         self.accessor = self.accessor_controller.retrieve(1)
 
     def test_create_delete(self):
-        template = self.template_controller.create("Test", None, self.accessor)
+        template = self.template_controller.create("Test", self.accessor, None)
         self.template_controller.delete(template)
 
     def test_list_nested(self):

@@ -1,128 +1,216 @@
 import logging
-from typing import Optional
 from uuid import uuid4
+from typing import Optional
 
 from PIL import Image
+from rclpy.node import Node
 from nicegui import ui, app
 from fastapi.responses import RedirectResponse
 
-from open_aoi.exceptions import AuthException
-from open_aoi.controllers import TemplateController
+from open_aoi.exceptions import AuthException, ROSServiceError
+from open_aoi.controllers.template import TemplateController
 from open_aoi.controllers.accessor import AccessorController
-from open_aoi.models import TITLE_LIMIT, AccessorModel, TemplateModel
+from open_aoi.controllers.camera import CameraController
+from open_aoi.models import TITLE_LIMIT
 from open_aoi_portal.views.common import (
+    confirm,
     inject_header,
+    inject_text_field,
     get_session,
     ACCESS_PAGE,
 )
 
 logger = logging.getLogger("ui.devices")
 
-im = "/home/egor/Downloads/drawcore_ocr_damaged.bmp"
-im = Image.open(im)
 
+def get_view(node: Node):
+    def view() -> Optional[RedirectResponse]:
+        # -----------------------------------------------
+        # Handlers
+        def _handle_create_template():
+            try:
+                assert template_title.validate()
+                assert template_image is not None
+            except AssertionError:
+                ui.notify("Required values are missing", type="negative")
+                return
 
-def _handle_create_template(
-    title_input: ui.input, image: Image, accessor: AccessorModel, callback: callable
-):
-    try:
-        assert title_input.validate()
-    except AssertionError:
-        ui.notify("Required values are missing", type="negative")
-        return
+            try:
+                template = template_controller.create(
+                    template_title.value.strip(), accessor
+                )
+                template.publish_image(template_image)
+                template_controller.commit()
+            except Exception as e:
+                logger.exception(e)
+                ui.notify("Failed to create template")
+                return
+            ui.notify(f"Template {template.title} created!", type="positive")
+            _inject_template_list()
 
-    # TODO: upload blob
-    image_blob = str(uuid4())
-    try:
-        TemplateController.create(title_input.value.strip(), image_blob, accessor)
-    except Exception as e:
-        logger.exception(e)
-        ui.notify("Failed to create template")
-        return
-    ui.notify(f"Template {title_input.value.strip()} created!", type="positive")
-    callback()
+        def _handle_delete_template(template_id: int):
+            def execute():
+                try:
+                    template_controller.delete_by_id(template_id)
+                    template_controller.commit()
+                except Exception as e:
+                    logger.exception(e)
+                    ui.notify("Failed to delete template!", type="negative")
+                    return
+                ui.notify("Template was deleted!", type="positive")
+                _inject_template_list()
 
+            confirm("Are you sure?", execute)
 
-def _handle_delete_template(template: TemplateModel, callback: callable):
-    TemplateController.delete(template)
-    callback()
+        def _handle_preview_template(template_id: int):
+            try:
+                template = template_controller.retrieve(template_id)
+                im = template.materialize_image()
+            except Exception as e:
+                logger.exception(e)
+                ui.notify("Failed to open template!", type="negative")
+                return
 
+            width, height = im.size
+            ratio = height / width
+            width = 600
+            height = int(width * ratio)
+            im = im.resize((width, height))
 
-def _handle_take_picture():
-    pass
+            with ui.dialog() as dialog, ui.card():
+                ui.interactive_image(im)
+                with ui.row().classes("w-full justify-end"):
+                    ui.button("Close", on_click=dialog.close, color="white")
 
+            dialog.open()
 
-def view(template_id: Optional[int] = None) -> Optional[RedirectResponse]:
-    session = get_session()
-    access_controller = AccessorController(session)
-    try:
-        accessor = access_controller.identify_session_accessor(app.storage.user)
-    except AuthException:
-        return RedirectResponse(ACCESS_PAGE)
+        def _handle_capture_image():
+            nonlocal template_image
 
-    inject_header()
+            try:
+                assert camera_selection.validate()
+            except AssertionError:
+                ui.notify("Camera is required", type="negative")
+                return
 
-    with ui.grid(columns=2).classes("w-full"):
-        with ui.column():
-            ui.label("Template configuration")
-            template_title = ui.input(
-                label="Template title",
-                placeholder=f"Enter any value... [{TITLE_LIMIT}]",
-                on_change=lambda e: template_title_display.set_text(
-                    f"[{len(template_title.value.strip())}/{TITLE_LIMIT}] {template_title.value.strip()}"
-                ),
-                validation={
-                    "Title is too long": lambda value: len(value.strip())
-                    <= TITLE_LIMIT,
-                    "Title is too short": lambda value: len(value.strip()) != 0,
-                },
+            capture_image.disable()
+            try:
+                camera = camera_controller.retrieve(camera_selection.value)
+            except Exception as e:
+                logger.exception(e)
+                ui.notify("Failed to get camera!", type="negative")
+                return
+            try:
+                im, error, error_description = node.capture_image(
+                    camera_ip_address=camera.ip_address,
+                    camera_emulation_mode=True,
+                )
+            except ROSServiceError as e:
+                ui.notify(str(e), type="warning")
+                capture_image.enable()
+                return
+
+            if error != node.CAMERA_ERROR_NONE:
+                ui.notify(error_description, type="negative")
+                capture_image.enable()
+                return
+
+            # Reduce size, NiceGUI is not able to handle large images
+            width, height = im.size
+            ratio = height / width
+            width = 1000
+            height = int(width * ratio)
+            im = im.resize((width, height))
+
+            template_image = im
+            template_image_element.set_source(im)
+
+            capture_image.enable()
+
+        # Local injections
+        def _inject_template_list():
+            template_list_container.clear()
+            template_list = template_controller.list()
+
+            with template_list_container:
+                if len(template_list):
+                    for template in template_list:
+                        with ui.item().props("clickable"):
+                            with ui.item_section():
+                                with ui.row():
+                                    ui.label(template.title)
+                                    ui.space()
+                                    ui.button(
+                                        icon="preview",
+                                        on_click=(
+                                            lambda t: lambda: _handle_preview_template(
+                                                t.id
+                                            )
+                                        )(template),
+                                    ).props("size=sm")
+                                    ui.button(
+                                        "Remove",
+                                        color="negative",
+                                        on_click=(
+                                            lambda t: lambda: _handle_delete_template(
+                                                t.id
+                                            )
+                                        )(template),
+                                    ).props("size=sm")
+                else:
+                    with template_list_container:
+                        with ui.card().classes("w-full bg-primary text-white"):
+                            ui.markdown("**No templates to show**")
+
+        # -----------------------------------------------
+
+        session = get_session()
+        access_controller = AccessorController(session)
+        template_controller = TemplateController(session)
+        camera_controller = CameraController(session)
+        try:
+            accessor = access_controller.identify_session_accessor(app.storage.user)
+        except AuthException:
+            return RedirectResponse(ACCESS_PAGE)
+
+        inject_header()
+
+        try:
+            camera_list = camera_controller.list()
+        except Exception as e:
+            logger.exception(e)
+            ui.notify("Failed to get camera list!", type="negative")
+            return
+
+        with ui.column().classes("w-full"):
+            ui.markdown("### **Templates**")
+            ui.markdown("#### **Template configuration**")
+            template_title = inject_text_field(
+                "Template title", "Enter any value...", TITLE_LIMIT
+            )
+            camera_selection = ui.select(
+                dict([(c.id, c.title) for c in camera_list]),
+                label="Camera",
+                validation={"Value is required": lambda value: value is not None},
             ).classes("w-full")
-            template_title_display = ui.label("").classes("text-secondary")
+
+            template_image = None
+            with ui.row().classes("justify-center w-full"):
+                template_image_element = ui.interactive_image()
 
             with ui.row().classes("w-full"):
                 ui.space()
+
+                capture_image = ui.button(
+                    "Take picture", on_click=_handle_capture_image, icon="photo_camera"
+                )
                 ui.button(
                     "Save",
-                    on_click=lambda: _handle_create_template(
-                        template_title, im, accessor, generate_template_list
-                    ),
+                    on_click=_handle_create_template,
                 )
 
-            with ui.grid(columns=4).classes("w-full"):
-                ui.image(im).classes("col-span-3")
-                with ui.scroll_area().classes("col-span-1"):
-                    ui.image(im).classes()
-                    ui.image(im).classes()
+        ui.markdown("#### **Registered templates**")
+        template_list_container = ui.list().classes("w-full").props("dense")
+        _inject_template_list()
 
-        with ui.column():
-            # TODO: provide image navigation
-            with ui.interactive_image(im) as ii:
-                ui.button("Take picture").classes("absolute bottom-0 right-0 m-2")
-
-    ui.label("Registered templates")
-    template_list_container = ui.list().classes("w-full").props("dense")
-
-    # TODO: confirm delete
-    def generate_template_list():
-        template_list_container.clear()
-        template_list = TemplateController.list()
-
-        with template_list_container:
-            for template in template_list:
-                with ui.item().props("clickable"):
-                    with ui.item_section():
-                        with ui.row():
-                            ui.label(template.title)
-                            ui.space()
-                            ui.button(
-                                "Edit",
-                            ).props("size=sm")
-                            ui.button(
-                                "Remove",
-                                color="negative",
-                                on_click=lambda: _handle_delete_template(
-                                    template, generate_template_list
-                                ),
-                            ).props("size=sm")
-
-    generate_template_list()
+    return view

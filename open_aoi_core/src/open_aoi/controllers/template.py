@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
@@ -18,7 +18,7 @@ class TemplateController(Controller):
     _model = TemplateModel
 
     def create(
-        self, title: str, image_blob: str, accessor: AccessorModel
+        self, title: str, accessor: AccessorModel, image_blob: Optional[str] = None
     ) -> CameraModel:
         obj = TemplateModel(
             title=title,

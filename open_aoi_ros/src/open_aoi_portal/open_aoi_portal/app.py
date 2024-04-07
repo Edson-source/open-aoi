@@ -18,6 +18,7 @@ from open_aoi_portal.views.view_home import get_view as get_view_home
 from open_aoi_portal.views.view_access import get_view as get_view_access
 from open_aoi_portal.views.view_devices import get_view as get_view_devices
 from open_aoi_portal.views.view_modules import get_view as get_view_modules
+from open_aoi_portal.views.view_template import get_view as get_view_template
 
 from open_aoi_portal.clients.image_acquisition import ROSImageAcquisitionClient
 from open_aoi_ros_interfaces.srv import ImageAcquisition, ServiceStatus
@@ -58,8 +59,9 @@ class AOIPortalNode(Node, ROSImageAcquisitionClient):
             ui.page(MODULES_PAGE, title=f"Modules | {APP_TITLE}")(
                 get_view_modules(self)
             )
-            # ui.page("/template/{template_id}", title="Template | AOI Portal")(view_template)
-            # ui.page("/template", title="Template | AOI Portal")(view_template)
+            ui.page(TEMPLATES_PAGE, title="Template | AOI Portal")(
+                get_view_template(self)
+            )
             # ui.page("/inspection/profile/{profile_id}", title="Inspection profiles | AOI Portal")(
             #     view_inspection_profile
             # )
@@ -116,10 +118,9 @@ def ros_main() -> None:
 app.on_startup(lambda: threading.Thread(target=ros_main).start())
 ui_run.APP_IMPORT_STRING = f"{__name__}:app"  # ROS2 uses a non-standard module name, so we need to specify it here
 ui.run(
-    storage_secret=STORAGE_SECRET,
-    uvicorn_logging_level="info",
     favicon="🚀",
     title=APP_TITLE,
-    uvicorn_reload_dirs=str(Path(__file__).parent.resolve()),
-    reload=False
+    storage_secret=STORAGE_SECRET,
+    uvicorn_logging_level="info",
+    reload=False,  # TODO: fix reloading :(
 )
