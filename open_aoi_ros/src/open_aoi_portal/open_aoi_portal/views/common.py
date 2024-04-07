@@ -6,9 +6,6 @@ from open_aoi.models import AccessorModel
 from open_aoi_portal.settings import *
 
 
-colors = dict(primary="#3A6B35", secondary="#CBD18F")
-
-
 def confirm(msg: str, callback: callable):
     with ui.dialog() as dialog, ui.card():
         ui.label(msg)
