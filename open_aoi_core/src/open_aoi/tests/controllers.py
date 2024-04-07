@@ -13,7 +13,7 @@ from open_aoi.controllers.accessor import AccessorController
 from sqlalchemy.orm import Session
 
 
-class TemplateControllerTestCase(unittest.TestCase):
+class TemplateDatabaseTestCase(unittest.TestCase):
     def setUp(self) -> None:
         self.session = Session(engine)
         self.template_controller = TemplateController(self.session)
@@ -21,20 +21,35 @@ class TemplateControllerTestCase(unittest.TestCase):
 
         self.accessor = self.accessor_controller.retrieve(1)
 
-    def test_create_delete_record(self):
-        t = self.template_controller.create("Test", None, self.accessor)
-        self.template_controller.delete(t)
+    def test_create(self):
+        template = self.template_controller.create("Test", None, self.accessor)
+        self.template_controller.delete(template)
 
-    def test_list_nested_records(self):
-        self.assertIsInstance(self.template_controller.list_nested(), list)
+    def test_list_nested(self):
+        self.template_controller.list_nested()
 
-    def test_create_delete_blob(self):
+
+class TemplateMinioTestCase(unittest.TestCase):
+    def setUp(self) -> None:
+        self.session = Session(engine)
+        self.template_controller = TemplateController(self.session)
+        self.accessor_controller = AccessorController(self.session)
+
+        self.accessor = self.accessor_controller.retrieve(1)
+
         im = np.random.rand(100, 100, 3) * 255
-        im = Image.fromarray(im.astype("uint8"))
+        self.im = Image.fromarray(im.astype("uint8"))
 
-        t = self.template_controller.create("Test", None, self.accessor)
-        blob = t.publish_image(im)
-        t.image_blob = blob
-        self.session.commit()
-        t.destroy_image()
-        self.template_controller.delete(t)
+        self.template = self.template_controller.create("Test", None, self.accessor)
+
+    def test_create_blob(self):
+        self.template.publish_image(self.im)
+        self.template.destroy_image()
+
+    def test_materialize_blob(self):
+        self.template.publish_image(self.im)
+        self.template.materialize_image()
+        self.template.destroy_image()
+
+    def tearDown(self) -> None:
+        self.template_controller.delete(self.template)

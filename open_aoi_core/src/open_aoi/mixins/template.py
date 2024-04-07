@@ -22,7 +22,7 @@ class ImageSourceMixin(Mixin):
     def is_valid(self):
         return getattr(self, "image_blob", None) is not None
 
-    def publish_image(self, im: Image) -> str:
+    def publish_image(self, im: Image):
         assert getattr(self, "image_blob", None) is None
         client = self._client
 
@@ -39,9 +39,6 @@ class ImageSourceMixin(Mixin):
         client.put_object(self._bucket_name, image_blob, blob, length)
 
         self.image_blob = image_blob
-        self.session.commit()
-
-        return image_blob
 
     def materialize_image(self) -> Image.Image:
         assert getattr(self, "image_blob") is not None
@@ -64,3 +61,5 @@ class ImageSourceMixin(Mixin):
             raise IntegrityError("Image does not exist")
 
         client.remove_object(self._bucket_name, self.image_blob)
+
+        self.image_blob = None
