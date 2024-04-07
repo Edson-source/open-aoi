@@ -11,7 +11,7 @@ from rclpy.client import Client as ServiceClient
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from nicegui import Client, app, ui, ui_run
-from open_aoi.settings import STORAGE_SECRET, WEB_INTERFACE_PORT
+from open_aoi.settings import STORAGE_SECRET
 
 from open_aoi_portal.settings import *
 from open_aoi_portal.views.view_home import get_view as get_view_home
@@ -116,10 +116,10 @@ def ros_main() -> None:
 app.on_startup(lambda: threading.Thread(target=ros_main).start())
 ui_run.APP_IMPORT_STRING = f"{__name__}:app"  # ROS2 uses a non-standard module name, so we need to specify it here
 ui.run(
-    port=WEB_INTERFACE_PORT,
     storage_secret=STORAGE_SECRET,
     uvicorn_logging_level="info",
     favicon="🚀",
     title=APP_TITLE,
     uvicorn_reload_dirs=str(Path(__file__).parent.resolve()),
+    reload=False
 )

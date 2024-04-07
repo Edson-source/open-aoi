@@ -10,6 +10,7 @@ from open_aoi.controllers.accessor import AccessorController
 from open_aoi_portal.views.common import (
     ACCESS_PAGE,
     inject_header,
+    get_session
 )
 
 from PIL import Image
@@ -117,7 +118,7 @@ class Manager:
 
 
 def view() -> Optional[RedirectResponse]:
-    session = Session()
+    session = get_session()
     access_controller = AccessorController(session)
     try:
         access_controller.identify_session_accessor(app.storage.user)

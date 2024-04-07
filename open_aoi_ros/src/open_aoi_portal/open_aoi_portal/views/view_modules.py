@@ -3,7 +3,6 @@ from typing import Optional
 
 from rclpy.node import Node
 from nicegui import ui, app
-from sqlalchemy.orm import Session
 from fastapi.responses import RedirectResponse
 
 from open_aoi.models import TITLE_LIMIT, DESCRIPTION_LIMIT
@@ -15,6 +14,7 @@ from open_aoi_portal.views.common import (
     confirm,
     inject_header,
     inject_text_field,
+    get_session,
     ACCESS_PAGE,
 )
 
@@ -50,7 +50,7 @@ def _handle_store_connection_test():
 
 def get_view(node: Node):
     def view() -> Optional[RedirectResponse]:
-        session = Session()
+        session = get_session()
         access_controller = AccessorController(session)
         defect_type_controller = DefectTypeController(session)
         control_handler_controller = ControlHandlerController(session)
@@ -120,21 +120,21 @@ def get_view(node: Node):
 
         def _handle_module_upload_process(e, control_handler_id: int):
             content = e.content.read()
-            valid, error = control_handler_controller.validate_source(content)
-            if not valid:
-                ui.notify(error, type="negative")
-                return
             try:
                 control_handler = control_handler_controller.retrieve(
                     control_handler_id
                 )
+                valid, error = control_handler.validate_source(content)
+                if not valid:
+                    ui.notify(error, type="negative")
+                    return
                 control_handler.publish_source(content)
                 control_handler_controller.commit()
             except:
                 ui.notify("Failed to upload module source!")
                 return
 
-            ui.notify(f"Uploaded {e.name}")
+            ui.notify(f"Uploaded {e.name}", type="positive")
 
             _inject_module_list()
 
@@ -322,10 +322,7 @@ def get_view(node: Node):
                         ui.button(
                             "Create",
                             color="positive",
-                            on_click=lambda: _handle_defect_type_create(
-                                _inject_defect_list,
-                                _update_module_type_defect_selection,
-                            ),
+                            on_click=_handle_defect_type_create,
                         )
                 with ui.row() as defect_types_container:
                     _inject_defect_list()

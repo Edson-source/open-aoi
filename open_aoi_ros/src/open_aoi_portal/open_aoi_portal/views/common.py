@@ -1,8 +1,9 @@
 from typing import Optional
 from nicegui import ui, app
+from sqlalchemy.orm import Session
 
 from open_aoi.controllers.accessor import AccessorController
-from open_aoi.models import AccessorModel
+from open_aoi.models import AccessorModel, engine
 from open_aoi_portal.settings import *
 
 
@@ -74,5 +75,5 @@ def inject_text_field(
     return field
 
 
-def access_guard() -> AccessorModel:
-    return AccessorController.identify_session_accessor(app.storage.user)
+def get_session() -> AccessorModel:
+    return Session(engine)

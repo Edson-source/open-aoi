@@ -3,7 +3,6 @@ from typing import Optional
 
 from PIL import Image
 from nicegui import ui, app
-from sqlalchemy.orm import Session
 from fastapi.responses import RedirectResponse
 
 from open_aoi.exceptions import AuthException
@@ -17,7 +16,7 @@ from open_aoi.models import TITLE_LIMIT, DESCRIPTION_LIMIT, CODE_LIMIT, Template
 from open_aoi_portal.views.common import (
     inject_header,
     ACCESS_PAGE,
-    access_guard,
+    get_session,
 )
 
 logger = logging.getLogger("ui.inspection_profile")
@@ -37,7 +36,7 @@ def _handle_create_profile(
 
 
 def view(profile_id: Optional[int] = None) -> Optional[RedirectResponse]:
-    session = Session()
+    session = get_session()
     access_controller = AccessorController(session)
     try:
         access_controller.identify_session_accessor(app.storage.user)

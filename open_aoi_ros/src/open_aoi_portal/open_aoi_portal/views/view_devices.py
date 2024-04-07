@@ -12,17 +12,14 @@ from open_aoi.controllers.accessor import AccessorController
 from open_aoi.exceptions import ROSServiceError
 from open_aoi.models import TITLE_LIMIT, DESCRIPTION_LIMIT, CameraModel
 from open_aoi_portal.settings import ACCESS_PAGE
-from open_aoi_portal.views.common import (
-    inject_header,
-    inject_text_field,
-)
+from open_aoi_portal.views.common import inject_header, inject_text_field, get_session
 
 logger = logging.getLogger("ui.devices")
 
 
 def get_view(node: Node):
     def view() -> Optional[RedirectResponse]:
-        session = Session()
+        session = get_session()
         access_controller = AccessorController(session)
         camera_controller = CameraController(session)
         try:
@@ -91,6 +88,14 @@ def get_view(node: Node):
                 ui.notify(error_description, type="negative")
                 capture_image.enable()
                 return
+
+            # Reduce size, NiceGUI is not able to handle large images
+            width, height = im.size
+            ratio = height / width
+            width = 600
+            height = int(width * ratio)
+
+            im = im.resize((width, height))
 
             with ui.dialog() as dialog, ui.card():
                 ui.interactive_image(im)

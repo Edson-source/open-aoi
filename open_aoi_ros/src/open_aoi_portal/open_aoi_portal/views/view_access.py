@@ -3,19 +3,18 @@ from typing import Optional
 
 from nicegui import ui, app
 from rclpy.node import Node
-from sqlalchemy.orm import Session
 from fastapi.responses import RedirectResponse
 
 from open_aoi.controllers.accessor import AccessorController
 from open_aoi.exceptions import AuthException
-from open_aoi_portal.views.common import HOME_PAGE
+from open_aoi_portal.views.common import HOME_PAGE, get_session
 
 logger = logging.getLogger("ui.access")
 
 
 def get_view(node: Node):
     def view() -> Optional[RedirectResponse]:
-        session = Session()
+        session = get_session()
         access_controller = AccessorController(session)
 
         def _handle_access_request(username_input: ui.input, password_input: ui.input):

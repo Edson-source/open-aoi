@@ -13,7 +13,7 @@ from open_aoi.models import TITLE_LIMIT, DESCRIPTION_LIMIT, AccessorModel, Templ
 from open_aoi_portal.views.common import (
     inject_header,
     ACCESS_PAGE,
-    access_guard,
+    get_session,
 )
 from open_aoi_portal.settings import INSPECTION_LIVE_LOG_DEPTH
 
@@ -32,7 +32,7 @@ def _handle_update_image():
 
 
 def view() -> Optional[RedirectResponse]:
-    session = Session()
+    session = get_session()
     access_controller = AccessorController(session)
     try:
         access_controller.identify_session_accessor(app.storage.user)

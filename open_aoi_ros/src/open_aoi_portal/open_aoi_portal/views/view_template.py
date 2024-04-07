@@ -4,7 +4,6 @@ from uuid import uuid4
 
 from PIL import Image
 from nicegui import ui, app
-from sqlalchemy.orm import Session
 from fastapi.responses import RedirectResponse
 
 from open_aoi.exceptions import AuthException
@@ -13,6 +12,7 @@ from open_aoi.controllers.accessor import AccessorController
 from open_aoi.models import TITLE_LIMIT, AccessorModel, TemplateModel
 from open_aoi_portal.views.common import (
     inject_header,
+    get_session,
     ACCESS_PAGE,
 )
 
@@ -53,7 +53,7 @@ def _handle_take_picture():
 
 
 def view(template_id: Optional[int] = None) -> Optional[RedirectResponse]:
-    session = Session()
+    session = get_session()
     access_controller = AccessorController(session)
     try:
         accessor = access_controller.identify_session_accessor(app.storage.user)
