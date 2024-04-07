@@ -7,7 +7,6 @@ from open_aoi.models import DefectTypeModel, ControlHandlerModel
 class DefectTypeController(Controller):
     _model = DefectTypeModel
 
-    @classmethod
     def allow_delete_hook(self, id: int) -> bool:
         return not self.session.query(
             select(ControlHandlerModel)
