@@ -2,17 +2,18 @@ import logging
 from typing import Optional
 from uuid import uuid4
 
-from nicegui import ui
-from fastapi.responses import RedirectResponse
 from PIL import Image
+from nicegui import ui, app
+from sqlalchemy.orm import Session
+from fastapi.responses import RedirectResponse
 
 from open_aoi.exceptions import AuthException
 from open_aoi.controllers import TemplateController
-from open_aoi.models import TITLE_LIMIT, DESCRIPTION_LIMIT, AccessorModel, TemplateModel
+from open_aoi.controllers.accessor import AccessorController
+from open_aoi.models import TITLE_LIMIT, AccessorModel, TemplateModel
 from open_aoi_portal.views.common import (
     inject_header,
     ACCESS_PAGE,
-    access_guard,
 )
 
 logger = logging.getLogger("ui.devices")
@@ -47,17 +48,15 @@ def _handle_delete_template(template: TemplateModel, callback: callable):
     callback()
 
 
-def _handle_edit_template():
-    pass
-
-
 def _handle_take_picture():
     pass
 
 
 def view(template_id: Optional[int] = None) -> Optional[RedirectResponse]:
+    session = Session()
+    access_controller = AccessorController(session)
     try:
-        accessor = access_guard()
+        accessor = access_controller.identify_session_accessor(app.storage.user)
     except AuthException:
         return RedirectResponse(ACCESS_PAGE)
 

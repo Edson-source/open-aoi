@@ -2,6 +2,7 @@ import logging
 from typing import Optional
 from nicegui import ui, app
 from fastapi.responses import RedirectResponse
+from sqlalchemy.orm import Session
 
 from rclpy.node import Node
 
@@ -12,22 +13,23 @@ from open_aoi_portal.views.common import HOME_PAGE
 logger = logging.getLogger("ui.access")
 
 
-def _handle_access_request(username_input: ui.input, password_input: ui.input):
-    accessor = AccessorController.retrieve_by_username(username_input.value)
-    try:
-        accessor.test_credentials(password=password_input.value)
-    except AuthException:
-        logger.info("Failed to test credentials")
-        ui.notify("Invalid credentials", type="negative")
-    else:
-        # Allow access
-        accessor.grant_session_access(app.storage.user)
-        ui.open(HOME_PAGE)
-
-
 def get_view(node: Node):
     def view() -> Optional[RedirectResponse]:
-        # Render page
+        session = Session()
+        access_controller = AccessorController(session)
+
+        def _handle_access_request(username_input: ui.input, password_input: ui.input):
+            accessor = access_controller.retrieve_by_username(username_input.value)
+            try:
+                accessor.test_credentials(password=password_input.value)
+            except AuthException:
+                logger.info("Failed to test credentials")
+                ui.notify("Invalid credentials", type="negative")
+            else:
+                # Allow access
+                accessor.grant_session_access(app.storage.user)
+                ui.open(HOME_PAGE)
+
         with ui.card().classes("absolute-center w-80"):
             with ui.row().classes("w-full justify-between items-center"):
                 ui.markdown("**Enter credentials**")

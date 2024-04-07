@@ -1,11 +1,13 @@
 import logging
 from typing import Optional
 
-from nicegui import ui
-from fastapi.responses import RedirectResponse
 from PIL import Image
+from nicegui import ui, app
+from sqlalchemy.orm import Session
+from fastapi.responses import RedirectResponse
 
 from open_aoi.exceptions import AuthException
+from open_aoi.controllers.accessor import AccessorController
 from open_aoi.controllers import (
     CameraController,
     TemplateController,
@@ -35,8 +37,10 @@ def _handle_create_profile(
 
 
 def view(profile_id: Optional[int] = None) -> Optional[RedirectResponse]:
+    session = Session()
+    access_controller = AccessorController(session)
     try:
-        accessor = access_guard()
+        access_controller.identify_session_accessor(app.storage.user)
     except AuthException:
         return RedirectResponse(ACCESS_PAGE)
 

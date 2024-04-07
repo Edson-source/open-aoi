@@ -1,19 +1,20 @@
 import logging
 from typing import Optional
 
-from nicegui import ui
+from nicegui import ui, app
 from fastapi.responses import RedirectResponse
 from rclpy.node import Node
+from sqlalchemy.orm import Session
 
 from open_aoi.exceptions import AuthException
 from open_aoi.controllers.camera import CameraController
+from open_aoi.controllers.accessor import AccessorController
 from open_aoi.exceptions import ROSServiceError
 from open_aoi.models import TITLE_LIMIT, DESCRIPTION_LIMIT, CameraModel
 from open_aoi_portal.settings import ACCESS_PAGE
 from open_aoi_portal.views.common import (
     inject_header,
     inject_text_field,
-    access_guard,
 )
 
 logger = logging.getLogger("ui.devices")
@@ -21,8 +22,10 @@ logger = logging.getLogger("ui.devices")
 
 def get_view(node: Node):
     def view() -> Optional[RedirectResponse]:
+        session = Session()
+        access_controller = AccessorController(session)
         try:
-            accessor = access_guard()
+            access_controller.identify_session_accessor(app.storage.user)
         except AuthException:
             return RedirectResponse(ACCESS_PAGE)
 
@@ -151,7 +154,7 @@ def get_view(node: Node):
             with ui.row().classes("w-full"):
                 ui.space()
                 capture_image = ui.button(
-                    "Capture image", on_click=_handle_capture_image, icon='photo_camera'
+                    "Capture image", on_click=_handle_capture_image, icon="photo_camera"
                 )
                 ui.button("Save", on_click=_handle_create_camera)
 

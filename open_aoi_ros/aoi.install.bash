@@ -15,7 +15,7 @@ set -e
 # Install python dependencies: ROS services
 if test -d $SITE_PACKAGES; then
     echo "Install python dependencies for AOI ROS services"
-    pip3 install -r $REQUIREMENTS --target=$SITE_PACKAGES
+    pip3 install --upgrade -r $REQUIREMENTS --target=$SITE_PACKAGES
 else
     echo "Unable to install dependencies - ament workspace is not initialized. Not found: $SITE_PACKAGES"
 fi

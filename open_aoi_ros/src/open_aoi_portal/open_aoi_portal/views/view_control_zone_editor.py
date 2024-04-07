@@ -1,14 +1,15 @@
 import logging
 from typing import Optional, Tuple
 
-from nicegui import events, ui
+from nicegui import events, ui, app
 from fastapi.responses import RedirectResponse
+from sqlalchemy.orm import Session
 
 from open_aoi.exceptions import AuthException
+from open_aoi.controllers.accessor import AccessorController
 from open_aoi_portal.views.common import (
     ACCESS_PAGE,
     inject_header,
-    access_guard,
 )
 
 from PIL import Image
@@ -116,8 +117,10 @@ class Manager:
 
 
 def view() -> Optional[RedirectResponse]:
+    session = Session()
+    access_controller = AccessorController(session)
     try:
-        access_guard()
+        access_controller.identify_session_accessor(app.storage.user)
     except AuthException:
         return RedirectResponse(ACCESS_PAGE)
 

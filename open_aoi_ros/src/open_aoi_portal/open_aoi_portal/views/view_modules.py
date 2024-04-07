@@ -2,20 +2,21 @@
 import logging
 from typing import Optional
 
-from nicegui import ui
-from fastapi.responses import RedirectResponse
 from rclpy.node import Node
+from nicegui import ui, app
+from sqlalchemy.orm import Session
+from fastapi.responses import RedirectResponse
 
 from open_aoi.models import TITLE_LIMIT, DESCRIPTION_LIMIT
 from open_aoi.exceptions import AuthException, ConnectivityError, IntegrityError
 from open_aoi.controllers.control_handler import ControlHandlerController
+from open_aoi.controllers.accessor import AccessorController
 from open_aoi.controllers.defect_type import DefectTypeController
 from open_aoi_portal.views.common import (
     confirm,
     inject_header,
     inject_text_field,
     ACCESS_PAGE,
-    access_guard,
 )
 
 logger = logging.getLogger("ui.modules")
@@ -50,8 +51,10 @@ def _handle_store_connection_test():
 
 def get_view(node: Node):
     def view() -> Optional[RedirectResponse]:
+        session = Session()
+        access_controller = AccessorController(session)
         try:
-            accessor = access_guard()
+            accessor = access_controller.identify_session_accessor(app.storage.user)
         except AuthException:
             return RedirectResponse(ACCESS_PAGE)
 

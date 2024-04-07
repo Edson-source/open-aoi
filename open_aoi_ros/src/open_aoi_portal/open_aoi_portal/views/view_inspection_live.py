@@ -1,12 +1,14 @@
 import logging
-from typing import Optional
 from uuid import uuid4
+from typing import Optional
 
-from nicegui import ui, app
-from fastapi.responses import RedirectResponse
 from PIL import Image
+from nicegui import ui, app
+from sqlalchemy.orm import Session
+from fastapi.responses import RedirectResponse
 
 from open_aoi.exceptions import AuthException
+from open_aoi.controllers.accessor import AccessorController
 from open_aoi.models import TITLE_LIMIT, DESCRIPTION_LIMIT, AccessorModel, TemplateModel
 from open_aoi_portal.views.common import (
     inject_header,
@@ -30,8 +32,10 @@ def _handle_update_image():
 
 
 def view() -> Optional[RedirectResponse]:
+    session = Session()
+    access_controller = AccessorController(session)
     try:
-        accessor = access_guard()
+        access_controller.identify_session_accessor(app.storage.user)
     except AuthException:
         return RedirectResponse(ACCESS_PAGE)
 

@@ -1,14 +1,16 @@
 import logging
 from typing import Optional
 
+from nicegui import app
 from rclpy.node import Node
+from sqlalchemy.orm import Session
 from fastapi.responses import RedirectResponse
 
+from open_aoi.controllers.accessor import AccessorController
 from open_aoi.exceptions import AuthException
 from open_aoi_portal.views.common import (
     inject_header,
     ACCESS_PAGE,
-    access_guard,
 )
 
 logger = logging.getLogger("ui.home")
@@ -16,8 +18,10 @@ logger = logging.getLogger("ui.home")
 
 def get_view(node: Node):
     def view() -> Optional[RedirectResponse]:
+        session = Session()
+        access_controller = AccessorController(session)
         try:
-            access_guard()
+            access_controller.identify_session_accessor(app.storage.user)
         except AuthException:
             return RedirectResponse(ACCESS_PAGE)
 
