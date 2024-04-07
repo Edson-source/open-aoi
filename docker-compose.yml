@@ -26,9 +26,6 @@ services:
       MYSQL_PASSWORD: $MYSQL_PASSWORD
     ports:
       - 10002:3306
-    env_file:
-      - path: ./open_aoi_ros/.env
-        required: true
   aoi-adminer:
     container_name: aoi-adminer
     profiles: [core, inspection]
@@ -38,9 +35,6 @@ services:
       - aoi-mysql
     ports:
       - 10003:8080
-    env_file:
-      - path: ./open_aoi_ros/.env
-        required: true
   aoi-minio:
     container_name: aoi-minio
     image: docker.io/minio/minio
@@ -55,8 +49,5 @@ services:
       MINIO_ROOT_USER: $MINIO_ROOT_USER
       MINIO_ROOT_PASSWORD: $MINIO_ROOT_PASSWORD
       MINIO_DEFAULT_BUCKETS: $MINIO_DEFAULT_BUCKETS
-    env_file:
-      - path: ./open_aoi_ros/.env
-        required: true
 volumes:
   aoi:

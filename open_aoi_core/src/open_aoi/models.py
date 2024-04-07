@@ -16,12 +16,12 @@ from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase, relationship
 
 from open_aoi.settings import MYSQL_DATABASE, MYSQL_PASSWORD, MYSQL_USER, MYSQL_PORT
 from open_aoi.enums import RoleEnum, AccessorEnum
-from open_aoi.mixins.control_zone import ImageManipulationMixin
-from open_aoi.mixins.accessor import AccessorAuthMixin, AccessorSessionCredentialsMixin
-from open_aoi.mixins.inspection import InspectionStatisticsMixin
-from open_aoi.mixins.template import ImageSourceMixin
-from open_aoi.mixins.camera import CameraControlMixin
-from open_aoi.mixins.control_handler import ModuleSourceMixin
+from open_aoi.mixins.authentication import AuthMixin, SessionCredentialsMixin
+from open_aoi.mixins.image_source import (
+    TemplateImageSourceMixin,
+    InspectionImageSourceMixin,
+)
+from open_aoi.mixins.module_source import ModuleSourceMixin
 
 
 CODE_LIMIT = 100
@@ -81,7 +81,7 @@ class RoleModel(Base):
     registry = RoleEnum
 
 
-class AccessorModel(Base, AccessorAuthMixin, AccessorSessionCredentialsMixin):
+class AccessorModel(Base, AuthMixin, SessionCredentialsMixin):
     __tablename__ = "Accessor"
     metadata = metadata_obj
 
@@ -89,9 +89,9 @@ class AccessorModel(Base, AccessorAuthMixin, AccessorSessionCredentialsMixin):
         primary_key=True, nullable=False, autoincrement=True
     )
 
-    username: Mapped[str] = mapped_column(String(50), nullable=False)
-    title: Mapped[str] = mapped_column(String(50), nullable=False)
-    description: Mapped[str] = mapped_column(String(200), nullable=False)
+    username: Mapped[str] = mapped_column(String(TITLE_LIMIT), nullable=False)
+    title: Mapped[str] = mapped_column(String(TITLE_LIMIT), nullable=False)
+    description: Mapped[str] = mapped_column(String(DESCRIPTION_LIMIT), nullable=False)
 
     role_id: Mapped[int] = mapped_column(ForeignKey("Role.id"), nullable=False)
     role: Mapped["RoleModel"] = relationship()
@@ -108,8 +108,8 @@ class DefectTypeModel(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
-    title: Mapped[str] = mapped_column(String(50), nullable=False)
-    description: Mapped[str] = mapped_column(String(200), nullable=False)
+    title: Mapped[str] = mapped_column(String(TITLE_LIMIT), nullable=False)
+    description: Mapped[str] = mapped_column(String(DESCRIPTION_LIMIT), nullable=False)
 
     control_handler_list: Mapped[List["ControlHandlerModel"]] = relationship(
         back_populates="defect_type"
@@ -124,8 +124,8 @@ class ControlHandlerModel(Base, ModuleSourceMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
-    title: Mapped[str] = mapped_column(String(50), nullable=False)
-    description: Mapped[str] = mapped_column(String(200), nullable=False)
+    title: Mapped[str] = mapped_column(String(TITLE_LIMIT), nullable=False)
+    description: Mapped[str] = mapped_column(String(DESCRIPTION_LIMIT), nullable=False)
 
     handler_blob: Mapped[str] = mapped_column(
         String(100), nullable=True
@@ -190,7 +190,7 @@ class ConnectedComponentModel(Base):
     control_zone: Mapped["ControlZoneModel"] = relationship(back_populates="cc")
 
 
-class ControlZoneModel(Base, ImageManipulationMixin):
+class ControlZoneModel(Base):
     """
     Small zone on template where related control handler is applied in order to detect defect type
     """
@@ -199,16 +199,19 @@ class ControlZoneModel(Base, ImageManipulationMixin):
     metadata = metadata_obj
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    title: Mapped[str] = mapped_column(String(TITLE_LIMIT), nullable=False)
 
     template_id: Mapped[int] = mapped_column(ForeignKey("Template.id"), nullable=False)
     template: Mapped["TemplateModel"] = relationship(back_populates="control_zone_list")
 
-    cc: Mapped["ConnectedComponentModel"] = relationship(back_populates="control_zone")
+    cc: Mapped["ConnectedComponentModel"] = relationship(
+        back_populates="control_zone", cascade="all, delete-orphan"
+    )
 
     rotation: Mapped[float] = mapped_column(Numeric(precision=10, scale=2))
 
     control_target_list: Mapped[List["ControlTargetModel"]] = relationship(
-        back_populates="control_zone"
+        back_populates="control_zone",  # Cascade -prevent delete if any target use this control zone
     )
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
@@ -218,7 +221,7 @@ class ControlZoneModel(Base, ImageManipulationMixin):
     created_by: Mapped["AccessorModel"] = relationship()
 
 
-class ControlLogModel(Base):
+class InspectionLogModel(Base):
     """
     Helper to map defect type that was found to control zone. Multiple control logs are allowed.
     """
@@ -238,11 +241,12 @@ class ControlLogModel(Base):
         ForeignKey("Inspection.id"), nullable=False
     )
     inspection: Mapped["InspectionModel"] = relationship(
-        back_populates="control_log_list"
+        back_populates="inspection_log_list"
     )
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
-class InspectionModel(Base, InspectionStatisticsMixin):
+class InspectionModel(Base, InspectionImageSourceMixin):
     """
     Connect defect collection with template
     """
@@ -261,14 +265,18 @@ class InspectionModel(Base, InspectionStatisticsMixin):
         back_populates="inspection_list"
     )
 
-    control_log_list: Mapped[List["ControlLogModel"]] = relationship(
+    inspection_log_list: Mapped[List["InspectionLogModel"]] = relationship(
         back_populates="inspection"
     )
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
+    @property
+    def overall_passed(self):
+        raise NotImplementedError()
 
-class TemplateModel(Base, ImageSourceMixin):
+
+class TemplateModel(Base, TemplateImageSourceMixin):
     """
     Main reference image. Aggregate control zones.
     """
@@ -282,7 +290,7 @@ class TemplateModel(Base, ImageSourceMixin):
     image_blob: Mapped[str] = mapped_column(String(100), nullable=True)
 
     control_zone_list: Mapped[List["ControlZoneModel"]] = relationship(
-        back_populates="template", cascade="all, delete-orphan"
+        back_populates="template",  # Delete cascade - prevent if control zone use template
     )
 
     inspection_profile_list: Mapped["InspectionProfileModel"] = relationship(
@@ -296,7 +304,7 @@ class TemplateModel(Base, ImageSourceMixin):
     created_by: Mapped["AccessorModel"] = relationship()
 
 
-class CameraModel(Base, CameraControlMixin):
+class CameraModel(Base):
     """
     Represent available cameras
     """

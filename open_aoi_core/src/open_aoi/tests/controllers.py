@@ -11,6 +11,9 @@ from open_aoi.controllers.template import TemplateController
 from open_aoi.controllers.accessor import AccessorController
 from open_aoi.controllers.control_handler import ControlHandlerController
 from open_aoi.controllers.defect_type import DefectTypeController
+from open_aoi.controllers.control_zone import ControlZoneController
+from open_aoi.controllers.connected_component import ConnectedComponentController
+from open_aoi.controllers.control_target import ControlTargetController
 
 from sqlalchemy.orm import Session
 
@@ -104,3 +107,69 @@ process = lambda: print('hello open-aoi!')
         self.control_handler.publish_source(self.source)
         self.control_handler.materialize_source()
         self.control_handler.destroy_source()
+
+
+class ControlZoneDatabaseTestCase(unittest.TestCase):
+    def setUp(self) -> None:
+        self.session = Session(engine)
+        self.accessor_controller = AccessorController(self.session)
+        self.template_controller = TemplateController(self.session)
+        self.control_zone_controller = ControlZoneController(self.session)
+
+        self.accessor = self.accessor_controller.retrieve(1)
+        self.template = self.template_controller.create("Test", self.accessor)
+
+    def test_create_delete(self):
+        control_zone = self.control_zone_controller.create(
+            "Test", self.template, self.accessor
+        )
+        self.control_zone_controller.delete(control_zone)
+
+    def test_list_nested(self):
+        self.control_zone_controller.list_nested()
+
+
+class ConnectedComponentDatabaseTestCase(unittest.TestCase):
+    def setUp(self) -> None:
+        self.session = Session(engine)
+        self.accessor_controller = AccessorController(self.session)
+        self.template_controller = TemplateController(self.session)
+        self.control_zone_controller = ControlZoneController(self.session)
+        self.connected_component_controller = ConnectedComponentController(self.session)
+
+        self.accessor = self.accessor_controller.retrieve(1)
+        self.template = self.template_controller.create("Test", self.accessor)
+        self.control_zone = self.control_zone_controller.create(
+            self.template, self.accessor
+        )
+
+    def test_create_delete(self):
+        cc = self.connected_component_controller.create(0, 0, 0, 0, self.control_zone)
+        self.connected_component_controller.delete(cc)
+
+
+class ControlTargetDatabaseTestCase(unittest.TestCase):
+    def setUp(self) -> None:
+        self.session = Session(engine)
+        self.accessor_controller = AccessorController(self.session)
+        self.template_controller = TemplateController(self.session)
+        self.control_zone_controller = ControlZoneController(self.session)
+        self.control_target_controller = ControlTargetController(self.session)
+        self.control_handler_controller = ControlHandlerController(self.session)
+        self.defect_type_controller = DefectTypeController(self.session)
+
+        self.accessor = self.accessor_controller.retrieve(1)
+        self.defect_type = self.defect_type_controller.retrieve(1)
+        self.template = self.template_controller.create("Test", self.accessor)
+        self.control_zone = self.control_zone_controller.create(
+            self.template, self.accessor
+        )
+        self.control_handler = self.control_handler_controller.create(
+            "Test", "test", self.defect_type
+        )
+
+    def test_create_delete(self):
+        control_target = self.control_target_controller.create(
+            self.control_handler, self.control_zone
+        )
+        self.control_target_controller.delete(control_target)

@@ -4,7 +4,7 @@ from open_aoi.exceptions import AuthException
 from open_aoi.mixins import Mixin
 
 
-class AccessorAuthMixin(Mixin):
+class AuthMixin(Mixin):
     """Basic authentication"""
 
     hash: str
@@ -28,7 +28,7 @@ class AccessorAuthMixin(Mixin):
         return bcrypt.hashpw(password.encode(), salt).decode()
 
 
-class AccessorSessionCredentialsMixin(Mixin):
+class SessionCredentialsMixin(Mixin):
     """Server side credentials"""
 
     def assert_session_access(self, storage: dict):

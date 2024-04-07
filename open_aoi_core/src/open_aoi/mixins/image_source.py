@@ -9,14 +9,14 @@ from PIL import Image
 from open_aoi.mixins import Mixin
 from open_aoi.exceptions import IntegrityError
 
-logger = logging.getLogger("controller.template")
+logger = logging.getLogger("mixin.image_source")
 
 
 class ImageSourceMixin(Mixin):
     image: np.ndarray
     image_blob: Optional[str]
 
-    _bucket_name = "templates"
+    _bucket_name: str
 
     @property
     def is_valid(self):
@@ -63,3 +63,11 @@ class ImageSourceMixin(Mixin):
         client.remove_object(self._bucket_name, self.image_blob)
 
         self.image_blob = None
+
+
+class InspectionImageSourceMixin(ImageSourceMixin):
+    _bucket_name = "inspections"
+
+
+class TemplateImageSourceMixin(ImageSourceMixin):
+    _bucket_name = "templates"

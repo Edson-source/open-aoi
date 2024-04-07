@@ -3,13 +3,13 @@ from typing import List, Optional
 
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
-from PIL import Image
 
 from open_aoi.models import (
     CameraModel,
     TemplateModel,
     AccessorModel,
     InspectionProfileModel,
+    ControlZoneModel,
 )
 from open_aoi.controllers import Controller
 
@@ -30,11 +30,15 @@ class TemplateController(Controller):
         return obj
 
     def allow_delete_hook(self, id: int) -> bool:
-        return not self.session.query(
+        any_inspection_profile = self.session.query(
             select(InspectionProfileModel)
             .where(InspectionProfileModel.template_id == id)
             .exists()
         ).scalar()
+        any_control_zone = self.session.query(
+            select(ControlZoneModel).where(ControlZoneModel.template_id == id).exists()
+        ).scalar()
+        return not (any_inspection_profile or any_control_zone)
 
     def list_nested(self) -> List[TemplateModel]:
         return (
