@@ -1,4 +1,3 @@
-# TODO: access control
 import logging
 from typing import Optional
 
@@ -53,6 +52,8 @@ def get_view(node: Node):
     def view() -> Optional[RedirectResponse]:
         session = Session()
         access_controller = AccessorController(session)
+        defect_type_controller = DefectTypeController(session)
+        control_handler_controller = ControlHandlerController(session)
         try:
             accessor = access_controller.identify_session_accessor(app.storage.user)
         except AuthException:
@@ -71,9 +72,10 @@ def get_view(node: Node):
                 return
 
             try:
-                DefectTypeController.create(
+                defect_type_controller.create(
                     defect_type_title_input.value, defect_type_description_input.value
                 )
+                defect_type_controller.commit()
             except:
                 ui.notify("Failed to create defect type!", type="negative")
                 return
@@ -86,7 +88,8 @@ def get_view(node: Node):
         def _handle_defect_type_delete(defect_type_id: int):
             def _execute():
                 try:
-                    DefectTypeController.delete_by_id(defect_type_id)
+                    defect_type_controller.delete_by_id(defect_type_id)
+                    defect_type_controller.commit()
                 except IntegrityError as e:
                     ui.notify(str(e), type="negative")
                     return
@@ -117,13 +120,16 @@ def get_view(node: Node):
 
         def _handle_module_upload_process(e, control_handler_id: int):
             content = e.content.read()
-            valid, error = ControlHandlerController.validate_source(content)
+            valid, error = control_handler_controller.validate_source(content)
             if not valid:
                 ui.notify(error, type="negative")
                 return
             try:
-                control_handler = ControlHandlerController.retrieve(control_handler_id)
-                ControlHandlerController.publish_source(control_handler, content)
+                control_handler = control_handler_controller.retrieve(
+                    control_handler_id
+                )
+                control_handler.publish_source(content)
+                control_handler_controller.commit()
             except:
                 ui.notify("Failed to upload module source!")
                 return
@@ -134,15 +140,15 @@ def get_view(node: Node):
 
         def _handle_module_download_request(control_handler_id: int):
             try:
-                control_handler = ControlHandlerController.retrieve(control_handler_id)
-                source = ControlHandlerController.materialize_for_download(
-                    control_handler
+                control_handler = control_handler_controller.retrieve(
+                    control_handler_id
                 )
+                module = control_handler.materialize_source()
             except:
                 ui.notify("Failed to obtain module source!")
                 return
 
-            ui.download(source, "module.py")
+            ui.download(module._source, "module.py")
 
         def _handle_module_create():
             try:
@@ -154,14 +160,15 @@ def get_view(node: Node):
                 return
 
             try:
-                defect_type = DefectTypeController.retrieve(
+                defect_type = defect_type_controller.retrieve(
                     module_defect_type_selection.value
                 )
-                ControlHandlerController.create(
+                control_handler_controller.create(
                     title=module_title_input.value,
                     description=module_description_input.value,
                     defect_type=defect_type,
                 )
+                control_handler_controller.commit()
             except:
                 ui.notify("Failed to create module!", type="negative")
                 return
@@ -173,7 +180,8 @@ def get_view(node: Node):
         def _handle_module_delete(control_handler_id: int):
             def _execute():
                 try:
-                    ControlHandlerController.delete_by_id(control_handler_id)
+                    control_handler_controller.delete_by_id(control_handler_id)
+                    control_handler_controller.commit()
                 except IntegrityError as e:
                     ui.notify(str(e), type="negative")
                     return
@@ -188,7 +196,7 @@ def get_view(node: Node):
             defect_types_container.clear()
 
             try:
-                defect_types = DefectTypeController.list()
+                defect_types = defect_type_controller.list()
             except:
                 ui.notify("Failed to get defect types", type="negative")
                 return
@@ -224,7 +232,7 @@ def get_view(node: Node):
             modules_container.clear()
 
             try:
-                control_handlers = ControlHandlerController.list_nested()
+                control_handlers = control_handler_controller.list_nested()
             except:
                 ui.notify("Failed to get modules!", type="negative")
                 return
@@ -284,7 +292,7 @@ def get_view(node: Node):
         # Other
         def _update_module_type_defect_selection():
             try:
-                defect_types = DefectTypeController.list()
+                defect_types = defect_type_controller.list()
             except:
                 ui.notify("Failed to get defect types!", type="negative")
                 return

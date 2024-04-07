@@ -1,10 +1,10 @@
 import logging
 from typing import Optional
 
-from nicegui import ui, app
-from fastapi.responses import RedirectResponse
 from rclpy.node import Node
+from nicegui import ui, app
 from sqlalchemy.orm import Session
+from fastapi.responses import RedirectResponse
 
 from open_aoi.exceptions import AuthException
 from open_aoi.controllers.camera import CameraController
@@ -24,8 +24,9 @@ def get_view(node: Node):
     def view() -> Optional[RedirectResponse]:
         session = Session()
         access_controller = AccessorController(session)
+        camera_controller = CameraController(session)
         try:
-            access_controller.identify_session_accessor(app.storage.user)
+            accessor = access_controller.identify_session_accessor(app.storage.user)
         except AuthException:
             return RedirectResponse(ACCESS_PAGE)
 
@@ -42,12 +43,13 @@ def get_view(node: Node):
                 return
 
             try:
-                CameraController.create(
+                camera_controller.create(
                     title=camera_title.value.strip(),
                     description=camera_description.value.strip(),
                     ip_address=camera_ip_address.value.strip(),
                     accessor=accessor,
                 )
+                camera_controller.commit()
             except Exception as e:
                 logger.exception(e)
                 ui.notify("Failed to create camera")
@@ -59,7 +61,8 @@ def get_view(node: Node):
 
         def _handle_delete_camera(camera: CameraModel):
             try:
-                CameraController.delete(camera)
+                camera_controller.delete(camera)
+                camera_controller.commit()
             except Exception as e:
                 logger.exception(e)
                 ui.notify("Failed to delete camera!", type="negative")
@@ -102,7 +105,7 @@ def get_view(node: Node):
             camera_list_container.clear()
 
             try:
-                camera_list = CameraController.list()
+                camera_list = camera_controller.list()
             except:
                 ui.notify("Failed to list cameras!", type="negative")
                 return
