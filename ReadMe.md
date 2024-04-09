@@ -1,4 +1,4 @@
-**IN DEVELOPMENT!**
+**IN DEVELOPMENT! TARGET RELEASE DATE 06.2024**
 
 # Welcome to Open AOI!
 This is a ROS2 powered Automated Optical Inspection framework, developed as part of my master thesis at **BUT Brno** university. Project aims to provide development environment for PCB optical inspection tasks in production. Project targets **Raspberry Pi** platform yet it is possible to use any other general purpose computer. Project use **docker** and **Nice GUI** for frontend, general architecture is described in `design.drawio` file. 
