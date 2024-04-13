@@ -17,6 +17,10 @@ class IntegrityError(General):
     """Raised if internal integrity was violated"""
 
 
+class InvalidAsset(General):
+    """Raised asset integrity is violated"""
+
+
 class ConnectivityError(General):
     """Raised if connection to resource could not be established"""
 

@@ -2,10 +2,10 @@
     This script is an image acquisition node. See service definition for request format.
     Request format is mutual for simulation and real node (this nodes are interchangeable). Node
     provide interface to real camera hiding hardware set up and communication routines. 
+    TODO: error collection to services init
 """
 
 import os
-import pickle
 import numpy as np
 from typing import List, Optional
 
@@ -14,9 +14,9 @@ from pypylon import pylon
 import rclpy
 from rclpy.node import Node
 from rcl_interfaces.msg import ParameterDescriptor, SetParametersResult
-from sensor_msgs.msg import Image
 
 from open_aoi_ros_interfaces.srv import ImageAcquisition, ServiceStatus
+from open_aoi_core.services import IDLE, BUSY, ERROR
 from open_aoi_core.services.utils import encode_image
 
 NODE_NAME = "image_acquisition"
@@ -30,7 +30,7 @@ class Service(Node):
     camera_emulation_mode: bool = False
 
     camera: Optional[pylon.InstantCamera] = None
-    service_status_default: str = "Working"
+    service_status_default: str = IDLE
     service_status: str = service_status_default
 
     def __init__(self):
@@ -58,7 +58,6 @@ class Service(Node):
                 description="If True, connection to camera will be opened. False by default.",
             ),
         )
-
         self.declare_parameter(
             "camera_emulation_mode",
             value=self.camera_emulation_mode,
@@ -68,7 +67,6 @@ class Service(Node):
                 description="If True, camera emulation is used. False by default.",
             ),
         )
-
         self.declare_parameter(
             "camera_ip_address",
             value=self.camera_ip_address,
@@ -78,11 +76,9 @@ class Service(Node):
                 description="IP address of camera to use. If not provided, node will connect to the first found camera.",
             ),
         )
-
         self.add_on_set_parameters_callback(self._update_parameters)
 
         self.logger = self.get_logger()
-        self.logger.info("Service started")
 
         self._reload_service()
 
@@ -130,7 +126,7 @@ class Service(Node):
                 self.camera.TestImageSelector = "Off"
                 self.camera.Height = 2048
                 self.camera.Width = 2592
-                self.service_status = "Connected to camera: EMULATION"
+                self._set_status = "Connected to camera: EMULATION"
             except Exception as e:
                 self.logger.exception(e)
                 self._set_status("Failed to setup emulator")
@@ -159,48 +155,46 @@ class Service(Node):
                 self._set_status("Failed to setup camera")
                 return
 
-    def expose_status(self, request_class, response_class):
+    def expose_status(self, request, response):
         self.logger.info("Status requested")
-        return ServiceStatus.Response(status=self.service_status)
+        response.status = self.service_status
+        return response
 
-    def acquire_image(self, request_class, response_class):
+    def acquire_image(self, request, response):
         self.logger.info("Image requested")
 
         if self.camera is None:
-            return ImageAcquisition.Response(
-                image=encode_image(np.zeros((1, 1, 1))),
-                error="CAMERA_GENERAL",
-                error_description="Capture image called before camera initialization",
+            response.image = encode_image(np.zeros((1, 1, 1)))
+            response.error = "CAMERA_GENERAL"
+            response.error_description = (
+                "Capture image called before camera initialization"
             )
-
+            return response
         try:
             grab_result = self.camera.GrabOne(1000)
             if grab_result.GrabSucceeded():
                 # Access the image data
                 image = grab_result.Array
                 grab_result.Release()
-                return ImageAcquisition.Response(
-                    image=encode_image(image),
-                    error="NONE",
-                    error_description="",
-                )
+                response.image = encode_image(image)
+                response.error = "NONE"
+                response.error_description = ""
+                return response
             else:
                 grab_result.Release()
                 self.logger.error(
                     "Error: ", grab_result.ErrorCode, grab_result.ErrorDescription
                 )
-                return ImageAcquisition.Response(
-                    image=encode_image(np.zeros((1, 1, 1))),
-                    error="CAMERA_GENERAL",
-                    error_description="Capture image failed",
-                )
+                response.image = encode_image(np.zeros((1, 1, 1)))
+                response.error = "CAMERA_GENERAL"
+                response.error_description = "Capture image failed"
+                return response
         except Exception as e:
             self.logger.exception(e)
-            return ImageAcquisition.Response(
-                image=encode_image(np.zeros((1, 1, 1))),
-                error="CAMERA_GENERAL",
-                error_description="Capture image failed",
-            )
+            response.image = encode_image(np.zeros((1, 1, 1)))
+            response.error = "CAMERA_GENERAL"
+            response.error_description = "Capture image failed"
+            return response
 
 
 def main():

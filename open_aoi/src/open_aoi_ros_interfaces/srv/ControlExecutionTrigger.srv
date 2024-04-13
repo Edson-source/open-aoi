@@ -1,0 +1,11 @@
+# Service conduct control execution directly on provided images with provided code and provided environment
+sensor_msgs/Image test_image
+sensor_msgs/Image template_image
+string control_handler
+string environment
+open_aoi_ros_interfaces/ControlZone control_zone_list
+---
+open_aoi_ros_interfaces/ControlZone control_log_list
+# Errors: `NONE`, `CONTROL_HANDLER_INVALID`, `CONTROL_ZONE_INVALID`, `ENVIRONMENT_INVALID`, `IMAGE_INVALID`, `GENERAL`
+string error
+string error_description

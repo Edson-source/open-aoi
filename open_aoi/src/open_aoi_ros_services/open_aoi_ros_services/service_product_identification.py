@@ -9,13 +9,14 @@ from rclpy.node import Node
 import cv2 as cv
 
 from open_aoi_ros_interfaces.srv import IdentificationTrigger, ServiceStatus
+from open_aoi_core.services import BUSY, IDLE, ERROR
 from open_aoi_core.services.utils import decode_image
 
 NODE_NAME = "identification"
 
 
 class Service(Node):
-    service_status_default: str = "Working"
+    service_status_default: str = IDLE
     service_status: str = service_status_default
 
     def __init__(self):
@@ -46,12 +47,16 @@ class Service(Node):
 
     def identify_barcode(self, request, response):
         self.logger.info("Barcode identification triggered")
-        im = decode_image(request.image)
+        self._set_status(BUSY)
         
+        im = decode_image(request.image)
+
         bardet = cv.barcode.BarcodeDetector()
         identification_code, *_ = bardet.detectAndDecode(im)
-        
+
         response.identification_code = identification_code
+        
+        self._set_status(IDLE)
         return response
 
 

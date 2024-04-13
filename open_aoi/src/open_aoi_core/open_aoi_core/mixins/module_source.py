@@ -1,44 +1,73 @@
 import io
 import logging
+from uuid import uuid4
+from dataclasses import dataclass
 from typing import Optional, Tuple, List
 
+import numpy as np
 
-from uuid import uuid4
-
-from open_aoi_core.exceptions import IntegrityError
+from open_aoi_core.exceptions import IntegrityError, InvalidAsset
+from open_aoi_core.utils import crop_stat_cv
 from open_aoi_core.mixins import Mixin
 
 
 logger = logging.getLogger("controller.control_handler")
 
 
-class Module:
-    parameters: List
+class IModule:
+    @dataclass
+    class ControlZone:
+        rotation: float
+        stat_left: int
+        stat_top: int
+        stat_width: int
+        stat_height: int
 
-    @staticmethod
-    def validate_specification(specification: dict) -> Tuple[bool, Optional[str]]:
-        try:
-            assert (
-                specification.get("parameters") is not None
-            ), "Parameters are missing!"
-            assert (
-                specification.get("process") is not None
-            ), "Process function is missing!"
-        except Exception as e:
-            return False, str(e)
-        return True, None
+    @dataclass
+    class ControlLog:
+        log: str
+        passed: bool
 
-    def __init__(self, specification: dict, source: bytes) -> None:
-        self._spec = specification
-        self._source = source
-        res, detail = self.validate_specification(specification)
-        assert res, detail
-
-        self.parameters = specification["parameters"]
-        self.process = specification["process"]
-
-    def process(self):
+    def process(
+        self,
+        environment: dict,
+        test_image: np.ndarray,
+        template_image: np.array,
+        control_zone_list: List[ControlZone],
+    ) -> List[ControlLog]:
         raise NotImplementedError()
+
+    def apply_control_zone(im: np.ndarray, control_zone: ControlZone) -> np.ndarray:
+        stat = [
+            control_zone.stat_left,
+            control_zone.stat_top,
+            control_zone.stat_width,
+            control_zone.stat_height,
+        ]
+        chunk = crop_stat_cv(im, stat)
+        #TODO: Rotation
+        return chunk
+
+
+def dynamic_import(source: bytes) -> IModule:
+    """
+    Import dynamically generated code as a module.
+    """
+    ctx = {}
+
+    try:
+        exec(source.decode(), ctx, ctx)
+    except Exception as e:
+        raise InvalidAsset(f"Failed to execute module: {str(e)}") from e
+
+    try:
+        assert ctx.get("DOCUMENTATION") is not None, "Documentation is missing!"
+        assert ctx.get("module") is not None, "Process function is missing!"
+        assert isinstance(
+            ctx.get("module"), IModule
+        ), "Module does not provide IModule interface!"
+    except AssertionError as e:
+        raise InvalidAsset(f"Failed to validate module: {str(e)}") from e
 
 
 class ModuleSourceMixin(Mixin):
@@ -64,7 +93,7 @@ class ModuleSourceMixin(Mixin):
 
         self.handler_blob = handler_blob
 
-    def materialize_source(self) -> Module:
+    def materialize_source(self) -> bytes:
         assert getattr(self, "handler_blob") is not None
         client = self._client
 
@@ -75,7 +104,7 @@ class ModuleSourceMixin(Mixin):
         source = obj.read()
         obj.close()
 
-        return Module(self._dynamic_import(source), source)
+        return source
 
     def destroy_source(self):
         assert getattr(self, "handler_blob") is not None
@@ -85,24 +114,13 @@ class ModuleSourceMixin(Mixin):
             raise IntegrityError("Module does not exist")
 
         client.remove_object(self._bucket_name, self.handler_blob)
-        
+
         self.handler_blob = None
 
     @classmethod
     def validate_source(cls, source: bytes) -> Tuple[bool, Optional[str]]:
         try:
-            source = cls._dynamic_import(source)
-            Module.validate_specification(source)
-        except Exception as e:
+            dynamic_import(source)
+        except InvalidAsset as e:
             return False, str(e)
         return True, None
-
-    @staticmethod
-    def _dynamic_import(source: bytes):
-        """
-        Import dynamically generated code as a module.
-        """
-
-        ctx = {}
-        exec(source.decode(), ctx, ctx)
-        return ctx

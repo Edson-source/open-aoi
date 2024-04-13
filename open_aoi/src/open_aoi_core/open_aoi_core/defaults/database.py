@@ -14,6 +14,9 @@ from open_aoi_core.settings import (
 )
 
 if __name__ == "__main__":
+    metadata_obj.drop_all(engine)
+    metadata_obj.create_all(engine)
+
     with Session(engine) as session:
         # Defect types
         dt_missing_component = DefectTypeModel(
