@@ -1,8 +1,8 @@
 from datetime import datetime
 from sqlalchemy import select
 
-from open_aoi.models import CameraModel, AccessorModel, InspectionProfileModel
-from open_aoi.controllers import Controller
+from open_aoi_core.models import CameraModel, AccessorModel, InspectionProfileModel
+from open_aoi_core.controllers import Controller
 
 
 class CameraController(Controller):

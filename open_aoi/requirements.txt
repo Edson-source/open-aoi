@@ -1,3 +1,11 @@
-open_aoi==0.0.17
 pypylon
 python-dotenv
+opencv-python
+python-dotenv
+nicegui
+sqlalchemy
+pymysql
+cryptography
+bcrypt
+pillow
+minio

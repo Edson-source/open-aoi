@@ -5,11 +5,11 @@ from rclpy.node import Node
 from nicegui import ui, app
 from fastapi.responses import RedirectResponse
 
-from open_aoi.models import TITLE_LIMIT, DESCRIPTION_LIMIT
-from open_aoi.exceptions import AuthException, ConnectivityError, IntegrityError
-from open_aoi.controllers.control_handler import ControlHandlerController
-from open_aoi.controllers.accessor import AccessorController
-from open_aoi.controllers.defect_type import DefectTypeController
+from open_aoi_core.models import TITLE_LIMIT, DESCRIPTION_LIMIT
+from open_aoi_core.exceptions import AuthException, ConnectivityError, IntegrityError
+from open_aoi_core.controllers.control_handler import ControlHandlerController
+from open_aoi_core.controllers.accessor import AccessorController
+from open_aoi_core.controllers.defect_type import DefectTypeController
 from open_aoi_portal.views.common import (
     confirm,
     inject_header,

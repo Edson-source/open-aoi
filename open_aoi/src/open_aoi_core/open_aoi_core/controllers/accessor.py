@@ -1,7 +1,7 @@
 from sqlalchemy import select
 
-from open_aoi.controllers import Controller
-from open_aoi.models import (
+from open_aoi_core.controllers import Controller
+from open_aoi_core.models import (
     AccessorModel,
 )
 

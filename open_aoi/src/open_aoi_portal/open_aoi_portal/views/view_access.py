@@ -1,12 +1,13 @@
 import logging
 from typing import Optional
 
+
 from nicegui import ui, app
 from rclpy.node import Node
 from fastapi.responses import RedirectResponse
 
-from open_aoi.controllers.accessor import AccessorController
-from open_aoi.exceptions import AuthException
+from open_aoi_core.controllers.accessor import AccessorController
+from open_aoi_core.exceptions import AuthException
 from open_aoi_portal.views.common import HOME_PAGE, get_session
 
 logger = logging.getLogger("ui.access")

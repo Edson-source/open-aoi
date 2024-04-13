@@ -6,8 +6,8 @@ from typing import Optional
 
 from PIL import Image
 
-from open_aoi.mixins import Mixin
-from open_aoi.exceptions import IntegrityError
+from open_aoi_core.mixins import Mixin
+from open_aoi_core.exceptions import IntegrityError
 
 logger = logging.getLogger("mixin.image_source")
 

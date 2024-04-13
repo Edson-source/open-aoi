@@ -7,9 +7,9 @@ from nicegui import ui, app
 from sqlalchemy.orm import Session
 from fastapi.responses import RedirectResponse
 
-from open_aoi.exceptions import AuthException
-from open_aoi.controllers.accessor import AccessorController
-from open_aoi.models import TITLE_LIMIT, DESCRIPTION_LIMIT, AccessorModel, TemplateModel
+from open_aoi_core.exceptions import AuthException
+from open_aoi_core.controllers.accessor import AccessorController
+from open_aoi_core.models import TITLE_LIMIT, DESCRIPTION_LIMIT, AccessorModel, TemplateModel
 from open_aoi_portal.views.common import (
     inject_header,
     ACCESS_PAGE,

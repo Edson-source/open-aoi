@@ -5,8 +5,8 @@ from nicegui import app
 from rclpy.node import Node
 from fastapi.responses import RedirectResponse
 
-from open_aoi.controllers.accessor import AccessorController
-from open_aoi.exceptions import AuthException
+from open_aoi_core.controllers.accessor import AccessorController
+from open_aoi_core.exceptions import AuthException
 from open_aoi_portal.views.common import (
     inject_header,
     get_session,

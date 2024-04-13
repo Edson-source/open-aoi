@@ -5,8 +5,8 @@ from typing import Optional, Tuple, List
 
 from uuid import uuid4
 
-from open_aoi.exceptions import IntegrityError
-from open_aoi.mixins import Mixin
+from open_aoi_core.exceptions import IntegrityError
+from open_aoi_core.mixins import Mixin
 
 
 logger = logging.getLogger("controller.control_handler")

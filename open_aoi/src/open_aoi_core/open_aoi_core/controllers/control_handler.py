@@ -2,8 +2,8 @@ from typing import List
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
-from open_aoi.controllers import Controller
-from open_aoi.models import (
+from open_aoi_core.controllers import Controller
+from open_aoi_core.models import (
     ControlHandlerModel,
     DefectTypeModel,
     ControlTargetModel,

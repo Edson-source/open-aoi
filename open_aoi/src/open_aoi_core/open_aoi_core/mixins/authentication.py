@@ -1,7 +1,7 @@
 import bcrypt
 
-from open_aoi.exceptions import AuthException
-from open_aoi.mixins import Mixin
+from open_aoi_core.exceptions import AuthException
+from open_aoi_core.mixins import Mixin
 
 
 class AuthMixin(Mixin):

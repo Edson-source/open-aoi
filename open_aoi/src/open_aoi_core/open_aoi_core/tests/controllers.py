@@ -6,14 +6,14 @@ import unittest
 import numpy as np
 from PIL import Image
 
-from open_aoi.models import engine
-from open_aoi.controllers.template import TemplateController
-from open_aoi.controllers.accessor import AccessorController
-from open_aoi.controllers.control_handler import ControlHandlerController
-from open_aoi.controllers.defect_type import DefectTypeController
-from open_aoi.controllers.control_zone import ControlZoneController
-from open_aoi.controllers.connected_component import ConnectedComponentController
-from open_aoi.controllers.control_target import ControlTargetController
+from open_aoi_core.models import engine
+from open_aoi_core.controllers.template import TemplateController
+from open_aoi_core.controllers.accessor import AccessorController
+from open_aoi_core.controllers.control_handler import ControlHandlerController
+from open_aoi_core.controllers.defect_type import DefectTypeController
+from open_aoi_core.controllers.control_zone import ControlZoneController
+from open_aoi_core.controllers.connected_component import ConnectedComponentController
+from open_aoi_core.controllers.control_target import ControlTargetController
 
 from sqlalchemy.orm import Session
 

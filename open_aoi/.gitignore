@@ -1,5 +1,15 @@
 build
 install
 log
-blob_storage/cameras/camera_*
+
+venv
 .vscode
+**/__pycache__
+
+dist
+build
+*.egg-info
+
+
+.env
+.nicegui

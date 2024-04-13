@@ -4,14 +4,14 @@ from typing import List, Optional
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
-from open_aoi.models import (
+from open_aoi_core.models import (
     CameraModel,
     TemplateModel,
     AccessorModel,
     InspectionProfileModel,
     ControlZoneModel,
 )
-from open_aoi.controllers import Controller
+from open_aoi_core.controllers import Controller
 
 
 class TemplateController(Controller):

@@ -9,7 +9,7 @@ from rcl_interfaces.msg import Parameter, ParameterType, ParameterValue
 from rcl_interfaces.srv._set_parameters import SetParameters
 from PIL import Image
 
-from open_aoi.exceptions import ROSServiceError
+from open_aoi_core.exceptions import ROSServiceError
 from open_aoi_ros_interfaces.srv import ImageAcquisition
 
 

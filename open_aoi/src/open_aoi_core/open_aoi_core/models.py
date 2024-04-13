@@ -14,14 +14,14 @@ from sqlalchemy import (
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase, relationship
 
-from open_aoi.settings import MYSQL_DATABASE, MYSQL_PASSWORD, MYSQL_USER, MYSQL_PORT
-from open_aoi.enums import RoleEnum, AccessorEnum
-from open_aoi.mixins.authentication import AuthMixin, SessionCredentialsMixin
-from open_aoi.mixins.image_source import (
+from open_aoi_core.settings import MYSQL_DATABASE, MYSQL_PASSWORD, MYSQL_USER, MYSQL_PORT
+from open_aoi_core.enums import RoleEnum, AccessorEnum
+from open_aoi_core.mixins.authentication import AuthMixin, SessionCredentialsMixin
+from open_aoi_core.mixins.image_source import (
     TemplateImageSourceMixin,
     InspectionImageSourceMixin,
 )
-from open_aoi.mixins.module_source import ModuleSourceMixin
+from open_aoi_core.mixins.module_source import ModuleSourceMixin
 
 
 CODE_LIMIT = 100

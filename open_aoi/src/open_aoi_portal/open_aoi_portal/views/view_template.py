@@ -6,11 +6,11 @@ from rclpy.node import Node
 from nicegui import ui, app
 from fastapi.responses import RedirectResponse
 
-from open_aoi.exceptions import AuthException, ROSServiceError
-from open_aoi.controllers.template import TemplateController
-from open_aoi.controllers.accessor import AccessorController
-from open_aoi.controllers.camera import CameraController
-from open_aoi.models import TITLE_LIMIT
+from open_aoi_core.exceptions import AuthException, ROSServiceError
+from open_aoi_core.controllers.template import TemplateController
+from open_aoi_core.controllers.accessor import AccessorController
+from open_aoi_core.controllers.camera import CameraController
+from open_aoi_core.models import TITLE_LIMIT
 from open_aoi_portal.views.common import (
     confirm,
     inject_header,

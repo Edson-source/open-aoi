@@ -1,8 +1,8 @@
 import urllib3
 from minio import Minio
 
-from open_aoi.settings import MINIO_PORT, MINIO_ROOT_USER, MINIO_ROOT_PASSWORD
-from open_aoi.exceptions import ConnectivityError
+from open_aoi_core.settings import MINIO_PORT, MINIO_ROOT_USER, MINIO_ROOT_PASSWORD
+from open_aoi_core.exceptions import ConnectivityError
 
 
 class Mixin:

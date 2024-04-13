@@ -6,15 +6,15 @@ from rclpy.node import Node
 from nicegui import events, ui, app
 from fastapi.responses import RedirectResponse
 
-from open_aoi.utils import crop_stat_image
-from open_aoi.models import TITLE_LIMIT
-from open_aoi.exceptions import AuthException
-from open_aoi.controllers.accessor import AccessorController
-from open_aoi.controllers.template import TemplateController
-from open_aoi.controllers.connected_component import ConnectedComponentController
-from open_aoi.controllers.control_zone import ControlZoneController
-from open_aoi.controllers.control_handler import ControlHandlerController
-from open_aoi.controllers.control_target import ControlTargetController
+from open_aoi_core.utils import crop_stat_image
+from open_aoi_core.models import TITLE_LIMIT
+from open_aoi_core.exceptions import AuthException
+from open_aoi_core.controllers.accessor import AccessorController
+from open_aoi_core.controllers.template import TemplateController
+from open_aoi_core.controllers.connected_component import ConnectedComponentController
+from open_aoi_core.controllers.control_zone import ControlZoneController
+from open_aoi_core.controllers.control_handler import ControlHandlerController
+from open_aoi_core.controllers.control_target import ControlTargetController
 from open_aoi_portal.views.common import (
     ACCESS_PAGE,
     inject_header,

@@ -3,8 +3,8 @@ from typing import List
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
-from open_aoi.models import Base
-from open_aoi.exceptions import IntegrityError
+from open_aoi_core.models import Base
+from open_aoi_core.exceptions import IntegrityError
 
 
 class Controller:

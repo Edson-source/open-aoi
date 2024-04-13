@@ -3,11 +3,11 @@ from typing import List, Optional
 
 from sqlalchemy.orm import joinedload
 
-from open_aoi.models import (
+from open_aoi_core.models import (
     InspectionProfileModel,
     InspectionModel,
 )
-from open_aoi.controllers import Controller
+from open_aoi_core.controllers import Controller
 
 
 class InspectionController(Controller):

@@ -1,5 +1,5 @@
-from open_aoi.models import ConnectedComponentModel, ControlZoneModel
-from open_aoi.controllers import Controller
+from open_aoi_core.models import ConnectedComponentModel, ControlZoneModel
+from open_aoi_core.controllers import Controller
 
 
 class ConnectedComponentController(Controller):

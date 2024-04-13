@@ -6,7 +6,7 @@
 # see `echo $PYTHONPATH`):
 # >>> source /opt/ros/foxy/setup.bash && source install/setup.bash
 
-SITE_PACKAGES="install/open_aoi_ros_services/lib/python3.8/site-packages"
+SITE_PACKAGES="install/open_aoi_core/lib/python3.8/site-packages"
 REQUIREMENTS="requirements.txt"
 
 # Install python dependencies: ROS services

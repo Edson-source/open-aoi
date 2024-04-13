@@ -6,10 +6,10 @@ from nicegui import ui, app
 from fastapi.responses import RedirectResponse
 
 from open_aoi_portal.settings import ACCESS_PAGE
-from open_aoi.exceptions import AuthException, ROSServiceError
-from open_aoi.controllers.camera import CameraController
-from open_aoi.controllers.accessor import AccessorController
-from open_aoi.models import TITLE_LIMIT, DESCRIPTION_LIMIT, CameraModel
+from open_aoi_core.exceptions import AuthException, ROSServiceError
+from open_aoi_core.controllers.camera import CameraController
+from open_aoi_core.controllers.accessor import AccessorController
+from open_aoi_core.models import TITLE_LIMIT, DESCRIPTION_LIMIT, CameraModel
 from open_aoi_portal.views.common import (
     inject_header,
     inject_text_field,
@@ -24,9 +24,9 @@ logger = logging.getLogger("ui.devices")
 def get_view(node: Node):
     def _heavy_capture_image(ip_address: str):
         return node.capture_image(
-                    camera_ip_address=ip_address,
-                    camera_emulation_mode=True,
-                )
+            camera_ip_address=ip_address,
+            camera_emulation_mode=True,
+        )
 
     async def view() -> Optional[RedirectResponse]:
         session = get_session()
@@ -85,7 +85,9 @@ def get_view(node: Node):
                 return
             capture_image.disable()
             try:
-                im, error, error_description = await to_thread(_heavy_capture_image, camera_ip_address.value.strip())
+                im, error, error_description = await to_thread(
+                    _heavy_capture_image, camera_ip_address.value.strip()
+                )
             except ROSServiceError as e:
                 ui.notify(str(e), type="warning")
                 capture_image.enable()
@@ -98,10 +100,10 @@ def get_view(node: Node):
 
             # Reduce size to speed up network image transfer
             im = scale(im, 600)
-            
+
             image_dialog.open()
             image_element.set_source(im)
-            
+
             capture_image.enable()
 
         # Local injections
@@ -169,7 +171,6 @@ def get_view(node: Node):
             image_element = ui.interactive_image()
             with ui.row().classes("w-full justify-end"):
                 ui.button("Close", on_click=image_dialog.close, color="white")
-
 
         ui.markdown("##### **Registered devices**")
 

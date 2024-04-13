@@ -11,7 +11,7 @@ from rclpy.client import Client as ServiceClient
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from nicegui import Client, app, ui, ui_run
-from open_aoi.settings import STORAGE_SECRET
+from open_aoi_core.settings import STORAGE_SECRET
 
 from open_aoi_portal.settings import *
 from open_aoi_portal.views.view_home import get_view as get_view_home
