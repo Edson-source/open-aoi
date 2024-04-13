@@ -54,10 +54,6 @@ def get_view(node: Node):
         access_controller = AccessorController(session)
         defect_type_controller = DefectTypeController(session)
         control_handler_controller = ControlHandlerController(session)
-        try:
-            accessor = access_controller.identify_session_accessor(app.storage.user)
-        except AuthException:
-            return RedirectResponse(ACCESS_PAGE)
 
         # Define functions here to access ui elements directly
         # -------------------------------------------------------------------------
@@ -301,7 +297,11 @@ def get_view(node: Node):
             module_defect_type_selection.set_options(options)
 
         # -------------------------------------------------------------------------
-
+        try:
+            accessor = access_controller.identify_session_accessor(app.storage.user)
+        except AuthException:
+            return RedirectResponse(ACCESS_PAGE)
+        
         inject_header()
         with ui.column().classes("w-full"):
             ui.markdown("#### **Modules and Defects**")

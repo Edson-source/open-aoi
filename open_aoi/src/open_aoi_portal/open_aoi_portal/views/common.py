@@ -61,7 +61,8 @@ def inject_header():
             "flat align=left icon=compare"
         ).tailwind.width("full")
         ui.button(
-            "Inspection profiles", on_click=lambda: ui.open(INSPECTION_PROFILE_PAGE)
+            "Inspection profiles",
+            on_click=lambda: ui.open(INSPECTION_PROFILE_CREATE_PAGE),
         ).props("flat align=left icon=cameraswitch").tailwind.width("full")
         ui.button(
             "Inspection templates", on_click=lambda: ui.open(TEMPLATES_PAGE)
@@ -77,7 +78,10 @@ def inject_header():
 
 
 def inject_text_field(
-    label: str, placeholder: str, limit: int, validation: Optional[dict] = dict()
+    label: str,
+    placeholder: str,
+    limit: int,
+    validation: Optional[dict] = dict(),
 ):
     field = ui.input(
         label=label,

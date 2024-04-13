@@ -10,6 +10,7 @@ from sqlalchemy import (
     Boolean,
     Integer,
     MetaData,
+    Text
 )
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase, relationship
@@ -340,6 +341,7 @@ class InspectionProfileModel(Base):
 
     title: Mapped[str] = mapped_column(String(TITLE_LIMIT), nullable=False)
     description: Mapped[str] = mapped_column(String(DESCRIPTION_LIMIT), nullable=False)
+    environment: Mapped[str] = mapped_column(Text(), nullable=True)
 
     identification_code: Mapped[str] = mapped_column(String(CODE_LIMIT), nullable=False)
 

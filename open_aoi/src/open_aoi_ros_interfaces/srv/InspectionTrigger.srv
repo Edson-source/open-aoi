@@ -1,0 +1,5 @@
+# Moderator node inspection trigger interface
+---
+# Errors: `NONE`, `CAPTURE_FAILED`, `IDENTIFICATION_FAILED`, `INSPECTION_FAILED`, `GENERAL`
+string error
+string error_description

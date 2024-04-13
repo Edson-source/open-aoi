@@ -159,6 +159,7 @@ def get_view(node: Node):
                     "Value is too short": lambda value: len(value) >= 7,
                 },
             )
+            camera_ip_address.set_value("000.000.000.000")
 
             with ui.row().classes("w-full"):
                 ui.space()

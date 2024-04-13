@@ -14,6 +14,8 @@ from open_aoi_core.controllers.defect_type import DefectTypeController
 from open_aoi_core.controllers.control_zone import ControlZoneController
 from open_aoi_core.controllers.connected_component import ConnectedComponentController
 from open_aoi_core.controllers.control_target import ControlTargetController
+from open_aoi_core.controllers.inspection_profile import InspectionProfileController
+from open_aoi_core.controllers.camera import CameraController
 
 from sqlalchemy.orm import Session
 
@@ -173,3 +175,27 @@ class ControlTargetDatabaseTestCase(unittest.TestCase):
             self.control_handler, self.control_zone
         )
         self.control_target_controller.delete(control_target)
+
+
+class InspectionProfileDatabaseTestCase(unittest.TestCase):
+    def setUp(self) -> None:
+        self.session = Session(engine)
+        self.inspection_profile_controller = InspectionProfileController(self.session)
+        self.template_controller = TemplateController(self.session)
+        self.camera_controller = CameraController(self.session)
+        self.accessor_controller = AccessorController(self.session)
+
+        self.accessor = self.accessor_controller.retrieve(1)
+        self.template = self.template_controller.create("Test", self.accessor)
+        self.camera = self.camera_controller.create(
+            "Test", "test", "000.000.000.000", self.accessor
+        )
+
+    def test_create_delete(self):
+        inspection_profile = self.inspection_profile_controller.create(
+            "Test", "test", "test", self.camera, self.template, self.accessor, "test"
+        )
+        self.inspection_profile_controller.delete(inspection_profile)
+
+    def test_list_nested(self):
+        self.inspection_profile_controller.list_nested()

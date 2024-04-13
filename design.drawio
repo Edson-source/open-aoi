@@ -1537,7 +1537,7 @@
         </mxGraphModel>
     </diagram>
     <diagram id="yDLCLKDNR_7XaFpHkL00" name="Class diagrams (web app)">
-        <mxGraphModel dx="2864" dy="56" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+        <mxGraphModel dx="3369" dy="398" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -1684,16 +1684,13 @@
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="7vm_UOZ-z58TjhwR6AwK-4" value="InspectionProfile" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;sketch=0;strokeColor=#000000;strokeWidth=1;" parent="1" vertex="1">
-                    <mxGeometry x="675" y="2275.8" width="270" height="230" as="geometry"/>
+                    <mxGeometry x="675" y="2275.8" width="270" height="218" as="geometry"/>
                 </mxCell>
-                <mxCell id="7vm_UOZ-z58TjhwR6AwK-5" value="+ id: int&#10;+ title: str&#10;+ description: str&#10;+ is_active: bool&#10;+ identification_code: str&#10;+ camera: Camera&#10;+ template: Template&#10;+ environment: str&#10;+ created_at: datetime&#10;+ create_by: Accessor" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;sketch=0;strokeWidth=1;" parent="7vm_UOZ-z58TjhwR6AwK-4" vertex="1">
-                    <mxGeometry y="26" width="270" height="154" as="geometry"/>
+                <mxCell id="7vm_UOZ-z58TjhwR6AwK-5" value="+ id: int&#10;+ title: str&#10;+ description: str&#10;+ is_active: bool&#10;+ identification_code: str&#10;+ camera: Camera&#10;+ template: Template&#10;+ inspection_list: list[Inspection[&#10;+ environment: str&#10;+ created_at: datetime&#10;+ create_by: Accessor" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;sketch=0;strokeWidth=1;" parent="7vm_UOZ-z58TjhwR6AwK-4" vertex="1">
+                    <mxGeometry y="26" width="270" height="184" as="geometry"/>
                 </mxCell>
                 <mxCell id="7vm_UOZ-z58TjhwR6AwK-6" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;sketch=0;" parent="7vm_UOZ-z58TjhwR6AwK-4" vertex="1">
-                    <mxGeometry y="180" width="270" height="8" as="geometry"/>
-                </mxCell>
-                <mxCell id="7vm_UOZ-z58TjhwR6AwK-7" value="+ set_template(template: Template): None &#10;+ set_camera(camera: Camera): None" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;sketch=0;strokeWidth=1;" parent="7vm_UOZ-z58TjhwR6AwK-4" vertex="1">
-                    <mxGeometry y="188" width="270" height="42" as="geometry"/>
+                    <mxGeometry y="210" width="270" height="8" as="geometry"/>
                 </mxCell>
                 <mxCell id="QSkxO42XYq3uHnfdb1xi-1" value="Camera" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;sketch=0;strokeColor=#000000;strokeWidth=1;" parent="1" vertex="1">
                     <mxGeometry x="910" y="1891.8" width="230" height="158" as="geometry"/>
@@ -1921,7 +1918,7 @@
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="m1fO6EmoCURNnDFYHWoq-7" value="&lt;div style=&quot;box-sizing:border-box;width:100%;background:#e4e4e4;padding:2px;&quot;&gt;InspectionProfile&lt;/div&gt;&lt;table style=&quot;width:100%;font-size:1em;&quot; cellpadding=&quot;2&quot; cellspacing=&quot;0&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td&gt;PK&lt;br&gt;&lt;br&gt;&lt;br&gt;&lt;br&gt;&lt;br&gt;FK&lt;br&gt;FK&lt;br&gt;&lt;br&gt;FK&lt;br&gt;&lt;/td&gt;&lt;td&gt;id: INT&lt;br&gt;title: CHAR(200)&lt;br&gt;description: CHAR(500)&lt;br&gt;is_active: BOOL&lt;br&gt;identification_code: CHAR(100)&lt;br&gt;camera_id: INT&lt;br&gt;template_id: INT&lt;br&gt;environment: TEXT&lt;br&gt;created_by_accessor_id: INT&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;br&gt;&lt;/td&gt;&lt;td&gt;created_at: DATETIME&lt;br&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;" style="verticalAlign=top;align=left;overflow=fill;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="1100" y="2282.1499999999996" width="260" height="193.3" as="geometry"/>
+                    <mxGeometry x="1100" y="2297.1499999999996" width="260" height="193.3" as="geometry"/>
                 </mxCell>
                 <mxCell id="m1fO6EmoCURNnDFYHWoq-8" style="edgeStyle=none;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;dashed=1;startArrow=block;startFill=0;endArrow=none;endFill=0;startSize=14;endSize=12;" parent="1" source="7vm_UOZ-z58TjhwR6AwK-5" target="m1fO6EmoCURNnDFYHWoq-7" edge="1">
                     <mxGeometry relative="1" as="geometry"/>

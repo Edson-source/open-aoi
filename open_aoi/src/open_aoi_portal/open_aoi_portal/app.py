@@ -22,13 +22,14 @@ from open_aoi_portal.views.view_template import get_view as get_view_template
 from open_aoi_portal.views.view_control_zone_editor import (
     get_view as get_control_zone_editor_view,
 )
+from open_aoi_portal.views.view_inspection_profile import (
+    get_view as get_view_inspection_profile,
+)
 from open_aoi_portal.clients.image_acquisition import ROSImageAcquisitionClient
 from open_aoi_ros_interfaces.srv import ImageAcquisition, ServiceStatus
 from rcl_interfaces.srv._set_parameters import SetParameters
 
-# from views.view_inspection_profile import (
-#     view as view_inspection_profile,
-# )
+
 # from views.view_inspection_live import (
 #     view as view_inspection_live,
 # )
@@ -57,17 +58,21 @@ class AOIPortalNode(Node, ROSImageAcquisitionClient):
             ui.page(MODULES_PAGE, title=f"Modules | {APP_TITLE}")(
                 get_view_modules(self)
             )
-            ui.page(TEMPLATES_PAGE, title="Template | AOI Portal")(
+            ui.page(TEMPLATES_PAGE, title=f"Templates | {APP_TITLE}")(
                 get_view_template(self)
             )
             ui.page(
                 CONTROL_ZONE_PAGE,
-                title="Control zone editor | AOI Portal",
+                title=f"Control zone editor | {APP_TITLE}",
             )(get_control_zone_editor_view(self))
+            ui.page(
+                INSPECTION_PROFILE_CREATE_PAGE,
+                title=f"Inspection profiles | {APP_TITLE}",
+            )(get_view_inspection_profile(self))
+            ui.page(
+                INSPECTION_PROFILE_EDIT_PAGE, title=f"Inspection profiles | {APP_TITLE}"
+            )(get_view_inspection_profile(self))
 
-            # ui.page("/inspection/profile/{profile_id}", title="Inspection profiles | AOI Portal")(
-            #     view_inspection_profile
-            # )
             # ui.page("/inspection/profile", title="Inspection profiles | AOI Portal")(
             #     view_inspection_profile
             # )
@@ -117,6 +122,7 @@ def ros_main() -> None:
 app.on_startup(lambda: threading.Thread(target=ros_main).start())
 ui_run.APP_IMPORT_STRING = f"{__name__}:app"  # ROS2 uses a non-standard module name, so we need to specify it here
 ui.run(
+    show=False,
     favicon="🚀",
     title=APP_TITLE,
     storage_secret=STORAGE_SECRET,
