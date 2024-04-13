@@ -4,7 +4,6 @@ assert load_dotenv(".env")
 
 import logging
 import threading
-from pathlib import Path
 
 import rclpy
 from rclpy.client import Client as ServiceClient
@@ -25,7 +24,7 @@ from open_aoi_portal.views.view_control_zone_editor import (
 from open_aoi_portal.views.view_inspection_profile import (
     get_view as get_view_inspection_profile,
 )
-from open_aoi_portal.clients.image_acquisition import ROSImageAcquisitionClient
+from open_aoi_core.services.image_acquisition import ROSImageAcquisitionClient
 from open_aoi_ros_interfaces.srv import ImageAcquisition, ServiceStatus
 from rcl_interfaces.srv._set_parameters import SetParameters
 
@@ -73,9 +72,6 @@ class AOIPortalNode(Node, ROSImageAcquisitionClient):
                 INSPECTION_PROFILE_EDIT_PAGE, title=f"Inspection profiles | {APP_TITLE}"
             )(get_view_inspection_profile(self))
 
-            # ui.page("/inspection/profile", title="Inspection profiles | AOI Portal")(
-            #     view_inspection_profile
-            # )
             # ui.page("/inspection", title="Inspection | AOI Portal")(view_inspection)
             # ui.page(
             #     "/profile/{profile_id}/inspection/{inspection_id}",

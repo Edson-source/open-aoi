@@ -21,3 +21,6 @@ def crop_stat_image(im: Image.Image, cv_stat_value: List[int]) -> Image.Image:
     im = np.array(im)
     im = crop_stat_cv(im, cv_stat_value)
     return Image.fromarray(im)
+
+
+

@@ -16,7 +16,8 @@ setup(
     maintainer_email="chrnyaevek@gmail.com",
     entry_points={
         "console_scripts": [
-            f"aoi_image_acquisition = {package_name}.image_acquisition:main"
+            f"aoi_image_acquisition = {package_name}.service_image_acquisition:main",
+            f"aoi_identification = {package_name}.service_identification:main"
         ],
     },
 )

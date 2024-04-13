@@ -21,18 +21,21 @@ def aoi_launch_description():
         package="open_aoi_ros_services",
         executable="aoi_image_acquisition",
     )
+    aoi_identification = Node(
+        package="open_aoi_ros_services",
+        executable="aoi_identification",
+    )
     aoi_portal = Node(
         package="open_aoi_portal",
         executable="app",
     )
-    return LaunchDescription([aoi_image_acquisition, aoi_portal])
+    return LaunchDescription([aoi_image_acquisition, aoi_portal, aoi_identification])
 
 
 def generate_launch_description():
     return LaunchDescription(
         [
             aoi_launch_description(),
-            # TODO
-            # RegisterEventHandler(event_handler=OnProcessExit(on_exit=on_exit_restart)),
+            RegisterEventHandler(event_handler=OnProcessExit(on_exit=on_exit_restart)),
         ]
     )

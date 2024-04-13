@@ -23,6 +23,8 @@ find_package(rosidl_default_generators REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/ImageAcquisition.srv"
   "srv/ServiceStatus.srv"
+  "srv/InspectionTrigger.srv"
+  "srv/IdentificationTrigger.srv"
   DEPENDENCIES sensor_msgs std_msgs
 )
 
