@@ -1,3 +1,6 @@
+import asyncio
+import contextvars
+import functools
 from typing import Optional
 from nicegui import ui, app
 from sqlalchemy.orm import Session
@@ -7,6 +10,12 @@ from open_aoi.controllers.accessor import AccessorController
 from open_aoi.models import AccessorModel, engine
 from open_aoi_portal.settings import *
 
+
+async def to_thread(func, /, *args, **kwargs):
+    loop = asyncio.get_running_loop()
+    ctx = contextvars.copy_context()
+    func_call = functools.partial(ctx.run, func, *args, **kwargs)
+    return await loop.run_in_executor(None, func_call)
 
 def confirm(msg: str, callback: callable):
     with ui.dialog() as dialog, ui.card():

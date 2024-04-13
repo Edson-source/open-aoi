@@ -14,6 +14,7 @@ from open_aoi_portal.views.common import (
     inject_header,
     inject_text_field,
     get_session,
+    to_thread,
     scale,
 )
 
@@ -21,7 +22,13 @@ logger = logging.getLogger("ui.devices")
 
 
 def get_view(node: Node):
-    def view() -> Optional[RedirectResponse]:
+    def _heavy_capture_image(ip_address: str):
+        return node.capture_image(
+                    camera_ip_address=ip_address,
+                    camera_emulation_mode=True,
+                )
+
+    async def view() -> Optional[RedirectResponse]:
         session = get_session()
         access_controller = AccessorController(session)
         camera_controller = CameraController(session)
@@ -70,7 +77,7 @@ def get_view(node: Node):
             ui.notify("Camera was deleted!", type="positive")
             _inject_camera_list()
 
-        def _handle_capture_image():
+        async def _handle_capture_image():
             try:
                 assert camera_ip_address.validate()
             except AssertionError:
@@ -78,10 +85,7 @@ def get_view(node: Node):
                 return
             capture_image.disable()
             try:
-                im, error, error_description = node.capture_image(
-                    camera_ip_address=camera_ip_address.value.strip(),
-                    camera_emulation_mode=True,
-                )
+                im, error, error_description = await to_thread(_heavy_capture_image, camera_ip_address.value.strip())
             except ROSServiceError as e:
                 ui.notify(str(e), type="warning")
                 capture_image.enable()
@@ -92,15 +96,12 @@ def get_view(node: Node):
                 capture_image.enable()
                 return
 
-            # Reduce size, NiceGUI is not able to handle large images
+            # Reduce size to speed up network image transfer
             im = scale(im, 600)
-
-            with ui.dialog() as dialog, ui.card():
-                ui.interactive_image(im)
-                with ui.row().classes("w-full justify-end"):
-                    ui.button("Close", on_click=dialog.close, color="white")
-
-            dialog.open()
+            
+            image_dialog.open()
+            image_element.set_source(im)
+            
             capture_image.enable()
 
         # Local injections
@@ -127,7 +128,7 @@ def get_view(node: Node):
                                         "Remove",
                                         color="negative",
                                         on_click=(
-                                            lambda c: lambda: _handle_delete_camera(c)
+                                            lambda c: (lambda: _handle_delete_camera(c))
                                         )(camera),
                                     ).props("size=sm")
             else:
@@ -153,7 +154,7 @@ def get_view(node: Node):
                 "000.000.000.000",
                 15,
                 validation={
-                    "Value is too short": lambda value: len(value) > 7,
+                    "Value is too short": lambda value: len(value) >= 7,
                 },
             )
 
@@ -163,6 +164,12 @@ def get_view(node: Node):
                     "Capture image", on_click=_handle_capture_image, icon="photo_camera"
                 )
                 ui.button("Save", on_click=_handle_create_camera)
+
+        with ui.dialog() as image_dialog, ui.card():
+            image_element = ui.interactive_image()
+            with ui.row().classes("w-full justify-end"):
+                ui.button("Close", on_click=image_dialog.close, color="white")
+
 
         ui.markdown("##### **Registered devices**")
 

@@ -1,4 +1,5 @@
 import logging
+from functools import partial
 from typing import Optional
 
 from rclpy.node import Node
@@ -11,7 +12,6 @@ from open_aoi.controllers.accessor import AccessorController
 from open_aoi.controllers.camera import CameraController
 from open_aoi.models import TITLE_LIMIT
 from open_aoi_portal.views.common import (
-    scale,
     confirm,
     inject_header,
     inject_text_field,
@@ -45,33 +45,32 @@ def get_view(node: Node):
                 logger.exception(e)
                 ui.notify("Failed to create template")
                 return
+            
             ui.notify(f"Template {template.title} created!", type="positive")
             _inject_template_list()
 
-        def _handle_delete_template(template_id: int):
+        def _handle_delete_template(template: TemplateController._model):
             def execute():
                 try:
-                    template_controller.delete_by_id(template_id)
+                    template_controller.delete(template)
                     template_controller.commit()
                 except Exception as e:
                     logger.exception(e)
                     ui.notify("Failed to delete template!", type="negative")
                     return
+
                 ui.notify("Template was deleted!", type="positive")
                 _inject_template_list()
 
             confirm("Are you sure?", execute)
 
-        def _handle_preview_template(template_id: int):
+        async def _handle_preview_template(template: TemplateController._model):
             try:
-                template = template_controller.retrieve(template_id)
                 im = template.materialize_image()
             except Exception as e:
                 logger.exception(e)
                 ui.notify("Failed to open template!", type="negative")
                 return
-
-            im = scale(im, 600)
 
             with ui.dialog() as dialog, ui.card():
                 ui.interactive_image(im)
@@ -80,7 +79,7 @@ def get_view(node: Node):
 
             dialog.open()
 
-        def _handle_capture_image():
+        async def _handle_capture_image():
             nonlocal template_image
 
             try:
@@ -112,7 +111,7 @@ def get_view(node: Node):
                 return
 
             template_image = im
-            template_image_element.set_source(scale(im, 1000))
+            template_image_element.set_source(im)
 
             capture_image.enable()
 
@@ -124,6 +123,8 @@ def get_view(node: Node):
             with template_list_container:
                 if len(template_list):
                     for template in template_list:
+                        partial_preview = partial(_handle_preview_template, template)
+                        partial_delete = partial(_handle_delete_template, template)
                         with ui.item().props("clickable"):
                             with ui.item_section():
                                 with ui.row():
@@ -141,20 +142,12 @@ def get_view(node: Node):
                                     ).props("size=sm")
                                     ui.button(
                                         icon="preview",
-                                        on_click=(
-                                            lambda t: lambda: _handle_preview_template(
-                                                t.id
-                                            )
-                                        )(template),
+                                        on_click=partial_preview,
                                     ).props("size=sm")
                                     ui.button(
                                         "Remove",
                                         color="negative",
-                                        on_click=(
-                                            lambda t: lambda: _handle_delete_template(
-                                                t.id
-                                            )
-                                        )(template),
+                                        on_click=partial_delete,
                                     ).props("size=sm")
                 else:
                     with template_list_container:

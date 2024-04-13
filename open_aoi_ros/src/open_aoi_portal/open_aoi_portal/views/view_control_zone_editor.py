@@ -58,7 +58,7 @@ class Manager:
         ]
         self.step = step
 
-    def create_ui(self):
+    async def create_ui(self):
         with ui.interactive_image(
             self._frame[0],
             on_mouse=self._mouse_handler,
@@ -236,7 +236,7 @@ class Manager:
 
 
 def get_view(node: Node):
-    def view(template_id: int) -> Optional[RedirectResponse]:
+    async def view(template_id: int) -> Optional[RedirectResponse]:
         session = get_session()
         access_controller = AccessorController(session)
         template_controller = TemplateController(session)
@@ -400,7 +400,7 @@ def get_view(node: Node):
             manager = Manager(im, [100, im.size[0]])
             with ui.grid(columns=4).classes("justify-left w-full"):
                 with ui.column().classes("col-span-3"):
-                    manager.create_ui()
+                    await manager.create_ui()
                 with ui.list().classes("col-span-1").props(
                     "dense"
                 ) as control_zone_container:
