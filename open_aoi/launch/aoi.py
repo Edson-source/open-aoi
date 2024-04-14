@@ -19,23 +19,34 @@ def on_exit_restart(event: ProcessExited, context):
 def aoi_launch_description():
     aoi_image_acquisition = Node(
         package="open_aoi_ros_services",
-        executable="aoi_image_acquisition",
+        executable="open_aoi_image_acquisition",
     )
-    aoi_identification = Node(
+    aoi_product_identification = Node(
         package="open_aoi_ros_services",
-        executable="aoi_identification",
+        executable="open_aoi_product_identification",
+    )
+    aoi_control_execution = Node(
+        package="open_aoi_ros_services",
+        executable="open_aoi_control_execution",
     )
     aoi_portal = Node(
         package="open_aoi_portal",
         executable="app",
     )
-    return LaunchDescription([aoi_image_acquisition, aoi_portal, aoi_identification])
+    return LaunchDescription(
+        [
+            aoi_image_acquisition,
+            aoi_portal,
+            aoi_product_identification,
+            aoi_control_execution,
+        ]
+    )
 
 
 def generate_launch_description():
     return LaunchDescription(
         [
             aoi_launch_description(),
-            RegisterEventHandler(event_handler=OnProcessExit(on_exit=on_exit_restart)),
+            # RegisterEventHandler(event_handler=OnProcessExit(on_exit=on_exit_restart)),
         ]
     )

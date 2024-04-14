@@ -6,51 +6,43 @@
 """
 
 import os
-import numpy as np
 from typing import List, Optional
 
-from pypylon import pylon
-
 import rclpy
-from rclpy.node import Node
+import numpy as np
+from pypylon import pylon
 from rcl_interfaces.msg import ParameterDescriptor, SetParametersResult
 
-from open_aoi_ros_interfaces.srv import ImageAcquisition, ServiceStatus
-from open_aoi_core.services import IDLE, BUSY, ERROR
-from open_aoi_core.services.utils import encode_image
+from open_aoi_core.utils import encode_image
+from open_aoi_core.enums import ImageAcquisitionEnum
+from open_aoi_ros_interfaces.srv import ImageAcquisition
+from open_aoi_ros_services import StandardService
 
-NODE_NAME = "image_acquisition"
+
 EMULATION_DIR = "./emulation"
 
 
-class Service(Node):
-    camera_ip_address: str = ""
+class Service(StandardService):
+    NODE_NAME = ImageAcquisitionEnum.NODE_NAME.value
 
+    camera_ip_address: str = ""
     camera_enabled: bool = False
     camera_emulation_mode: bool = False
-
     camera: Optional[pylon.InstantCamera] = None
-    service_status_default: str = IDLE
-    service_status: str = service_status_default
 
     def __init__(self):
-        super().__init__(NODE_NAME)
+        super().__init__()
+
         # --- Services ---
         self.acquire_image_service = self.create_service(
             ImageAcquisition,
-            f"{NODE_NAME}/capture",
+            f"{self.NODE_NAME}/capture",
             self.acquire_image,
-        )
-
-        self.status_service = self.create_service(
-            ServiceStatus,
-            f"{NODE_NAME}/get_status",
-            self.expose_status,
         )
 
         # --- Parameters ---
         self.declare_parameter(
-            "camera_enabled",
+            ImageAcquisitionEnum.Parameter.CAMERA_ENABLED.value,
             value=self.camera_enabled,
             descriptor=ParameterDescriptor(
                 name="Camera enabled",
@@ -59,7 +51,7 @@ class Service(Node):
             ),
         )
         self.declare_parameter(
-            "camera_emulation_mode",
+            ImageAcquisitionEnum.Parameter.CAMERA_EMULATION_MODE.value,
             value=self.camera_emulation_mode,
             descriptor=ParameterDescriptor(
                 name="Camera emulation mode",
@@ -68,7 +60,7 @@ class Service(Node):
             ),
         )
         self.declare_parameter(
-            "camera_ip_address",
+            ImageAcquisitionEnum.Parameter.CAMERA_IP_ADDRESS.value,
             value=self.camera_ip_address,
             descriptor=ParameterDescriptor(
                 name="Camera IP address",
@@ -76,14 +68,9 @@ class Service(Node):
                 description="IP address of camera to use. If not provided, node will connect to the first found camera.",
             ),
         )
+
         self.add_on_set_parameters_callback(self._update_parameters)
-
-        self.logger = self.get_logger()
-
         self._reload_service()
-
-    def _set_status(self, msg: str):
-        self.service_status = msg
 
     def _update_parameters(self, parameters: List[rclpy.Parameter]):
         self.logger.info("Parameters update triggered")
@@ -155,17 +142,12 @@ class Service(Node):
                 self._set_status("Failed to setup camera")
                 return
 
-    def expose_status(self, request, response):
-        self.logger.info("Status requested")
-        response.status = self.service_status
-        return response
-
     def acquire_image(self, request, response):
         self.logger.info("Image requested")
 
         if self.camera is None:
             response.image = encode_image(np.zeros((1, 1, 1)))
-            response.error = "CAMERA_GENERAL"
+            response.error = ImageAcquisitionEnum.Error.GENERAL.value
             response.error_description = (
                 "Capture image called before camera initialization"
             )
@@ -177,7 +159,7 @@ class Service(Node):
                 image = grab_result.Array
                 grab_result.Release()
                 response.image = encode_image(image)
-                response.error = "NONE"
+                response.error = ImageAcquisitionEnum.Error.NONE.value
                 response.error_description = ""
                 return response
             else:
@@ -186,13 +168,13 @@ class Service(Node):
                     "Error: ", grab_result.ErrorCode, grab_result.ErrorDescription
                 )
                 response.image = encode_image(np.zeros((1, 1, 1)))
-                response.error = "CAMERA_GENERAL"
+                response.error = ImageAcquisitionEnum.Error.GENERAL.value
                 response.error_description = "Capture image failed"
                 return response
         except Exception as e:
             self.logger.exception(e)
             response.image = encode_image(np.zeros((1, 1, 1)))
-            response.error = "CAMERA_GENERAL"
+            response.error = ImageAcquisitionEnum.Error.GENERAL.value
             response.error_description = "Capture image failed"
             return response
 

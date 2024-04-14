@@ -1,15 +1,30 @@
-ERROR = "error"
-IDLE = "idle"
-BUSY = "busy"
+from rclpy.node import Node
+from open_aoi_core.enums import ServiceStatusEnum
+from open_aoi_ros_interfaces.srv import ServiceStatus
 
 
-class StandardServiceMixin:
-    service_status_default: str = IDLE
-    service_status: str = service_status_default
+class StandardService(Node):
+    NODE_NAME: str
 
-    def _set_status(self, msg: str):
-        self.service_status = msg
+    service_status: ServiceStatusEnum = ServiceStatusEnum.IDLE
+    service_status_reason: str = ""
 
-    def expose_status(self, request, response):
-        response.status = self.service_status
+    def __init__(self):
+        super().__init__(self.NODE_NAME)
+        self.logger = self.get_logger()
+
+        self._status_service_instance = self.create_service(
+            ServiceStatus,
+            f"{self.NODE_NAME}/status",
+            self._get_status,
+        )
+        self.logger.info("Service started")
+
+    def _set_status(self, status: ServiceStatusEnum, reason: str = ""):
+        self.service_status = status
+        self.service_status_reason = reason
+
+    def _get_status(self, request, response):
+        response.status = self.service_status.value
+        response.reason = self.service_status_reason
         return response

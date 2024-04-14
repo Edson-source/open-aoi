@@ -7,7 +7,8 @@ from rcl_interfaces.srv._set_parameters import SetParameters
 from PIL import Image
 
 from open_aoi_core.exceptions import ROSServiceError
-from open_aoi_core.services.utils import decode_image
+from open_aoi_core.utils import decode_image
+from open_aoi_core.enums import ImageAcquisitionEnum
 from open_aoi_ros_interfaces.srv import ImageAcquisition
 
 
@@ -15,8 +16,6 @@ class ROSImageAcquisitionClient:
     image_acquisition_capture_cli: Client
     image_acquisition_get_status_cli: Client
     image_acquisition_set_parameters_cli: Client
-
-    CAMERA_ERROR_NONE = "NONE"
 
     def _publish_image_acquisition_service_parameters(
         self,
@@ -27,9 +26,12 @@ class ROSImageAcquisitionClient:
         req = SetParameters.Request()
         parameters = []
         for param_name, param_value in [
-            ["camera_emulation_mode", camera_emulation_mode],
-            ["camera_ip_address", camera_ip_address],
-            ["camera_enabled", True],
+            [
+                ImageAcquisitionEnum.Parameter.CAMERA_EMULATION_MODE.value,
+                camera_emulation_mode,
+            ],
+            [ImageAcquisitionEnum.Parameter.CAMERA_IP_ADDRESS.value, camera_ip_address],
+            [ImageAcquisitionEnum.Parameter.CAMERA_ENABLED.value, True],
         ]:
             if isinstance(param_value, float):
                 val = ParameterValue(

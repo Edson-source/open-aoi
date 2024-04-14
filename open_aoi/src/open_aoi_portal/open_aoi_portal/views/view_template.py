@@ -6,6 +6,7 @@ from rclpy.node import Node
 from nicegui import ui, app
 from fastapi.responses import RedirectResponse
 
+from open_aoi_core.enums import ImageAcquisitionEnum
 from open_aoi_core.exceptions import AuthException, ROSServiceError
 from open_aoi_core.controllers.template import TemplateController
 from open_aoi_core.controllers.accessor import AccessorController
@@ -45,7 +46,7 @@ def get_view(node: Node):
                 logger.exception(e)
                 ui.notify("Failed to create template")
                 return
-            
+
             ui.notify(f"Template {template.title} created!", type="positive")
             _inject_template_list()
 
@@ -105,7 +106,7 @@ def get_view(node: Node):
                 capture_image.enable()
                 return
 
-            if error != node.CAMERA_ERROR_NONE:
+            if error != ImageAcquisitionEnum.Error.NONE.value:
                 ui.notify(error_description, type="negative")
                 capture_image.enable()
                 return

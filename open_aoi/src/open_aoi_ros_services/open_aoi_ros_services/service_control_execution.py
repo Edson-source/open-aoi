@@ -2,67 +2,47 @@
     This script define control execution logic to apply control handler to control zone in the tested image.
 """
 
-from io import StringIO
-
 import rclpy
-from rclpy.node import Node
+from io import StringIO
 from dotenv import dotenv_values
 
+from open_aoi_ros_services import StandardService
 from open_aoi_ros_interfaces.msg import ControlLog
-from open_aoi_ros_interfaces.srv import ServiceStatus, ExecutionControlTrigger
-from open_aoi_ros_services import StandardServiceMixin
-from open_aoi_core.services.utils import decode_image
+from open_aoi_ros_interfaces.srv import ControlExecutionTrigger
+from open_aoi_core.enums import ControlExecutionEnum, ServiceStatusEnum
+from open_aoi_core.utils import decode_image
 from open_aoi_core.mixins.module_source import dynamic_import, IModule
 
 
-NODE_NAME = "control_execution"
-
-
-class Error:
-    none = "NONE"
-    control_handler_invalid = "CONTROL_HANDLER_INVALID"
-    control_zone_invalid = "CONTROL_ZONE_INVALID"
-    environment_invalid = "ENVIRONMENT_INVALID"
-    image_invalid = "IMAGE_INVALID"
-    general = "GENERAL"
-
-
-class Service(Node, StandardServiceMixin):
-    service_status_default: str = "Working"
-    service_status: str = service_status_default
+class Service(StandardService):
+    NODE_NAME = ControlExecutionEnum.NODE_NAME.value
 
     def __init__(self):
-        super().__init__(NODE_NAME)
-        self.logger = self.get_logger()
-
-        # --- Services ---
+        super().__init__()
         self.control_trigger_service = self.create_service(
             None,
-            f"{NODE_NAME}/control_execution/trigger",
+            f"{self.NODE_NAME}/control_execution/trigger",
             self.control_execution_trigger,
-        )
-
-        self.status_service = self.create_service(
-            ServiceStatus,
-            f"{NODE_NAME}/status",
-            self.expose_status,
         )
 
     def control_execution_trigger(
         self,
-        request: ExecutionControlTrigger.Request,
-        response: ExecutionControlTrigger.Response,
+        request: ControlExecutionTrigger.Request,
+        response: ControlExecutionTrigger.Response,
     ):
-        # TODO: align and isolate
+        self._set_status(ServiceStatusEnum.BUSY.value)
+
+        # TODO: align and isolate product
         try:
             test_image = decode_image(request.test_image)
         except Exception as e:
             self.logger.error(str(e))
             self.logger.info("Failed to decode test image")
 
-            request.error = Error.image_invalid
+            request.error = ControlExecutionEnum.Error.IMAGE_INVALID.value
             request.error_description = "Failed to decode test image"
 
+            self._set_status(ServiceStatusEnum.IDLE.value)
             return response
 
         try:
@@ -71,9 +51,10 @@ class Service(Node, StandardServiceMixin):
             self.logger.error(str(e))
             self.logger.info("Failed to decode template image")
 
-            response.error = Error.image_invalid
+            response.error = ControlExecutionEnum.Error.IMAGE_INVALID.value
             response.error_description = "Failed to decode template image"
 
+            self._set_status(ServiceStatusEnum.IDLE.value)
             return response
 
         source = request.control_handler
@@ -85,11 +66,12 @@ class Service(Node, StandardServiceMixin):
                 "Failed to import control handler specification from source"
             )
 
-            response.error = Error.control_handler_invalid
+            response.error = ControlExecutionEnum.Error.CONTROL_HANDLER_INVALID.value
             response.error_description = (
                 "Failed to import control handler specification from source"
             )
 
+            self._set_status(ServiceStatusEnum.IDLE.value)
             return response
 
         environment = StringIO(request.environment)
@@ -99,9 +81,10 @@ class Service(Node, StandardServiceMixin):
             self.logger.error(str(e))
             self.logger.info(f"Failed to load environment")
 
-            response.error = Error.control_handler_invalid
+            response.error = ControlExecutionEnum.Error.ENVIRONMENT_INVALID.value
             response.error_description = f"Failed to load environment"
 
+            self._set_status(ServiceStatusEnum.IDLE.value)
             return response
 
         control_zone_list = [
@@ -127,14 +110,17 @@ class Service(Node, StandardServiceMixin):
                 ros_log.log = log.log
                 ros_log.passed = log.passed
                 response.control_log_list[i] = ros_log
+                self._set_status(ServiceStatusEnum.IDLE.value)
                 return response
+
         except Exception as e:
             self.logger.error(str(e))
             self.logger.info(f"Failed to execute control handler")
 
-            response.error = Error.general
+            response.error = ControlExecutionEnum.Error.GENERAL.value
             response.error_description = f"Failed to execute control handler: {str(e)}"
 
+            self._set_status(ServiceStatusEnum.IDLE.value)
             return response
 
 

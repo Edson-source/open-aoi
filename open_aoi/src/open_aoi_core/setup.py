@@ -9,7 +9,7 @@ setup(
         package_name,
         f"{package_name}/controllers",
         f"{package_name}/mixins",
-        f"{package_name}/scripts",
+        f"{package_name}/defaults",
         f"{package_name}/tests",
     ],
     data_files=[

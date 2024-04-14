@@ -2,6 +2,25 @@ from typing import List
 import numpy as np
 import cv2 as cv
 from PIL import Image
+from sensor_msgs.msg import Image as ImageMsg
+
+
+def encode_image(self, im: np.ndarray):
+    # Convert image for to ROS image message format
+    msg = ImageMsg()
+    msg.header.stamp = self.get_clock().now().to_msg()
+    msg.header.frame_id = "0"
+    msg.encoding = "bgr8"
+    msg.height, msg.width = im.shape[:2]
+    msg.step = msg.width
+    msg.data = im.flatten().astype(int).tolist()
+    return msg
+
+
+def decode_image(msg: ImageMsg) -> np.ndarray:
+    # Convert image from ROS image format
+    data = np.array(msg.data)
+    return data.reshape((msg.height, msg.width))
 
 
 def crop_stat_cv(im: np.ndarray, cv_stat_value: List[int]) -> np.ndarray:
