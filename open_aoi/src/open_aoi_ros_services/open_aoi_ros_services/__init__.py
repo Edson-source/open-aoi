@@ -139,7 +139,6 @@ class ImageAcquisitionClient(IntegratedClient):
         req.parameters = parameters
 
         future = self.image_acquisition_set_parameters_cli.call_async(req)
-        rclpy.spin_until_future_complete(self, future)
         return future.result()
 
     def image_acquisition_capture_image(
@@ -149,6 +148,7 @@ class ImageAcquisitionClient(IntegratedClient):
     ) -> Tuple[Optional[np.ndarray], str, str]:
         try:
             self.logger.info("Image acquisition parameter update request dispatched")
+
             self.image_acquisition_set_parameters(
                 camera_ip_address, camera_emulation_mode
             )
@@ -156,8 +156,7 @@ class ImageAcquisitionClient(IntegratedClient):
             req = ImageAcquisition.Request()
             self.logger.info("Image acquisition request dispatched")
 
-            future = self.image_acquisition_set_parameters_cli.call_async(req)
-            rclpy.spin_until_future_complete(self, future)
+            future = self.image_acquisition_capture_cli.call_async(req)
             response = future.result()
 
             error = response.error
@@ -183,7 +182,6 @@ class ProductIdentificationClient(ImageAcquisitionClient):
             self.logger.info("Identification request dispatched")
 
             future = self.product_identification_get_barcode_cli.call_async(req)
-            rclpy.spin_until_future_complete(self, future)
             response = future.result()
 
             return response.identification_code
@@ -203,7 +201,8 @@ class MediatorClient(ProductIdentificationClient):
             req.inspection_profile_id = inspection_profile_id
             self.logger.info("Inspection request dispatched")
 
-            response = self.mediator_execute_inspection_cli.call(req)
+            future = self.mediator_execute_inspection_cli.call_async(req)
+            response = future.result()
 
             return (
                 response.overall_passed,
