@@ -6,7 +6,7 @@ from nicegui import ui, app
 from fastapi.responses import RedirectResponse
 
 from open_aoi_portal.settings import ACCESS_PAGE
-from open_aoi_core.constants import ImageAcquisitionEnum
+from open_aoi_core.constants import ImageAcquisitionConstants
 from open_aoi_core.exceptions import AuthException, ROSServiceError
 from open_aoi_core.controllers.camera import CameraController
 from open_aoi_core.controllers.accessor import AccessorController
@@ -93,15 +93,15 @@ def get_view(node: Node):
                 capture_image.enable()
                 return
 
-            if error != ImageAcquisitionEnum.Error.value.NONE.value:
+            if error != ImageAcquisitionConstants.Error.NONE:
                 ui.notify(error_description, type="negative")
                 capture_image.enable()
                 return
 
             if im is None:
-                ui.notify('Failed to capture image', type='warning')
+                ui.notify("Failed to capture image", type="warning")
                 return
-            
+
             # Reduce size to speed up network image transfer
             image_dialog.open()
             image_element.set_source(im)

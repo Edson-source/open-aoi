@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 
 import rclpy
 import numpy as np
@@ -10,17 +10,38 @@ from rcl_interfaces.msg import Parameter, ParameterType, ParameterValue
 from open_aoi_core.utils import decode_image
 from open_aoi_core.exceptions import ROSServiceError
 from open_aoi_ros_interfaces.srv import ServiceStatus, ImageAcquisition
-from open_aoi_core.constants import ImageAcquisitionEnum, ServiceStatusEnum
+from open_aoi_core.constants import ImageAcquisitionConstants, ServiceStatusEnum
 
 
 class IntegratedClient(Node):
+    NODE_NAME: str
+
     image_acquisition_capture_cli: ServiceClient
-    image_acquisition_set_parameters_cli: ServiceClient
     image_acquisition_get_status_cli: ServiceClient
+    image_acquisition_set_parameters_cli: ServiceClient
+
+    product_identification_get_barcode_cli: ServiceClient
+    product_identification_get_status_cli: ServiceClient
 
     def __init__(self) -> None:
-        super().__init__("open_aoi_portal")
+        super().__init__(self.NODE_NAME)
         self.logger = self.get_logger()
+
+        self._acquire_service(
+            f"{ImageAcquisitionConstants.NODE_NAME}/capture",
+            "image_acquisition_capture_cli",
+            ImageAcquisition,
+        )
+        self._acquire_service(
+            f"{ImageAcquisitionConstants.NODE_NAME}/get_status",
+            "image_acquisition_get_status_cli",
+            ServiceStatus,
+        )
+        self._acquire_service(
+            f"{ImageAcquisitionConstants.NODE_NAME}/set_parameters",
+            "image_acquisition_set_parameters_cli",
+            SetParameters,
+        )
 
         self._acquire_service(
             "image_acquisition/capture",
@@ -32,17 +53,17 @@ class IntegratedClient(Node):
             "image_acquisition_get_status_cli",
             ServiceStatus,
         )
-        self._acquire_service(
-            "image_acquisition/set_parameters",
-            "image_acquisition_set_parameters_cli",
-            SetParameters,
-        )
 
     def _acquire_service(self, name: str, property_name: str, msg):
         cli = self.create_client(msg, name)
         setattr(self, property_name, cli)
-        while not cli.wait_for_service(timeout_sec=1.0):
-            self.logger.info(f"Service {name} not available, waiting again...")
+
+    def _await_dependencies(self, service_cli_list: List[ServiceClient]):
+        for cli in service_cli_list:
+            while not cli.wait_for_service(timeout_sec=1.0):
+                self.logger.info(
+                    f"Service {cli.srv_name} not available, waiting again..."
+                )
 
     def _resolve_param_type(param_value):
         if isinstance(param_value, float):
@@ -75,14 +96,14 @@ class ImageAcquisitionClient(IntegratedClient):
         parameters = []
         for param_name, param_value in [
             [
-                ImageAcquisitionEnum.Parameter.value.CAMERA_EMULATION_MODE.value,
+                ImageAcquisitionConstants.Parameter.CAMERA_EMULATION_MODE,
                 camera_emulation_mode,
             ],
             [
-                ImageAcquisitionEnum.Parameter.value.CAMERA_IP_ADDRESS.value,
+                ImageAcquisitionConstants.Parameter.CAMERA_IP_ADDRESS,
                 camera_ip_address,
             ],
-            [ImageAcquisitionEnum.Parameter.value.CAMERA_ENABLED.value, True],
+            [ImageAcquisitionConstants.Parameter.CAMERA_ENABLED, True],
         ]:
             val = self._resolve_param_type(param_value)
             parameters.append(Parameter(name=param_name, value=val))
@@ -125,14 +146,16 @@ class ImageAcquisitionClient(IntegratedClient):
             )
 
 
-class StandardService(ImageAcquisitionClient):
-    NODE_NAME: str
+class ProductIdentificationClient(ImageAcquisitionClient):
+    pass
 
+
+class StandardService(ProductIdentificationClient):
     service_status: ServiceStatusEnum = ServiceStatusEnum.IDLE
     service_status_reason: str = ""
 
     def __init__(self):
-        super().__init__(self.NODE_NAME)
+        super().__init__()
         self.logger = self.get_logger()
 
         self._status_service_instance = self.create_service(

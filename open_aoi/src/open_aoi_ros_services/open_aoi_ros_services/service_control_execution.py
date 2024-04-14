@@ -22,7 +22,7 @@ class Service(StandardService):
         self.control_execution_service = self.create_service(
             ControlExecutionTrigger,
             f"{self.NODE_NAME}/execute_control",
-            self.control_execution,
+            self.execute_control,
         )
 
     def execute_control(

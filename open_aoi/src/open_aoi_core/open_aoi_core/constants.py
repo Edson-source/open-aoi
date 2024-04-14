@@ -41,14 +41,14 @@ class ProductIdentificationEnum(Enum):
         GENERAL = "GENERAL"
 
 
-class ImageAcquisitionEnum(Enum):
+class ImageAcquisitionConstants:
     NODE_NAME = "image_acquisition"
 
-    class Error(Enum):
+    class Error:
         NONE = "NONE"
         GENERAL = "GENERAL"
 
-    class Parameter(Enum):
+    class Parameter:
         CAMERA_ENABLED = "camera_enabled"
         CAMERA_EMULATION_MODE = "camera_emulation_mode"
         CAMERA_IP_ADDRESS = "camera_ip_address"

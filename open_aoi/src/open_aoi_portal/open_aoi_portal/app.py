@@ -28,11 +28,19 @@ from open_aoi_ros_services import StandardService
 # )
 
 
-class AOIPortalNode(StandardService):
+class Service(StandardService):
     NODE_NAME = "open_aoi_portal"
 
     def __init__(self) -> None:
         super().__init__()
+
+        self._await_dependencies(
+            [
+                self.image_acquisition_capture_cli,
+                self.image_acquisition_set_parameters_cli,
+                self.image_acquisition_get_status_cli,
+            ]
+        )
 
         with Client.auto_index_client:
             ui.page(HOME_PAGE, title=f"Home | {APP_TITLE}")(get_view_home(self))
@@ -74,7 +82,7 @@ def main() -> None:
 
 def ros_main() -> None:
     rclpy.init()
-    node = AOIPortalNode()
+    node = Service()
     try:
         rclpy.spin(node)
     except ExternalShutdownException:

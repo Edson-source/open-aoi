@@ -6,7 +6,7 @@ from rclpy.node import Node
 from nicegui import ui, app
 from fastapi.responses import RedirectResponse
 
-from open_aoi_core.constants import ImageAcquisitionEnum
+from open_aoi_core.constants import ImageAcquisitionConstants
 from open_aoi_core.exceptions import AuthException, ROSServiceError
 from open_aoi_core.controllers.template import TemplateController
 from open_aoi_core.controllers.accessor import AccessorController
@@ -106,7 +106,7 @@ def get_view(node: Node):
                 capture_image.enable()
                 return
 
-            if error != ImageAcquisitionEnum.Error.value.NONE.value:
+            if error != ImageAcquisitionConstants.Error.value.NONE.value:
                 ui.notify(error_description, type="negative")
                 capture_image.enable()
                 return

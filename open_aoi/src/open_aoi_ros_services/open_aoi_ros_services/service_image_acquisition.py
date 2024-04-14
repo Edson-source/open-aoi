@@ -14,7 +14,7 @@ from pypylon import pylon
 from rcl_interfaces.msg import ParameterDescriptor, SetParametersResult
 
 from open_aoi_core.utils import encode_image
-from open_aoi_core.constants import ImageAcquisitionEnum
+from open_aoi_core.constants import ImageAcquisitionConstants
 from open_aoi_ros_interfaces.srv import ImageAcquisition
 from open_aoi_ros_services import StandardService
 
@@ -23,7 +23,7 @@ EMULATION_DIR = "./emulation"
 
 
 class Service(StandardService):
-    NODE_NAME = ImageAcquisitionEnum.NODE_NAME.value
+    NODE_NAME = ImageAcquisitionConstants.NODE_NAME
 
     camera_ip_address: str = ""
     camera_enabled: bool = False
@@ -44,7 +44,7 @@ class Service(StandardService):
 
         # --- Parameters ---
         self.declare_parameter(
-            ImageAcquisitionEnum.Parameter.value.CAMERA_ENABLED.value,
+            ImageAcquisitionConstants.Parameter.CAMERA_ENABLED,
             value=self.camera_enabled,
             descriptor=ParameterDescriptor(
                 name="Camera enabled",
@@ -53,7 +53,7 @@ class Service(StandardService):
             ),
         )
         self.declare_parameter(
-            ImageAcquisitionEnum.Parameter.value.CAMERA_EMULATION_MODE.value,
+            ImageAcquisitionConstants.Parameter.CAMERA_EMULATION_MODE,
             value=self.camera_emulation_mode,
             descriptor=ParameterDescriptor(
                 name="Camera emulation mode",
@@ -62,7 +62,7 @@ class Service(StandardService):
             ),
         )
         self.declare_parameter(
-            ImageAcquisitionEnum.Parameter.value.CAMERA_IP_ADDRESS.value,
+            ImageAcquisitionConstants.Parameter.CAMERA_IP_ADDRESS,
             value=self.camera_ip_address,
             descriptor=ParameterDescriptor(
                 name="Camera IP address",
@@ -152,7 +152,7 @@ class Service(StandardService):
         self.logger.info("Image requested")
 
         if self.camera is None:
-            response.error = ImageAcquisitionEnum.Error.value.GENERAL.value
+            response.error = ImageAcquisitionConstants.Error.GENERAL
             response.error_description = (
                 "Capture image called before camera initialization"
             )
@@ -164,7 +164,7 @@ class Service(StandardService):
                 image = grab_result.Array
                 grab_result.Release()
                 response.image = encode_image(image)
-                response.error = ImageAcquisitionEnum.Error.value.NONE.value
+                response.error = ImageAcquisitionConstants.Error.NONE
                 response.error_description = ""
                 return response
             else:
@@ -172,12 +172,12 @@ class Service(StandardService):
                 self.logger.error(
                     "Error: ", grab_result.ErrorCode, grab_result.ErrorDescription
                 )
-                response.error = ImageAcquisitionEnum.Error.value.GENERAL.value
+                response.error = ImageAcquisitionConstants.Error.GENERAL
                 response.error_description = "Capture image failed"
                 return response
         except Exception as e:
             self.logger.error(str(e))
-            response.error = ImageAcquisitionEnum.Error.value.GENERAL.value
+            response.error = ImageAcquisitionConstants.Error.GENERAL
             response.error_description = "Capture image failed"
             return response
 
