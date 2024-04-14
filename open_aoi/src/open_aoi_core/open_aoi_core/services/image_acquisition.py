@@ -27,11 +27,14 @@ class ROSImageAcquisitionClient:
         parameters = []
         for param_name, param_value in [
             [
-                ImageAcquisitionEnum.Parameter.CAMERA_EMULATION_MODE.value,
+                ImageAcquisitionEnum.Parameter.value.CAMERA_EMULATION_MODE.value,
                 camera_emulation_mode,
             ],
-            [ImageAcquisitionEnum.Parameter.CAMERA_IP_ADDRESS.value, camera_ip_address],
-            [ImageAcquisitionEnum.Parameter.CAMERA_ENABLED.value, True],
+            [
+                ImageAcquisitionEnum.Parameter.value.CAMERA_IP_ADDRESS.value,
+                camera_ip_address,
+            ],
+            [ImageAcquisitionEnum.Parameter.value.CAMERA_ENABLED.value, True],
         ]:
             if isinstance(param_value, float):
                 val = ParameterValue(
@@ -67,7 +70,7 @@ class ROSImageAcquisitionClient:
         self,
         camera_ip_address: Optional[str] = None,
         camera_emulation_mode: bool = False,
-    ) -> Tuple[Image.Image, str, str]:
+    ) -> Tuple[Optional[Image.Image], str, str]:
         try:
             self._publish_image_acquisition_service_parameters(
                 camera_ip_address, camera_emulation_mode
@@ -82,8 +85,11 @@ class ROSImageAcquisitionClient:
                     error_description = response.error_description
 
                     data = decode_image(response.image)
-                    im = Image.fromarray(data)
+                    im = Image.fromarray(data) if len(data) else None
 
                     return im, error, error_description
-        except:
-            raise ROSServiceError("Failed to obtain service status")
+        except Exception as e:
+            self.logger.error(str(e))
+            raise ROSServiceError(
+                "Failed to capture image. Service did not respond correctly."
+            )

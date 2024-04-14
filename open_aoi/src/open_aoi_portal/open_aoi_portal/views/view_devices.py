@@ -94,11 +94,15 @@ def get_view(node: Node):
                 capture_image.enable()
                 return
 
-            if error != ImageAcquisitionEnum.Error.NONE.value:
+            if error != ImageAcquisitionEnum.Error.value.NONE.value:
                 ui.notify(error_description, type="negative")
                 capture_image.enable()
                 return
 
+            if im is None:
+                ui.notify('Failed to capture image', type='warning')
+                return
+            
             # Reduce size to speed up network image transfer
             im = scale(im, 600)
 

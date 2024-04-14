@@ -15,7 +15,7 @@ class StandardService(Node):
 
         self._status_service_instance = self.create_service(
             ServiceStatus,
-            f"{self.NODE_NAME}/status",
+            f"{self.NODE_NAME}/get_status",
             self._get_status,
         )
         self.logger.info("Service started")

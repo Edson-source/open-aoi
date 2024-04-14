@@ -6,10 +6,10 @@
 """
 
 import os
+import random
 from typing import List, Optional
 
 import rclpy
-import numpy as np
 from pypylon import pylon
 from rcl_interfaces.msg import ParameterDescriptor, SetParametersResult
 
@@ -30,6 +30,8 @@ class Service(StandardService):
     camera_emulation_mode: bool = False
     camera: Optional[pylon.InstantCamera] = None
 
+    emulation_images = os.listdir(EMULATION_DIR)
+
     def __init__(self):
         super().__init__()
 
@@ -42,7 +44,7 @@ class Service(StandardService):
 
         # --- Parameters ---
         self.declare_parameter(
-            ImageAcquisitionEnum.Parameter.CAMERA_ENABLED.value,
+            ImageAcquisitionEnum.Parameter.value.CAMERA_ENABLED.value,
             value=self.camera_enabled,
             descriptor=ParameterDescriptor(
                 name="Camera enabled",
@@ -51,7 +53,7 @@ class Service(StandardService):
             ),
         )
         self.declare_parameter(
-            ImageAcquisitionEnum.Parameter.CAMERA_EMULATION_MODE.value,
+            ImageAcquisitionEnum.Parameter.value.CAMERA_EMULATION_MODE.value,
             value=self.camera_emulation_mode,
             descriptor=ParameterDescriptor(
                 name="Camera emulation mode",
@@ -60,7 +62,7 @@ class Service(StandardService):
             ),
         )
         self.declare_parameter(
-            ImageAcquisitionEnum.Parameter.CAMERA_IP_ADDRESS.value,
+            ImageAcquisitionEnum.Parameter.value.CAMERA_IP_ADDRESS.value,
             value=self.camera_ip_address,
             descriptor=ParameterDescriptor(
                 name="Camera IP address",
@@ -97,6 +99,7 @@ class Service(StandardService):
     def _acquire_camera(self):
         self.logger.info("Camera connection requested")
         if self.camera is not None:
+            # TODO: close if ip does not match
             self.logger.info("Existing camera detected. Closing...")
             self.camera.Close()
 
@@ -108,14 +111,17 @@ class Service(StandardService):
                 tlf: pylon.TlFactory = pylon.TlFactory.GetInstance()
                 self.camera = pylon.InstantCamera(tlf.CreateFirstDevice())
                 self.camera.Open()
-                self.camera.ImageFilename = EMULATION_DIR
+                sample = f"{EMULATION_DIR}/{random.sample(self.emulation_images, 1)[0]}"
+                self.logger.info(f"Sample image selected: {sample}")
+                self.camera.ImageFilename = sample
+                self.camera.PixelFormat = "RGB8Packed"
                 self.camera.ImageFileMode = "On"
                 self.camera.TestImageSelector = "Off"
                 self.camera.Height = 2048
                 self.camera.Width = 2592
                 self._set_status = "Connected to camera: EMULATION"
             except Exception as e:
-                self.logger.exception(e)
+                self.logger.error(str(e))
                 self._set_status("Failed to setup emulator")
                 return
         # Real camera
@@ -138,7 +144,7 @@ class Service(StandardService):
                 self.camera.Open()
                 self.service_status = f"Connected to camera: {self.camera_ip_address}"
             except Exception as e:
-                self.logger.exception(e)
+                self.logger.error(str(e))
                 self._set_status("Failed to setup camera")
                 return
 
@@ -146,8 +152,7 @@ class Service(StandardService):
         self.logger.info("Image requested")
 
         if self.camera is None:
-            response.image = encode_image(np.zeros((1, 1, 1)))
-            response.error = ImageAcquisitionEnum.Error.GENERAL.value
+            response.error = ImageAcquisitionEnum.Error.value.GENERAL.value
             response.error_description = (
                 "Capture image called before camera initialization"
             )
@@ -159,7 +164,7 @@ class Service(StandardService):
                 image = grab_result.Array
                 grab_result.Release()
                 response.image = encode_image(image)
-                response.error = ImageAcquisitionEnum.Error.NONE.value
+                response.error = ImageAcquisitionEnum.Error.value.NONE.value
                 response.error_description = ""
                 return response
             else:
@@ -167,14 +172,12 @@ class Service(StandardService):
                 self.logger.error(
                     "Error: ", grab_result.ErrorCode, grab_result.ErrorDescription
                 )
-                response.image = encode_image(np.zeros((1, 1, 1)))
-                response.error = ImageAcquisitionEnum.Error.GENERAL.value
+                response.error = ImageAcquisitionEnum.Error.value.GENERAL.value
                 response.error_description = "Capture image failed"
                 return response
         except Exception as e:
-            self.logger.exception(e)
-            response.image = encode_image(np.zeros((1, 1, 1)))
-            response.error = ImageAcquisitionEnum.Error.GENERAL.value
+            self.logger.error(str(e))
+            response.error = ImageAcquisitionEnum.Error.value.GENERAL.value
             response.error_description = "Capture image failed"
             return response
 

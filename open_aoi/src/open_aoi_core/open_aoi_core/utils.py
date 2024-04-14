@@ -5,11 +5,9 @@ from PIL import Image
 from sensor_msgs.msg import Image as ImageMsg
 
 
-def encode_image(self, im: np.ndarray):
+def encode_image(im: np.ndarray):
     # Convert image for to ROS image message format
     msg = ImageMsg()
-    msg.header.stamp = self.get_clock().now().to_msg()
-    msg.header.frame_id = "0"
     msg.encoding = "bgr8"
     msg.height, msg.width = im.shape[:2]
     msg.step = msg.width
@@ -20,7 +18,7 @@ def encode_image(self, im: np.ndarray):
 def decode_image(msg: ImageMsg) -> np.ndarray:
     # Convert image from ROS image format
     data = np.array(msg.data)
-    return data.reshape((msg.height, msg.width))
+    return data.reshape((msg.height, msg.width, 3))
 
 
 def crop_stat_cv(im: np.ndarray, cv_stat_value: List[int]) -> np.ndarray:

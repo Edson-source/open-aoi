@@ -1,9 +1,6 @@
-from typing import List
-
-import cv2 as cv
 import numpy as np
-
-from open_aoi_core.mixins.module_source import IModule
+from typing import List
+from open_aoi_core.content.modules import IModule
 
 
 def iter_average_h(im: np.ndarray):

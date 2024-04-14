@@ -1,6 +1,6 @@
 import numpy as np
 from typing import List
-from open_aoi_core.mixins.module_source import IModule
+from open_aoi_core.content.modules import IModule
 
 
 class Module(IModule):
