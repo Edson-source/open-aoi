@@ -55,7 +55,7 @@ def dynamic_import(source: bytes) -> IModule:
 
     try:
         assert ctx.get("DOCUMENTATION") is not None, "Documentation is missing!"
-        assert ctx.get("module") is not None, "Process function is missing!"
+        assert ctx.get("module") is not None, "Module instance function is missing!"
         assert isinstance(
             ctx.get("module"), IModule
         ), "Module does not provide IModule interface!"

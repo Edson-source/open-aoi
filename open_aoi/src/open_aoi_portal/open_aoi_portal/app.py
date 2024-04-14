@@ -37,8 +37,7 @@ class Service(StandardService):
         self._await_dependencies(
             [
                 self.image_acquisition_capture_cli,
-                self.image_acquisition_set_parameters_cli,
-                self.image_acquisition_get_status_cli,
+                self.mediator_execute_inspection_cli,
             ]
         )
 

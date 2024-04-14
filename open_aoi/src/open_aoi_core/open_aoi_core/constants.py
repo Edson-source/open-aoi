@@ -33,10 +33,10 @@ class ControlExecutionConstants:
         GENERAL = "GENERAL"
 
 
-class ProductIdentificationConstants(Enum):
+class ProductIdentificationConstants:
     NODE_NAME = "product_identification"
 
-    class Error(Enum):
+    class Error:
         NONE = "NONE"
         GENERAL = "GENERAL"
 
@@ -54,7 +54,7 @@ class ImageAcquisitionConstants:
         CAMERA_IP_ADDRESS = "CAMERA_IP_ADDRESS"
 
 
-class MediatorService:
+class MediatorServiceConstants:
     NODE_NAME = "mediator"
 
     class Error:

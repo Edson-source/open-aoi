@@ -2,6 +2,8 @@ import numpy as np
 from typing import List
 from open_aoi_core.content.modules import IModule
 
+DOCUMENTATION = "This is dummy module that does nothing"
+
 
 class Module(IModule):
     def process(
@@ -13,3 +15,6 @@ class Module(IModule):
     ) -> List[IModule.ControlLog]:
         print("Hello AOI!")
         return []
+
+
+module = Module()

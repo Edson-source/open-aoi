@@ -1,5 +1,6 @@
 # Moderator node inspection trigger interface
 int64 inspection_profile_id
 ---
+bool overall_passed
 string error
 string error_description

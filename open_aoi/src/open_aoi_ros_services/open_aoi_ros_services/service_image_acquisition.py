@@ -25,9 +25,10 @@ EMULATION_DIR = "./emulation"
 class Service(StandardService):
     NODE_NAME = ImageAcquisitionConstants.NODE_NAME
 
-    camera_ip_address: str = ""
-    camera_enabled: bool = False
-    camera_emulation_mode: bool = False
+    CAMERA_IP_ADDRESS: str = ""
+    CAMERA_ENABLED: bool = False
+    CAMERA_EMULATION_MODE: bool = False
+
     camera: Optional[pylon.InstantCamera] = None
 
     emulation_images = os.listdir(EMULATION_DIR)
@@ -45,7 +46,7 @@ class Service(StandardService):
         # --- Parameters ---
         self.declare_parameter(
             ImageAcquisitionConstants.Parameter.CAMERA_ENABLED,
-            value=self.camera_enabled,
+            value=self.CAMERA_ENABLED,
             descriptor=ParameterDescriptor(
                 name="Camera enabled",
                 type=rclpy.Parameter.Type.BOOL.value,
@@ -54,7 +55,7 @@ class Service(StandardService):
         )
         self.declare_parameter(
             ImageAcquisitionConstants.Parameter.CAMERA_EMULATION_MODE,
-            value=self.camera_emulation_mode,
+            value=self.CAMERA_EMULATION_MODE,
             descriptor=ParameterDescriptor(
                 name="Camera emulation mode",
                 type=rclpy.Parameter.Type.BOOL.value,
@@ -63,7 +64,7 @@ class Service(StandardService):
         )
         self.declare_parameter(
             ImageAcquisitionConstants.Parameter.CAMERA_IP_ADDRESS,
-            value=self.camera_ip_address,
+            value=self.CAMERA_IP_ADDRESS,
             descriptor=ParameterDescriptor(
                 name="Camera IP address",
                 type=rclpy.Parameter.Type.STRING.value,
@@ -82,7 +83,7 @@ class Service(StandardService):
                 f"Parameter {p.name}: {getattr(self, p.name)} -> {p.value}"
             )
             setattr(self, p.name, p.value)
-            if p.name == "camera_enabled":
+            if p.name == ImageAcquisitionConstants.Parameter.CAMERA_ENABLED:
                 reload = True
         if (
             reload
@@ -92,8 +93,8 @@ class Service(StandardService):
 
     def _reload_service(self):
         self.logger.info("Service reload requested")
-        self.logger.info(f"Service enabled: {self.camera_enabled}")
-        if self.camera_enabled:
+        self.logger.info(f"Service enabled: {self.CAMERA_ENABLED}")
+        if self.CAMERA_ENABLED:
             self._acquire_camera()
 
     def _acquire_camera(self):
@@ -104,7 +105,7 @@ class Service(StandardService):
             self.camera.Close()
 
         # Emulation
-        if self.camera_emulation_mode:
+        if self.CAMERA_EMULATION_MODE:
             self.logger.info("Running emulation mode")
             try:
                 os.environ["PYLON_CAMEMU"] = "1"
@@ -126,13 +127,13 @@ class Service(StandardService):
                 return
         # Real camera
         else:
-            self.logger.info(f"Running with real camera: {self.camera_ip_address}")
+            self.logger.info(f"Running with real camera: {self.CAMERA_IP_ADDRESS}")
             try:
                 tlf: pylon.TlFactory = pylon.TlFactory.GetInstance()
                 for dev_info in tlf.EnumerateDevices():
                     if (
                         dev_info.GetDeviceClass() == "BaslerGigE"
-                        and dev_info.GetIpAddress() == self.camera_ip_address
+                        and dev_info.GetIpAddress() == self.CAMERA_IP_ADDRESS
                     ):
                         self.camera = pylon.InstantCamera(tlf.CreateDevice(dev_info))
                         break
@@ -142,7 +143,7 @@ class Service(StandardService):
                     )
                     return
                 self.camera.Open()
-                self.service_status = f"Connected to camera: {self.camera_ip_address}"
+                self.service_status = f"Connected to camera: {self.CAMERA_IP_ADDRESS}"
             except Exception as e:
                 self.logger.error(str(e))
                 self._set_status("Failed to setup camera")

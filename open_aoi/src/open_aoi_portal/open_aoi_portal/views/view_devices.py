@@ -4,6 +4,7 @@ from typing import Optional
 from rclpy.node import Node
 from nicegui import ui, app
 from fastapi.responses import RedirectResponse
+from PIL import Image
 
 from open_aoi_portal.settings import ACCESS_PAGE
 from open_aoi_core.constants import ImageAcquisitionConstants
@@ -22,12 +23,6 @@ logger = logging.getLogger("ui.devices")
 
 
 def get_view(node: Node):
-    def _heavy_capture_image(ip_address: str):
-        return node.image_acquisition_capture_image(
-            camera_ip_address=ip_address,
-            camera_emulation_mode=True,
-        )
-
     async def view() -> Optional[RedirectResponse]:
         session = get_session()
         access_controller = AccessorController(session)
@@ -86,7 +81,9 @@ def get_view(node: Node):
             capture_image.disable()
             try:
                 im, error, error_description = await to_thread(
-                    _heavy_capture_image, camera_ip_address.value.strip()
+                    node.image_acquisition_capture_image,
+                    camera_ip_address=camera_ip_address.value.strip(),
+                    camera_emulation_mode=True,
                 )
             except ROSServiceError as e:
                 ui.notify(str(e), type="warning")
@@ -101,6 +98,8 @@ def get_view(node: Node):
             if im is None:
                 ui.notify("Failed to capture image", type="warning")
                 return
+
+            im = Image.fromarray(im)
 
             # Reduce size to speed up network image transfer
             image_dialog.open()

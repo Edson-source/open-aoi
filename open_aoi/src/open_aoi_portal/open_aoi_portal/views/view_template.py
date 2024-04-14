@@ -5,6 +5,7 @@ from typing import Optional
 from rclpy.node import Node
 from nicegui import ui, app
 from fastapi.responses import RedirectResponse
+from PIL import Image
 
 from open_aoi_core.constants import ImageAcquisitionConstants
 from open_aoi_core.exceptions import AuthException, ROSServiceError
@@ -16,6 +17,7 @@ from open_aoi_portal.common import (
     confirm,
     inject_header,
     inject_text_field,
+    to_thread,
     get_session,
     ACCESS_PAGE,
     CONTROL_ZONE_PAGE,
@@ -97,7 +99,8 @@ def get_view(node: Node):
                 ui.notify("Failed to get camera!", type="negative")
                 return
             try:
-                im, error, error_description = node.image_acquisition_capture_image(
+                im, error, error_description = await to_thread(
+                    node.image_acquisition_capture_image,
                     camera_ip_address=camera.ip_address,
                     camera_emulation_mode=True,
                 )
@@ -106,7 +109,7 @@ def get_view(node: Node):
                 capture_image.enable()
                 return
 
-            if error != ImageAcquisitionConstants.Error.value.NONE.value:
+            if error != ImageAcquisitionConstants.Error.NONE:
                 ui.notify(error_description, type="negative")
                 capture_image.enable()
                 return
@@ -114,6 +117,8 @@ def get_view(node: Node):
             if im is None:
                 ui.notify("Failed to capture image", type="warning")
                 return
+
+            im = Image.fromarray(im)
 
             template_image = im
             template_image_element.set_source(im)

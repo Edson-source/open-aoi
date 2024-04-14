@@ -29,16 +29,24 @@ def aoi_launch_description():
         package="open_aoi_ros_services",
         executable="open_aoi_control_execution",
     )
+    aoi_mediator = Node(
+        package="open_aoi_ros_services",
+        executable="open_aoi_mediator",
+    )
     aoi_portal = Node(
         package="open_aoi_portal",
         executable="app",
     )
+    
     return LaunchDescription(
         [
+            # Independent
             aoi_image_acquisition,
-            aoi_portal,
             aoi_product_identification,
             aoi_control_execution,
+            # Dependent
+            aoi_mediator,
+            aoi_portal,
         ]
     )
 

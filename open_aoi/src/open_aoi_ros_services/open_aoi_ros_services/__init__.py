@@ -6,11 +6,22 @@ from rclpy.node import Node
 from rclpy.client import Client as ServiceClient
 from rcl_interfaces.srv._set_parameters import SetParameters
 from rcl_interfaces.msg import Parameter, ParameterType, ParameterValue
+from sensor_msgs.msg import Image as ImageMsg
 
 from open_aoi_core.utils import decode_image
 from open_aoi_core.exceptions import ROSServiceError
-from open_aoi_ros_interfaces.srv import ServiceStatus, ImageAcquisition
-from open_aoi_core.constants import ImageAcquisitionConstants, ServiceStatusEnum
+from open_aoi_ros_interfaces.srv import (
+    ServiceStatus,
+    ImageAcquisition,
+    IdentificationTrigger,
+    InspectionTrigger,
+)
+from open_aoi_core.constants import (
+    ImageAcquisitionConstants,
+    ProductIdentificationConstants,
+    MediatorServiceConstants,
+    ServiceStatusEnum,
+)
 
 
 class IntegratedClient(Node):
@@ -23,10 +34,14 @@ class IntegratedClient(Node):
     product_identification_get_barcode_cli: ServiceClient
     product_identification_get_status_cli: ServiceClient
 
+    mediator_execute_inspection_cli: ServiceClient
+    mediator_get_status_cli: ServiceClient
+
     def __init__(self) -> None:
         super().__init__(self.NODE_NAME)
         self.logger = self.get_logger()
 
+        # Image acquisition
         self._acquire_service(
             f"{ImageAcquisitionConstants.NODE_NAME}/capture",
             "image_acquisition_capture_cli",
@@ -43,14 +58,27 @@ class IntegratedClient(Node):
             SetParameters,
         )
 
+        # Product identification
         self._acquire_service(
-            "image_acquisition/capture",
-            "image_acquisition_capture_cli",
-            ImageAcquisition,
+            f"{ProductIdentificationConstants.NODE_NAME}/get_barcode",
+            f"product_identification_get_barcode_cli",
+            IdentificationTrigger,
         )
         self._acquire_service(
-            "image_acquisition/get_status",
-            "image_acquisition_get_status_cli",
+            f"{ProductIdentificationConstants.NODE_NAME}/get_status",
+            "product_identification_get_status_cli",
+            ServiceStatus,
+        )
+
+        # Mediator
+        self._acquire_service(
+            f"{MediatorServiceConstants.NODE_NAME}/execute_inspection",
+            f"mediator_execute_inspection_cli",
+            InspectionTrigger,
+        )
+        self._acquire_service(
+            f"{MediatorServiceConstants.NODE_NAME}/get_status",
+            "mediator_get_status_cli",
             ServiceStatus,
         )
 
@@ -65,6 +93,7 @@ class IntegratedClient(Node):
                     f"Service {cli.srv_name} not available, waiting again..."
                 )
 
+    @staticmethod
     def _resolve_param_type(param_value):
         if isinstance(param_value, float):
             val = ParameterValue(
@@ -147,10 +176,47 @@ class ImageAcquisitionClient(IntegratedClient):
 
 
 class ProductIdentificationClient(ImageAcquisitionClient):
-    pass
+    def product_identification_get_barcode(
+        self, im_msg: ImageMsg  # Avoid conversion to image from acquisition node
+    ) -> Tuple[Optional[np.ndarray], str, str]:
+        try:
+            req = IdentificationTrigger.Request()
+            req.image = im_msg
+            self.future = self.product_identification_get_barcode_cli.call_async(req)
+
+            while rclpy.ok():
+                if self.future.done():
+                    response = self.future.result()
+                    return response.identification_code
+        except Exception as e:
+            self.logger.error(str(e))
+            raise ROSServiceError(
+                "Failed to identify product. Service did not respond correctly."
+            )
 
 
-class StandardService(ProductIdentificationClient):
+class MediatorClient(ProductIdentificationClient):
+    def mediator_execute_inspection(
+        self, inspection_profile_id: int
+    ) -> Tuple[Optional[np.ndarray], str, str]:
+        try:
+            req = InspectionTrigger.Request()
+            req.inspection_profile_id = inspection_profile_id
+            self.logger.info("Inspection request dispatched")
+            self.future = self.mediator_execute_inspection_cli.call_async(req)
+
+            while rclpy.ok():
+                if self.future.done():
+                    response = self.future.result()
+                    return response.overall_passed, response.error, response.error_description
+        except Exception as e:
+            self.logger.error(str(e))
+            raise ROSServiceError(
+                "Failed to inspect product. Service did not respond correctly."
+            )
+
+
+class StandardService(MediatorClient):
     service_status: ServiceStatusEnum = ServiceStatusEnum.IDLE
     service_status_reason: str = ""
 
