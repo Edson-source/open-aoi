@@ -9,7 +9,7 @@ from dotenv import dotenv_values
 from open_aoi_ros_services import StandardService
 from open_aoi_ros_interfaces.msg import ControlLog
 from open_aoi_ros_interfaces.srv import ControlExecutionTrigger
-from open_aoi_core.enums import ControlExecutionEnum, ServiceStatusEnum
+from open_aoi_core.constants import ControlExecutionEnum, ServiceStatusEnum
 from open_aoi_core.utils import decode_image
 from open_aoi_core.content.modules import dynamic_import, IModule
 
@@ -25,7 +25,7 @@ class Service(StandardService):
             self.control_execution,
         )
 
-    def control_execution(
+    def execute_control(
         self,
         request: ControlExecutionTrigger.Request,
         response: ControlExecutionTrigger.Response,

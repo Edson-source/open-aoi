@@ -1,2 +1,0 @@
-float32 rotation
-open_aoi_ros_interfaces/ConnectedComponent cc

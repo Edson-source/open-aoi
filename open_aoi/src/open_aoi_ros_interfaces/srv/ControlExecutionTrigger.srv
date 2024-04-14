@@ -6,6 +6,5 @@ string environment
 open_aoi_ros_interfaces/ControlZone control_zone_list
 ---
 open_aoi_ros_interfaces/ControlZone control_log_list
-# Errors: `NONE`, `CONTROL_HANDLER_INVALID`, `CONTROL_ZONE_INVALID`, `ENVIRONMENT_INVALID`, `IMAGE_INVALID`, `GENERAL`
 string error
 string error_description

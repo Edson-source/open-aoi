@@ -52,3 +52,15 @@ class ImageAcquisitionEnum(Enum):
         CAMERA_ENABLED = "camera_enabled"
         CAMERA_EMULATION_MODE = "camera_emulation_mode"
         CAMERA_IP_ADDRESS = "camera_ip_address"
+
+
+class MediatorService:
+    NODE_NAME = "mediator"
+
+    class Error:
+        NONE = "NONE"
+        GENERAL = "GENERAL"
+        RESOURCE_FAILED = "RESOURCE_FAILED"
+        CAPTURE_FAILED = "CAPTURE_FAILED"
+        IDENTIFICATION_FAILED = "IDENTIFICATION_FAILED"
+        CONTROL_FAILED = "CONTROL_FAILED"

@@ -1,6 +1,6 @@
 import asyncio
-import contextvars
 import functools
+import concurrent.futures
 from typing import Optional
 from nicegui import ui, app
 from sqlalchemy.orm import Session
@@ -13,9 +13,10 @@ from open_aoi_portal.settings import *
 
 async def to_thread(func, /, *args, **kwargs):
     loop = asyncio.get_running_loop()
-    ctx = contextvars.copy_context()
-    func_call = functools.partial(ctx.run, func, *args, **kwargs)
-    return await loop.run_in_executor(None, func_call)
+    func_call = functools.partial(func, *args, **kwargs)
+
+    with concurrent.futures.ThreadPoolExecutor() as pool:
+        return await loop.run_in_executor(pool, func_call)
 
 
 def confirm(msg: str, callback: callable):
@@ -56,9 +57,6 @@ def inject_header():
         ).tailwind.width("full")
         ui.button("Modules", on_click=lambda: ui.open(MODULES_PAGE)).props(
             "flat align=left icon=widgets"
-        ).tailwind.width("full")
-        ui.button("Inspect", on_click=lambda: ui.open(INSPECTION_PAGE)).props(
-            "flat align=left icon=compare"
         ).tailwind.width("full")
         ui.button(
             "Inspection profiles",

@@ -14,7 +14,7 @@ from pypylon import pylon
 from rcl_interfaces.msg import ParameterDescriptor, SetParametersResult
 
 from open_aoi_core.utils import encode_image
-from open_aoi_core.enums import ImageAcquisitionEnum
+from open_aoi_core.constants import ImageAcquisitionEnum
 from open_aoi_ros_interfaces.srv import ImageAcquisition
 from open_aoi_ros_services import StandardService
 

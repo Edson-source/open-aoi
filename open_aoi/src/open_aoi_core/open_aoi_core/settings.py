@@ -1,4 +1,8 @@
 import os
+from dotenv import load_dotenv
+
+assert load_dotenv(".env")
+
 
 MYSQL_DATABASE = os.environ["MYSQL_DATABASE"]
 assert MYSQL_DATABASE

@@ -7,7 +7,7 @@ from fastapi.responses import RedirectResponse
 
 from open_aoi_core.controllers.accessor import AccessorController
 from open_aoi_core.exceptions import AuthException
-from open_aoi_portal.views.common import (
+from open_aoi_portal.common import (
     inject_header,
     get_session,
     ACCESS_PAGE,

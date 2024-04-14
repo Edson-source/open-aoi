@@ -1,117 +1,88 @@
 import logging
-from uuid import uuid4
 from typing import Optional
+import asyncio
 
-from PIL import Image
+from rclpy.node import Node
 from nicegui import ui, app
-from sqlalchemy.orm import Session
 from fastapi.responses import RedirectResponse
 
-from open_aoi_core.exceptions import AuthException
+from open_aoi_portal.settings import ACCESS_PAGE, HOME_PAGE
+from open_aoi_core.constants import ImageAcquisitionEnum
+from open_aoi_core.exceptions import AuthException, ROSServiceError
+from open_aoi_core.controllers.inspection_profile import InspectionProfileController
 from open_aoi_core.controllers.accessor import AccessorController
-from open_aoi_core.models import TITLE_LIMIT, DESCRIPTION_LIMIT, AccessorModel, TemplateModel
-from open_aoi_portal.views.common import (
-    inject_header,
-    ACCESS_PAGE,
-    get_session,
-)
-from open_aoi_portal.settings import INSPECTION_LIVE_LOG_DEPTH
+from open_aoi_portal.common import inject_header, get_session, to_thread
 
-logger = logging.getLogger("ui.devices")
-
-im = "/home/egor/Downloads/drawcore_ocr_damaged.bmp"
-im = Image.open(im)
+logger = logging.getLogger("ui.inspection_live")
 
 
-def _handle_trigger_inspection():
-    pass
+def get_view(node: Node):
+    def _capture_image(ip_address: str):
+        return node.image_acquisition_capture_image(
+            camera_ip_address=ip_address,
+            camera_emulation_mode=True,
+        )
 
+    async def view(profile_id: int) -> Optional[RedirectResponse]:
+        session = get_session()
+        access_controller = AccessorController(session)
+        inspection_profile_controller = InspectionProfileController(session)
 
-def _handle_update_image():
-    pass
+        try:
+            accessor = access_controller.identify_session_accessor(app.storage.user)
+        except AuthException:
+            return RedirectResponse(ACCESS_PAGE)
 
+        # ------------------------------------
+        # Handlers
 
-def view() -> Optional[RedirectResponse]:
-    session = get_session()
-    access_controller = AccessorController(session)
-    try:
-        access_controller.identify_session_accessor(app.storage.user)
-    except AuthException:
-        return RedirectResponse(ACCESS_PAGE)
+        async def _handle_capture_image():
+            try:
+                im, error, error_description = await to_thread(
+                    _capture_image, inspection_profile.camera.ip_address
+                )
+            except ROSServiceError as e:
+                ui.notify(str(e), type="warning")
+                capture_image.enable()
+                return
 
-    inject_header()
+            if error != ImageAcquisitionEnum.Error.value.NONE.value:
+                ui.notify(error_description, type="negative")
+                capture_image.enable()
+                return
 
-    with ui.grid(columns=2).classes("w-full"):
-        with ui.column():
-            ui.label("Inspection")
-            ii = ui.interactive_image(im)
+            if im is None:
+                ui.notify("Failed to capture image", type="warning")
+                return
 
-            with ui.row().classes("w-full"):
-                with ui.column():
-                    ui.label("PCB")
-                    ui.label("Test")
-                    ui.label("Test")
-                ui.space()
-                ui.button("Test")
-            ui.separator()
-            ui.label("Profile: ABC, Template: ABC")
-            ii = ui.interactive_image(im)
+            # Reduce size to speed up network image transfer
+            image_element.set_source(im)
+            capture_image.enable()
 
-        with ui.column():
-            ui.label("Results")
-            columns = [
-                {
-                    "name": "timestamp",
-                    "label": "Timestamp",
-                    "field": "timestamp",
-                    "required": True,
-                    "align": "left",
-                },
-                {
-                    "name": "code",
-                    "label": "Code",
-                    "field": "code",
-                    "required": True,
-                    "align": "left",
-                },
-                {
-                    "name": "log",
-                    "label": "Log",
-                    "field": "log",
-                    "required": True,
-                    "align": "left",
-                },
-                {
-                    "name": "result",
-                    "label": "Result",
-                    "field": "result",
-                    "required": True,
-                    "align": "left",
-                },
-                {
-                    "name": "url",
-                    "label": "URL",
-                    "field": "url",
-                    "required": True,
-                    "align": "left",
-                },
-            ]
-            rows = [
-                {
-                    "timestamp": "123",
-                    "code": "pcb123",
-                    "log": "its dead",
-                    "result": False,
-                    "url": "123",
-                },
-            ]
-            t = ui.table(columns=columns, rows=rows, row_key="name").classes("w-full")
-            t.rows.append(
-                {
-                    "timestamp": "123",
-                    "code": "pcb123",
-                    "log": "its dead",
-                    "result": False,
-                    "url": "123",
-                }
-            )
+        # ------------------------------------
+
+        try:
+            inspection_profile = inspection_profile_controller.retrieve(profile_id)
+        except Exception as e:
+            return RedirectResponse(HOME_PAGE)
+
+        inject_header()
+
+        with ui.grid(columns=3).classes("w-full"):
+            with ui.column().classes("col-span-1"):
+                ui.markdown(f"#### **Live: {inspection_profile.title}**")
+                ui.markdown(
+                    f"**Camera**: {inspection_profile.camera.title}.\n\n**Template**: {inspection_profile.template.title}"
+                )
+
+                with ui.column().classes("w-full"):
+                    with ui.row().classes("w-full"):
+                        capture_image = ui.button(
+                            "Inspect",
+                            on_click=_handle_capture_image,
+                        ).classes("w-full")
+
+            with ui.column().classes("col-span-2"):
+                image_element = ui.interactive_image().classes("w-full")
+
+    return view

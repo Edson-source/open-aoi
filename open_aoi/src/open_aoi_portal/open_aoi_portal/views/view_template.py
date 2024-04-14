@@ -6,13 +6,13 @@ from rclpy.node import Node
 from nicegui import ui, app
 from fastapi.responses import RedirectResponse
 
-from open_aoi_core.enums import ImageAcquisitionEnum
+from open_aoi_core.constants import ImageAcquisitionEnum
 from open_aoi_core.exceptions import AuthException, ROSServiceError
 from open_aoi_core.controllers.template import TemplateController
 from open_aoi_core.controllers.accessor import AccessorController
 from open_aoi_core.controllers.camera import CameraController
 from open_aoi_core.models import TITLE_LIMIT
-from open_aoi_portal.views.common import (
+from open_aoi_portal.common import (
     confirm,
     inject_header,
     inject_text_field,
@@ -97,7 +97,7 @@ def get_view(node: Node):
                 ui.notify("Failed to get camera!", type="negative")
                 return
             try:
-                im, error, error_description = node.capture_image(
+                im, error, error_description = node.image_acquisition_capture_image(
                     camera_ip_address=camera.ip_address,
                     camera_emulation_mode=True,
                 )

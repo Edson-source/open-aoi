@@ -10,7 +10,7 @@ import cv2 as cv
 from open_aoi_ros_services import StandardService
 from open_aoi_ros_interfaces.srv import IdentificationTrigger
 from open_aoi_core.utils import decode_image
-from open_aoi_core.enums import ProductIdentificationEnum, ServiceStatusEnum
+from open_aoi_core.constants import ProductIdentificationEnum, ServiceStatusEnum
 
 
 class Service(StandardService):

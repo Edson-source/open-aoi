@@ -15,7 +15,7 @@ from open_aoi_core.controllers.connected_component import ConnectedComponentCont
 from open_aoi_core.controllers.control_zone import ControlZoneController
 from open_aoi_core.controllers.control_handler import ControlHandlerController
 from open_aoi_core.controllers.control_target import ControlTargetController
-from open_aoi_portal.views.common import (
+from open_aoi_portal.common import (
     ACCESS_PAGE,
     inject_header,
     inject_text_field,

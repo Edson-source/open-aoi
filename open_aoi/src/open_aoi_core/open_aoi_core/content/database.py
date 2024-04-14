@@ -7,7 +7,7 @@ assert load_dotenv(".env")
 from sqlalchemy.orm import Session
 
 from open_aoi_core.models import *
-from open_aoi_core.enums import *
+from open_aoi_core.constants import *
 from open_aoi_core.settings import (
     AOI_ADMINISTRATOR_INITIAL_PASSWORD,
     AOI_OPERATOR_INITIAL_PASSWORD,

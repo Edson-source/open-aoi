@@ -23,7 +23,7 @@ find_package(rosidl_default_generators REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ConnectedComponent.msg"
   "msg/ControlLog.msg"
-  "msg/ControlZone.msg"
+  "msg/ControlTarget.msg"
   "srv/ImageAcquisition.srv"
   "srv/ServiceStatus.srv"
   "srv/InspectionTrigger.srv"

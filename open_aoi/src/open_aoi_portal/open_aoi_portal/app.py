@@ -1,17 +1,11 @@
-from dotenv import load_dotenv
-
-assert load_dotenv(".env")
-
 import logging
 import threading
 
 import rclpy
-from rclpy.client import Client as ServiceClient
 from rclpy.executors import ExternalShutdownException
-from rclpy.node import Node
 from nicegui import Client, app, ui, ui_run
-from open_aoi_core.settings import STORAGE_SECRET
 
+from open_aoi_core.settings import STORAGE_SECRET
 from open_aoi_portal.settings import *
 from open_aoi_portal.views.view_home import get_view as get_view_home
 from open_aoi_portal.views.view_access import get_view as get_view_access
@@ -24,29 +18,21 @@ from open_aoi_portal.views.view_control_zone_editor import (
 from open_aoi_portal.views.view_inspection_profile import (
     get_view as get_view_inspection_profile,
 )
-from open_aoi_core.services.image_acquisition import ROSImageAcquisitionClient
-from open_aoi_ros_interfaces.srv import ImageAcquisition, ServiceStatus
-from rcl_interfaces.srv._set_parameters import SetParameters
+from open_aoi_portal.views.view_inspection_live import (
+    get_view as get_view_inspection_live,
+)
+from open_aoi_ros_services import StandardService
 
-
-# from views.view_inspection_live import (
-#     view as view_inspection_live,
-# )
 # from views.view_inspection_log import (
 #     view as view_inspection_log,
 # )
 
-logging.basicConfig(level=logging.INFO)
 
-
-class AOIPortalNode(Node, ROSImageAcquisitionClient):
-    image_acquisition_capture_cli: ServiceClient
-    image_acquisition_set_parameters_cli: ServiceClient
-    image_acquisition_get_status_cli: ServiceClient
+class AOIPortalNode(StandardService):
+    NODE_NAME = "open_aoi_portal"
 
     def __init__(self) -> None:
-        super().__init__("open_aoi_portal")
-        self.logger = self.get_logger()
+        super().__init__()
 
         with Client.auto_index_client:
             ui.page(HOME_PAGE, title=f"Home | {APP_TITLE}")(get_view_home(self))
@@ -71,34 +57,14 @@ class AOIPortalNode(Node, ROSImageAcquisitionClient):
             ui.page(
                 INSPECTION_PROFILE_EDIT_PAGE, title=f"Inspection profiles | {APP_TITLE}"
             )(get_view_inspection_profile(self))
+            ui.page(INSPECTION_PROFILE_LIVE_PAGE, title="LIVE | AOI Portal")(
+                get_view_inspection_live(self)
+            )
 
-            # ui.page("/inspection", title="Inspection | AOI Portal")(view_inspection)
             # ui.page(
             #     "/profile/{profile_id}/inspection/{inspection_id}",
             #     title="Inspection log | AOI Portal",
             # )(view_inspection_log)
-
-        def acquire_service(name: str, property_name: str, msg):
-            cli = self.create_client(msg, name)
-            setattr(self, property_name, cli)
-            while not cli.wait_for_service(timeout_sec=1.0):
-                self.logger.info(f"Service {name} not available, waiting again...")
-
-        acquire_service(
-            "image_acquisition/capture",
-            "image_acquisition_capture_cli",
-            ImageAcquisition,
-        )
-        acquire_service(
-            "image_acquisition/get_status",
-            "image_acquisition_get_status_cli",
-            ServiceStatus,
-        )
-        acquire_service(
-            "image_acquisition/set_parameters",
-            "image_acquisition_set_parameters_cli",
-            SetParameters,
-        )
 
 
 def main() -> None:

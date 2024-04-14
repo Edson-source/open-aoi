@@ -1,9 +1,131 @@
+from typing import Optional, Tuple
+
+import rclpy
+import numpy as np
 from rclpy.node import Node
-from open_aoi_core.enums import ServiceStatusEnum
-from open_aoi_ros_interfaces.srv import ServiceStatus
+from rclpy.client import Client as ServiceClient
+from rcl_interfaces.srv._set_parameters import SetParameters
+from rcl_interfaces.msg import Parameter, ParameterType, ParameterValue
+
+from open_aoi_core.utils import decode_image
+from open_aoi_core.exceptions import ROSServiceError
+from open_aoi_ros_interfaces.srv import ServiceStatus, ImageAcquisition
+from open_aoi_core.constants import ImageAcquisitionEnum, ServiceStatusEnum
 
 
-class StandardService(Node):
+class IntegratedClient(Node):
+    image_acquisition_capture_cli: ServiceClient
+    image_acquisition_set_parameters_cli: ServiceClient
+    image_acquisition_get_status_cli: ServiceClient
+
+    def __init__(self) -> None:
+        super().__init__("open_aoi_portal")
+        self.logger = self.get_logger()
+
+        self._acquire_service(
+            "image_acquisition/capture",
+            "image_acquisition_capture_cli",
+            ImageAcquisition,
+        )
+        self._acquire_service(
+            "image_acquisition/get_status",
+            "image_acquisition_get_status_cli",
+            ServiceStatus,
+        )
+        self._acquire_service(
+            "image_acquisition/set_parameters",
+            "image_acquisition_set_parameters_cli",
+            SetParameters,
+        )
+
+    def _acquire_service(self, name: str, property_name: str, msg):
+        cli = self.create_client(msg, name)
+        setattr(self, property_name, cli)
+        while not cli.wait_for_service(timeout_sec=1.0):
+            self.logger.info(f"Service {name} not available, waiting again...")
+
+    def _resolve_param_type(param_value):
+        if isinstance(param_value, float):
+            val = ParameterValue(
+                double_value=param_value, type=ParameterType.PARAMETER_DOUBLE
+            )
+        elif isinstance(param_value, int):
+            val = ParameterValue(
+                integer_value=param_value, type=ParameterType.PARAMETER_INTEGER
+            )
+        elif isinstance(param_value, str):
+            val = ParameterValue(
+                string_value=param_value, type=ParameterType.PARAMETER_STRING
+            )
+        elif isinstance(param_value, bool):
+            val = ParameterValue(
+                bool_value=param_value, type=ParameterType.PARAMETER_BOOL
+            )
+        return val
+
+
+class ImageAcquisitionClient(IntegratedClient):
+    def image_acquisition_set_parameters(
+        self,
+        camera_ip_address: Optional[str] = None,
+        camera_emulation_mode: bool = False,
+    ) -> bool:
+        # https://github.com/ros-planning/navigation2/issues/2415#issuecomment-1028468173
+        req = SetParameters.Request()
+        parameters = []
+        for param_name, param_value in [
+            [
+                ImageAcquisitionEnum.Parameter.value.CAMERA_EMULATION_MODE.value,
+                camera_emulation_mode,
+            ],
+            [
+                ImageAcquisitionEnum.Parameter.value.CAMERA_IP_ADDRESS.value,
+                camera_ip_address,
+            ],
+            [ImageAcquisitionEnum.Parameter.value.CAMERA_ENABLED.value, True],
+        ]:
+            val = self._resolve_param_type(param_value)
+            parameters.append(Parameter(name=param_name, value=val))
+        req.parameters = parameters
+
+        self.future = self.image_acquisition_set_parameters_cli.call_async(req)
+        while rclpy.ok():
+            if self.future.done():
+                try:
+                    response = self.future.result()
+                    if response[0].successful:
+                        return True
+                except Exception as e:
+                    pass
+                return False
+
+    def image_acquisition_capture_image(
+        self,
+        camera_ip_address: Optional[str] = None,
+        camera_emulation_mode: bool = False,
+    ) -> Tuple[Optional[np.ndarray], str, str]:
+        try:
+            self.image_acquisition_set_parameters(
+                camera_ip_address, camera_emulation_mode
+            )
+            req = ImageAcquisition.Request()
+
+            self.future = self.image_acquisition_capture_cli.call_async(req)
+            while rclpy.ok():
+                if self.future.done():
+                    response = self.future.result()
+                    error = response.error
+                    error_description = response.error_description
+                    im = decode_image(response.image)
+                    return im, error, error_description
+        except Exception as e:
+            self.logger.error(str(e))
+            raise ROSServiceError(
+                "Failed to capture image. Service did not respond correctly."
+            )
+
+
+class StandardService(ImageAcquisitionClient):
     NODE_NAME: str
 
     service_status: ServiceStatusEnum = ServiceStatusEnum.IDLE

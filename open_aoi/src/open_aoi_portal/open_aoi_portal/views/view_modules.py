@@ -10,7 +10,7 @@ from open_aoi_core.exceptions import AuthException, ConnectivityError, Integrity
 from open_aoi_core.controllers.control_handler import ControlHandlerController
 from open_aoi_core.controllers.accessor import AccessorController
 from open_aoi_core.controllers.defect_type import DefectTypeController
-from open_aoi_portal.views.common import (
+from open_aoi_portal.common import (
     confirm,
     inject_header,
     inject_text_field,

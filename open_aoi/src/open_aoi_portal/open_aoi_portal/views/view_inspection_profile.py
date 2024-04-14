@@ -13,7 +13,7 @@ from open_aoi_core.controllers.camera import CameraController
 from open_aoi_core.controllers.template import TemplateController
 from open_aoi_core.controllers.inspection_profile import InspectionProfileController
 from open_aoi_core.models import TITLE_LIMIT, DESCRIPTION_LIMIT, CODE_LIMIT
-from open_aoi_portal.views.common import (
+from open_aoi_portal.common import (
     ACCESS_PAGE,
     INSPECTION_PROFILE_EDIT_PAGE,
     INSPECTION_PROFILE_CREATE_PAGE,

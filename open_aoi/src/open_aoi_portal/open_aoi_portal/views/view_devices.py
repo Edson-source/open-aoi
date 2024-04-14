@@ -6,17 +6,16 @@ from nicegui import ui, app
 from fastapi.responses import RedirectResponse
 
 from open_aoi_portal.settings import ACCESS_PAGE
-from open_aoi_core.enums import ImageAcquisitionEnum
+from open_aoi_core.constants import ImageAcquisitionEnum
 from open_aoi_core.exceptions import AuthException, ROSServiceError
 from open_aoi_core.controllers.camera import CameraController
 from open_aoi_core.controllers.accessor import AccessorController
 from open_aoi_core.models import TITLE_LIMIT, DESCRIPTION_LIMIT, CameraModel
-from open_aoi_portal.views.common import (
+from open_aoi_portal.common import (
     inject_header,
     inject_text_field,
     get_session,
     to_thread,
-    scale,
 )
 
 logger = logging.getLogger("ui.devices")
@@ -24,7 +23,7 @@ logger = logging.getLogger("ui.devices")
 
 def get_view(node: Node):
     def _heavy_capture_image(ip_address: str):
-        return node.capture_image(
+        return node.image_acquisition_capture_image(
             camera_ip_address=ip_address,
             camera_emulation_mode=True,
         )
@@ -104,8 +103,6 @@ def get_view(node: Node):
                 return
             
             # Reduce size to speed up network image transfer
-            im = scale(im, 600)
-
             image_dialog.open()
             image_element.set_source(im)
 

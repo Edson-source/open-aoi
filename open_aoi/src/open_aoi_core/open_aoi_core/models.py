@@ -16,7 +16,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase, relationship
 
 from open_aoi_core.settings import MYSQL_DATABASE, MYSQL_PASSWORD, MYSQL_USER, MYSQL_PORT
-from open_aoi_core.enums import RoleEnum, AccessorEnum
+from open_aoi_core.constants import RoleEnum, AccessorEnum
 from open_aoi_core.mixins.authentication import AuthMixin, SessionCredentialsMixin
 from open_aoi_core.mixins.image_source import (
     TemplateImageSourceMixin,

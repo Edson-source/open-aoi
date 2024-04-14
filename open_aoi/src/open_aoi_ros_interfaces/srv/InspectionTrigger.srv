@@ -1,5 +1,5 @@
 # Moderator node inspection trigger interface
+int64 inspection_profile_id
 ---
-# Errors: `NONE`, `CAPTURE_FAILED`, `IDENTIFICATION_FAILED`, `INSPECTION_FAILED`, `GENERAL`
 string error
 string error_description
