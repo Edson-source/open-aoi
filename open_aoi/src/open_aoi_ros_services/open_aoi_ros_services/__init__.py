@@ -138,16 +138,9 @@ class ImageAcquisitionClient(IntegratedClient):
             parameters.append(Parameter(name=param_name, value=val))
         req.parameters = parameters
 
-        self.future = self.image_acquisition_set_parameters_cli.call_async(req)
-        while rclpy.ok():
-            if self.future.done():
-                try:
-                    response = self.future.result()
-                    if response[0].successful:
-                        return True
-                except Exception as e:
-                    pass
-                return False
+        future = self.image_acquisition_set_parameters_cli.call_async(req)
+        rclpy.spin_until_future_complete(self, future)
+        return future.result()
 
     def image_acquisition_capture_image(
         self,
@@ -155,19 +148,24 @@ class ImageAcquisitionClient(IntegratedClient):
         camera_emulation_mode: bool = False,
     ) -> Tuple[Optional[np.ndarray], str, str]:
         try:
+            self.logger.info("Image acquisition parameter update request dispatched")
             self.image_acquisition_set_parameters(
                 camera_ip_address, camera_emulation_mode
             )
-            req = ImageAcquisition.Request()
 
-            self.future = self.image_acquisition_capture_cli.call_async(req)
-            while rclpy.ok():
-                if self.future.done():
-                    response = self.future.result()
-                    error = response.error
-                    error_description = response.error_description
-                    im = decode_image(response.image)
-                    return im, error, error_description
+            req = ImageAcquisition.Request()
+            self.logger.info("Image acquisition request dispatched")
+
+            future = self.image_acquisition_set_parameters_cli.call_async(req)
+            rclpy.spin_until_future_complete(self, future)
+            response = future.result()
+
+            error = response.error
+            error_description = response.error_description
+            im = decode_image(response.image)
+
+            return im, error, error_description
+
         except Exception as e:
             self.logger.error(str(e))
             raise ROSServiceError(
@@ -182,12 +180,13 @@ class ProductIdentificationClient(ImageAcquisitionClient):
         try:
             req = IdentificationTrigger.Request()
             req.image = im_msg
-            self.future = self.product_identification_get_barcode_cli.call_async(req)
+            self.logger.info("Identification request dispatched")
 
-            while rclpy.ok():
-                if self.future.done():
-                    response = self.future.result()
-                    return response.identification_code
+            future = self.product_identification_get_barcode_cli.call_async(req)
+            rclpy.spin_until_future_complete(self, future)
+            response = future.result()
+
+            return response.identification_code
         except Exception as e:
             self.logger.error(str(e))
             raise ROSServiceError(
@@ -203,12 +202,14 @@ class MediatorClient(ProductIdentificationClient):
             req = InspectionTrigger.Request()
             req.inspection_profile_id = inspection_profile_id
             self.logger.info("Inspection request dispatched")
-            self.future = self.mediator_execute_inspection_cli.call_async(req)
 
-            while rclpy.ok():
-                if self.future.done():
-                    response = self.future.result()
-                    return response.overall_passed, response.error, response.error_description
+            response = self.mediator_execute_inspection_cli.call(req)
+
+            return (
+                response.overall_passed,
+                response.error,
+                response.error_description,
+            )
         except Exception as e:
             self.logger.error(str(e))
             raise ROSServiceError(

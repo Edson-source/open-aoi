@@ -1,10 +1,3 @@
-"""
-    This script is an image acquisition node. See service definition for request format.
-    Request format is mutual for simulation and real node (this nodes are interchangeable). Node
-    provide interface to real camera hiding hardware set up and communication routines. 
-    TODO: error collection to services init
-"""
-
 import os
 import random
 from typing import List, Optional
@@ -14,7 +7,7 @@ from pypylon import pylon
 from rcl_interfaces.msg import ParameterDescriptor, SetParametersResult
 
 from open_aoi_core.utils import encode_image
-from open_aoi_core.constants import ImageAcquisitionConstants
+from open_aoi_core.constants import ImageAcquisitionConstants, ServiceStatusEnum
 from open_aoi_ros_interfaces.srv import ImageAcquisition
 from open_aoi_ros_services import StandardService
 
@@ -89,6 +82,7 @@ class Service(StandardService):
             reload
         ):  # This function is triggered multiple times for unknown reason - reload services only once though
             self._reload_service()
+        self.logger.info("Parameters update done")
         return SetParametersResult(successful=True, reason="")
 
     def _reload_service(self):
@@ -120,10 +114,13 @@ class Service(StandardService):
                 self.camera.TestImageSelector = "Off"
                 self.camera.Height = 2048
                 self.camera.Width = 2592
-                self._set_status = "Connected to camera: EMULATION"
+                self._set_status(
+                    ServiceStatusEnum.IDLE, "Connected to camera: EMULATION"
+                )
+                return
             except Exception as e:
                 self.logger.error(str(e))
-                self._set_status("Failed to setup emulator")
+                self._set_status(ServiceStatusEnum.ERROR, "Failed to setup emulator")
                 return
         # Real camera
         else:
@@ -139,47 +136,64 @@ class Service(StandardService):
                         break
                 else:
                     self._set_status(
-                        f"Failed to acquire camera with IP: {self.camera_ip_address}"
+                        ServiceStatusEnum.ERROR,
+                        f"Failed to acquire camera with IP: {self.camera_ip_address}",
                     )
                     return
                 self.camera.Open()
-                self.service_status = f"Connected to camera: {self.CAMERA_IP_ADDRESS}"
+                self._set_status(
+                    ServiceStatusEnum.IDLE,
+                    f"Connected to camera: {self.CAMERA_IP_ADDRESS}",
+                )
+                return
             except Exception as e:
                 self.logger.error(str(e))
-                self._set_status("Failed to setup camera")
+                self._set_status(ServiceStatusEnum.ERROR, "Failed to setup camera")
                 return
 
     def acquire_image(self, request, response):
         self.logger.info("Image requested")
+        self._set_status(ServiceStatusEnum.BUSY)
 
         if self.camera is None:
+            self.logger.error("Camera not initialized")
             response.error = ImageAcquisitionConstants.Error.GENERAL
             response.error_description = (
                 "Capture image called before camera initialization"
             )
+            self._set_status(ServiceStatusEnum.IDLE)
+            self.logger.info("Response returned")
             return response
         try:
             grab_result = self.camera.GrabOne(1000)
             if grab_result.GrabSucceeded():
+                self.logger.info("Grabbed successfully")
                 # Access the image data
                 image = grab_result.Array
                 grab_result.Release()
                 response.image = encode_image(image)
                 response.error = ImageAcquisitionConstants.Error.NONE
                 response.error_description = ""
+                self.logger.info("Image returned")
+                self._set_status(ServiceStatusEnum.IDLE)
                 return response
             else:
+                self.logger.error("Grabbed unsuccessfully")
                 grab_result.Release()
                 self.logger.error(
                     "Error: ", grab_result.ErrorCode, grab_result.ErrorDescription
                 )
                 response.error = ImageAcquisitionConstants.Error.GENERAL
                 response.error_description = "Capture image failed"
+                self.logger.info("Response returned")
+                self._set_status(ServiceStatusEnum.IDLE)
                 return response
         except Exception as e:
             self.logger.error(str(e))
             response.error = ImageAcquisitionConstants.Error.GENERAL
             response.error_description = "Capture image failed"
+            self._set_status(ServiceStatusEnum.IDLE)
+            self.logger.info("Response returned")
             return response
 
 

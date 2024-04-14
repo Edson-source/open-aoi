@@ -7,7 +7,9 @@ import numpy as np
 from sqlalchemy.orm import Session
 from collections import defaultdict
 
-from open_aoi_ros_interfaces.srv import InspectionTrigger, ImageAcquisition
+from rclpy.executors import MultiThreadedExecutor
+
+from open_aoi_ros_interfaces.srv import InspectionTrigger
 from open_aoi_ros_interfaces.msg import ControlTarget
 from open_aoi_ros_services import StandardService
 from open_aoi_core.constants import MediatorServiceConstants, ImageAcquisitionConstants
@@ -162,7 +164,8 @@ class Service(StandardService):
 def main(args=None):
     rclpy.init(args=args)
     service = Service()
-    rclpy.spin(service)
+    exe = MultiThreadedExecutor(10)
+    rclpy.spin(service, exe)
     rclpy.shutdown()
 
 
