@@ -10,11 +10,11 @@ import cv2 as cv
 from open_aoi_ros_services import StandardService
 from open_aoi_ros_interfaces.srv import IdentificationTrigger
 from open_aoi_core.utils import decode_image
-from open_aoi_core.constants import ProductIdentificationEnum, ServiceStatusEnum
+from open_aoi_core.constants import ProductIdentificationConstants, ServiceStatusEnum
 
 
 class Service(StandardService):
-    NODE_NAME = ProductIdentificationEnum.NODE_NAME.value
+    NODE_NAME = ProductIdentificationConstants.NODE_NAME
 
     def __init__(self):
         super().__init__()

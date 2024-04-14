@@ -21,10 +21,10 @@ class ServiceStatusEnum(Enum):
     ERROR = "ERROR"
 
 
-class ControlExecutionEnum(Enum):
+class ControlExecutionConstants:
     NODE_NAME = "control_execution"
 
-    class Error(Enum):
+    class Error:
         NONE = "NONE"
         CONTROL_HANDLER_INVALID = "CONTROL_HANDLER_INVALID"
         CONTROL_ZONE_INVALID = "CONTROL_ZONE_INVALID"
@@ -33,7 +33,7 @@ class ControlExecutionEnum(Enum):
         GENERAL = "GENERAL"
 
 
-class ProductIdentificationEnum(Enum):
+class ProductIdentificationConstants(Enum):
     NODE_NAME = "product_identification"
 
     class Error(Enum):
@@ -49,9 +49,9 @@ class ImageAcquisitionConstants:
         GENERAL = "GENERAL"
 
     class Parameter:
-        CAMERA_ENABLED = "camera_enabled"
-        CAMERA_EMULATION_MODE = "camera_emulation_mode"
-        CAMERA_IP_ADDRESS = "camera_ip_address"
+        CAMERA_ENABLED = "CAMERA_ENABLED"
+        CAMERA_EMULATION_MODE = "CAMERA_EMULATION_MODE"
+        CAMERA_IP_ADDRESS = "CAMERA_IP_ADDRESS"
 
 
 class MediatorService:

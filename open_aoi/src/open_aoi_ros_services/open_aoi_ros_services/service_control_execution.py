@@ -9,13 +9,13 @@ from dotenv import dotenv_values
 from open_aoi_ros_services import StandardService
 from open_aoi_ros_interfaces.msg import ControlLog
 from open_aoi_ros_interfaces.srv import ControlExecutionTrigger
-from open_aoi_core.constants import ControlExecutionEnum, ServiceStatusEnum
+from open_aoi_core.constants import ControlExecutionConstants, ServiceStatusEnum
 from open_aoi_core.utils import decode_image
 from open_aoi_core.content.modules import dynamic_import, IModule
 
 
 class Service(StandardService):
-    NODE_NAME = ControlExecutionEnum.NODE_NAME.value
+    NODE_NAME = ControlExecutionConstants.NODE_NAME
 
     def __init__(self):
         super().__init__()
@@ -39,7 +39,7 @@ class Service(StandardService):
             self.logger.error(str(e))
             self.logger.info("Failed to decode test image")
 
-            request.error = ControlExecutionEnum.Error.value.IMAGE_INVALID.value
+            request.error = ControlExecutionConstants.Error.IMAGE_INVALID
             request.error_description = "Failed to decode test image"
 
             self._set_status(ServiceStatusEnum.IDLE.value)
@@ -51,7 +51,7 @@ class Service(StandardService):
             self.logger.error(str(e))
             self.logger.info("Failed to decode template image")
 
-            response.error = ControlExecutionEnum.Error.value.IMAGE_INVALID.value
+            response.error = ControlExecutionConstants.Error.IMAGE_INVALID
             response.error_description = "Failed to decode template image"
 
             self._set_status(ServiceStatusEnum.IDLE.value)
@@ -66,7 +66,7 @@ class Service(StandardService):
                 "Failed to import control handler specification from source"
             )
 
-            response.error = ControlExecutionEnum.Error.value.CONTROL_HANDLER_INVALID.value
+            response.error = ControlExecutionConstants.Error.CONTROL_HANDLER_INVALID
             response.error_description = (
                 "Failed to import control handler specification from source"
             )
@@ -81,7 +81,7 @@ class Service(StandardService):
             self.logger.error(str(e))
             self.logger.info(f"Failed to load environment")
 
-            response.error = ControlExecutionEnum.Error.value.ENVIRONMENT_INVALID.value
+            response.error = ControlExecutionConstants.Error.ENVIRONMENT_INVALID
             response.error_description = f"Failed to load environment"
 
             self._set_status(ServiceStatusEnum.IDLE.value)
@@ -117,7 +117,7 @@ class Service(StandardService):
             self.logger.error(str(e))
             self.logger.info(f"Failed to execute control handler")
 
-            response.error = ControlExecutionEnum.Error.value.GENERAL.value
+            response.error = ControlExecutionConstants.Error.GENERAL
             response.error_description = f"Failed to execute control handler: {str(e)}"
 
             self._set_status(ServiceStatusEnum.IDLE.value)
