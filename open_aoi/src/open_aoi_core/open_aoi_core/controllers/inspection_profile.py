@@ -1,14 +1,11 @@
 from typing import Optional, List
 
-from sqlalchemy import select
+from sqlalchemy import select, and_
 from sqlalchemy.orm import joinedload
-from sqlalchemy.exc import MultipleResultsFound
 
-from open_aoi_core.exceptions import IntegrityError
 from open_aoi_core.controllers import Controller
 from open_aoi_core.models import (
     InspectionProfileModel,
-    CameraModel,
     TemplateModel,
     AccessorModel,
     InspectionModel,
@@ -23,7 +20,6 @@ class InspectionProfileController(Controller):
         title: str,
         description: str,
         identification_code: str,
-        camera: CameraModel,
         template: TemplateModel,
         accessor: AccessorModel,
         environment: Optional[str] = None,
@@ -36,13 +32,26 @@ class InspectionProfileController(Controller):
             title=title,
             description=description,
             identification_code=identification_code,
-            camera=camera,
             template=template,
             created_by=accessor,
             environment=environment,
         )
         self.session.add(obj)
         return obj
+
+    def retrieve_by_identification_code(
+        self, identification_code: str
+    ) -> InspectionProfileModel:
+        return (
+            self.session.query(self._model)
+            .filter(
+                and_(
+                    self._model.identification_code == identification_code,
+                    self._model.is_active == True,
+                )
+            )
+            .one_or_none()
+        )
 
     def allow_delete_hook(self, id: int) -> bool:
         return not self.session.query(
@@ -54,7 +63,6 @@ class InspectionProfileController(Controller):
     def list_nested(self) -> List[InspectionProfileModel]:
         return (
             self.session.query(self._model)
-            .options(joinedload(InspectionProfileModel.camera))
             .options(joinedload(InspectionProfileModel.template))
             .all()
         )

@@ -19,8 +19,8 @@ from open_aoi_portal.views.view_control_zone_editor import (
 from open_aoi_portal.views.view_inspection_profile import (
     get_view as get_view_inspection_profile,
 )
-from open_aoi_portal.views.view_inspection_live import (
-    get_view as get_view_inspection_live,
+from open_aoi_portal.views.view_inspection import (
+    get_view as get_view_inspection,
 )
 
 # from views.view_inspection_log import (
@@ -64,8 +64,8 @@ class Service(StandardService):
             ui.page(
                 INSPECTION_PROFILE_EDIT_PAGE, title=f"Inspection profiles | {APP_TITLE}"
             )(get_view_inspection_profile(self))
-            ui.page(INSPECTION_PROFILE_LIVE_PAGE, title="LIVE | AOI Portal")(
-                get_view_inspection_live(self)
+            ui.page(INSPECTION_PAGE, title="Inspection | AOI Portal")(
+                get_view_inspection(self)
             )
 
             # ui.page(

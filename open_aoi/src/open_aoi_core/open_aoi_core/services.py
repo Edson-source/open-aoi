@@ -1,3 +1,4 @@
+import time
 from typing import Optional, Tuple, List
 
 import numpy as np
@@ -81,7 +82,7 @@ class ImageAcquisitionClient(BaseClient):
 
         future = self.image_acquisition_set_parameters_cli.call_async(req)
         while not future.done():
-            pass
+            time.sleep(0.1)
         return future.result()
 
     def image_acquisition_capture_image(
@@ -120,7 +121,7 @@ class ImageAcquisitionClient(BaseClient):
 
             future = self.image_acquisition_capture_cli.call_async(req)
             while not future.done():
-                pass
+                time.sleep(0.1)
             response = future.result()
 
             error = response.error
@@ -142,7 +143,7 @@ class ProductIdentificationClient(BaseClient):
 
     def product_identification_get_barcode(
         self, im_msg: ImageMsg  # Avoid conversion to image from acquisition node
-    ) -> Tuple[Optional[np.ndarray], str, str]:
+    ) -> str:
         try:
             req = IdentificationTrigger.Request()
             req.image = im_msg
@@ -150,7 +151,7 @@ class ProductIdentificationClient(BaseClient):
 
             future = self.product_identification_get_barcode_cli.call_async(req)
             while not future.done():
-                pass
+                time.sleep(0.1)
             response = future.result()
 
             return response.identification_code
@@ -184,7 +185,7 @@ class ControlExecutionClient(BaseClient):
             future = self.control_execution_execute_control_cli.call_async(req)
             self.logger.info("Execution request dispatched")
             while not future.done():
-                pass
+                time.sleep(0.1)
             response = future.result()
 
             self.logger.info(str(response))
@@ -206,20 +207,36 @@ class MediatorClient(BaseClient):
     mediator_get_status_cli: ServiceClient
 
     def mediator_execute_inspection(
-        self, inspection_profile_id: int
-    ) -> Tuple[Optional[np.ndarray], str, str]:
+        self,
+        camera_id: Optional[int] = None,
+        io_pin: Optional[int] = None,
+    ) -> Tuple[Optional[np.ndarray], bool, List, List, str, str]:
+        assert camera_id is not None or io_pin is not None
         try:
             req = InspectionTrigger.Request()
-            req.inspection_profile_id = inspection_profile_id
+
+            req.camera_id = camera_id if camera_id is not None else 0
+            req.camera_id_valid = True if camera_id is not None else False
+
+            req.io_pin = io_pin if io_pin is not None else 0
+            req.io_pin_valid = True if io_pin is not None else False
+
             self.logger.info("Inspection request dispatched")
 
             future = self.mediator_execute_inspection_cli.call_async(req)
             while not future.done():
-                pass
+                time.sleep(0.1)
             response = future.result()
 
+            im = None
+            if response.image is not None:
+                im = decode_image(response.image)
+
             return (
+                im,
                 response.overall_passed,
+                response.control_log_list,
+                response.control_target_list,
                 response.error,
                 response.error_description,
             )
@@ -246,6 +263,18 @@ class StandardClient(
         # Credits https://robotics.stackexchange.com/a/94614/40411
         self._group = ReentrantCallbackGroup()
 
+        # Product identification
+        self._acquire_service(
+            f"{ProductIdentificationConstants.NODE_NAME}/get_barcode",
+            f"product_identification_get_barcode_cli",
+            IdentificationTrigger,
+        )
+        self._acquire_service(
+            f"{ProductIdentificationConstants.NODE_NAME}/get_status",
+            "product_identification_get_status_cli",
+            ServiceStatus,
+        )
+
         # Image acquisition
         self._acquire_service(
             f"{ImageAcquisitionConstants.NODE_NAME}/capture",
@@ -261,18 +290,6 @@ class StandardClient(
             f"{ImageAcquisitionConstants.NODE_NAME}/set_parameters",
             "image_acquisition_set_parameters_cli",
             SetParameters,
-        )
-
-        # Product identification
-        self._acquire_service(
-            f"{ProductIdentificationConstants.NODE_NAME}/get_barcode",
-            f"product_identification_get_barcode_cli",
-            IdentificationTrigger,
-        )
-        self._acquire_service(
-            f"{ProductIdentificationConstants.NODE_NAME}/get_status",
-            "product_identification_get_status_cli",
-            ServiceStatus,
         )
 
         # Control execution

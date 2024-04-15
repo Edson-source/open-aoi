@@ -16,6 +16,7 @@ from open_aoi_portal.common import (
     scale,
     inject_header,
     inject_text_field,
+    inject_numeric_field,
     get_session,
     to_thread,
 )
@@ -41,6 +42,7 @@ def get_view(node: Node):
                 assert camera_title.validate()
                 assert camera_description.validate()
                 assert camera_ip_address.validate()
+                assert camera_io_pin.validate()
             except AssertionError:
                 ui.notify("Required values are missing", type="negative")
                 return
@@ -50,6 +52,7 @@ def get_view(node: Node):
                     title=camera_title.value.strip(),
                     description=camera_description.value.strip(),
                     ip_address=camera_ip_address.value.strip(),
+                    io_pin=camera_io_pin.value,
                     accessor=accessor,
                 )
                 camera_controller.commit()
@@ -162,6 +165,9 @@ def get_view(node: Node):
                 },
             )
             camera_ip_address.set_value("000.000.000.000")
+            camera_io_pin = inject_numeric_field(
+                "I/O pin (empty to ignore)", step=1, precision=0
+            )
 
             with ui.row().classes("w-full"):
                 ui.space()

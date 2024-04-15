@@ -10,6 +10,7 @@ CONTROL_ZONE_PAGE = "/template/{template_id}/control_zone"
 
 INSPECTION_PROFILE_CREATE_PAGE = "/inspection/profile"
 INSPECTION_PROFILE_EDIT_PAGE = "/inspection/profile/{profile_id}"
-INSPECTION_PROFILE_LIVE_PAGE = "/inspection/profile/{profile_id}/live"
+
+INSPECTION_PAGE = "/inspection"
 
 DEVICES_PAGE = "/devices"

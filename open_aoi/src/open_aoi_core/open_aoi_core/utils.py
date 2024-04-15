@@ -30,7 +30,7 @@ def crop_stat_cv(im: np.ndarray, cv_stat_value: List[int]) -> np.ndarray:
     w = cv_stat_value[cv.CC_STAT_WIDTH]
     h = cv_stat_value[cv.CC_STAT_HEIGHT]
 
-    return im[t : t + h, l : l + w]
+    return im[t : t + h, l : l + w, :]
 
 
 def crop_stat_image(im: Image.Image, cv_stat_value: List[int]) -> Image.Image:
@@ -42,19 +42,21 @@ def crop_stat_image(im: Image.Image, cv_stat_value: List[int]) -> Image.Image:
 
 def isolate_product(im: np.ndarray, kernel_size: int = 31, threshold: int = 30):
     # Blur to vanish texture defects
-    im = cv.medianBlur(im, kernel_size)
+    tmp = cv.cvtColor(im, cv.COLOR_BGR2GRAY)
+    tmp = cv.medianBlur(tmp, kernel_size)
 
     # Arbitrary selected global threshold to separate background
-    _, im = cv.threshold(im, threshold, 255, cv.THRESH_BINARY)
+    _, tmp = cv.threshold(tmp, threshold, 255, cv.THRESH_BINARY)
 
-    analysis = cv.connectedComponentsWithStats(im, cv.CV_32S)
+    analysis = cv.connectedComponentsWithStats(tmp, cv.CV_32S)
     (_, _, values, _) = analysis
 
     # Select the biggest connected component (product)
     mx, mxi = 0, 0
     for i, value in enumerate(values):
         area = value[cv.CC_STAT_AREA]
-        if area >= mx:
+        if area >= mx and i != 0:
+            mx = area
             mxi = i
 
     value = values[mxi]

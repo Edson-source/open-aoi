@@ -10,12 +10,17 @@ from sqlalchemy import (
     Boolean,
     Integer,
     MetaData,
-    Text
+    Text,
 )
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase, relationship
 
-from open_aoi_core.settings import MYSQL_DATABASE, MYSQL_PASSWORD, MYSQL_USER, MYSQL_PORT
+from open_aoi_core.settings import (
+    MYSQL_DATABASE,
+    MYSQL_PASSWORD,
+    MYSQL_USER,
+    MYSQL_PORT,
+)
 from open_aoi_core.constants import RoleEnum, AccessorEnum
 from open_aoi_core.mixins.authentication import AuthMixin, SessionCredentialsMixin
 from open_aoi_core.mixins.image_source import (
@@ -270,6 +275,11 @@ class InspectionModel(Base, InspectionImageSourceMixin):
         back_populates="inspection"
     )
 
+    camera_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("Camera.id"), nullable=True
+    )
+    camera: Mapped[Optional["CameraModel"]] = relationship()
+
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     @property
@@ -320,6 +330,9 @@ class CameraModel(Base):
 
     # TODO: insert validation ipv4
     ip_address: Mapped[str] = mapped_column(String(15), nullable=False)
+    io_pin_trigger: Mapped[int] = mapped_column(
+        Integer(), nullable=True
+    )  # Nulls are not triggered
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     created_by_accessor_id: Mapped[int] = mapped_column(
@@ -344,11 +357,6 @@ class InspectionProfileModel(Base):
     environment: Mapped[str] = mapped_column(Text(), nullable=True)
 
     identification_code: Mapped[str] = mapped_column(String(CODE_LIMIT), nullable=False)
-
-    camera_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("Camera.id"), nullable=True
-    )
-    camera: Mapped[Optional["CameraModel"]] = relationship()
 
     template_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("Template.id"), nullable=True

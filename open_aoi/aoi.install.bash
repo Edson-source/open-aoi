@@ -17,3 +17,12 @@ if test -d $SITE_PACKAGES; then
 else
     echo "Unable to install dependencies - ament workspace is not initialized. Not found: $SITE_PACKAGES"
 fi
+
+source /opt/ros/foxy/setup.bash
+source install/setup.bash
+
+# Copy default content to database
+# ! This drop database content !
+cd src/open_aoi_core/open_aoi_core/
+python3 -m content.database
+cd ../../../

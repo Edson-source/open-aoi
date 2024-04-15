@@ -65,6 +65,10 @@ def inject_header():
         ui.button(
             "Inspection templates", on_click=lambda: ui.open(TEMPLATES_PAGE)
         ).props("flat align=left icon=tune").tailwind.width("full")
+        ui.button(
+            "Inspection (live)",
+            on_click=lambda: ui.open(INSPECTION_PAGE),
+        ).props("flat align=left icon=online_prediction").tailwind.width("full")
         ui.separator()
         ui.button("Logout", on_click=_handle_logout_request).props(
             "flat color=negative align=left icon=logout"
@@ -94,6 +98,18 @@ def inject_text_field(
         },
     ).classes("w-full")
     field_display = ui.label("").classes("text-secondary")
+    return field
+
+
+def inject_numeric_field(
+    label: str,
+    step: int = 1,
+    precision: int = 0,
+    validation: Optional[dict] = dict(),
+):
+    field = ui.number(
+        label=label, validation=validation, step=step, precision=precision
+    ).classes("w-full")
     return field
 
 

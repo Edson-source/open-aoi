@@ -9,7 +9,6 @@ from fastapi.responses import RedirectResponse
 from open_aoi_core.models import TITLE_LIMIT, DESCRIPTION_LIMIT, InspectionProfileModel
 from open_aoi_core.exceptions import AuthException, IntegrityError
 from open_aoi_core.controllers.accessor import AccessorController
-from open_aoi_core.controllers.camera import CameraController
 from open_aoi_core.controllers.template import TemplateController
 from open_aoi_core.controllers.inspection_profile import InspectionProfileController
 from open_aoi_core.models import TITLE_LIMIT, DESCRIPTION_LIMIT, CODE_LIMIT
@@ -29,7 +28,6 @@ def get_view(node: Node):
     def view(profile_id: Optional[int] = None) -> Optional[RedirectResponse]:
         session = get_session()
         access_controller = AccessorController(session)
-        camera_controller = CameraController(session)
         template_controller = TemplateController(session)
         inspection_profile_controller = InspectionProfileController(session)
 
@@ -43,13 +41,11 @@ def get_view(node: Node):
                 assert profile_environment.validate()
                 assert identification_code.validate()
                 assert template_select.validate()
-                assert camera_select.validate()
             except AssertionError:
                 ui.notify("Some required parameters are missing", type="warning")
                 return
 
             try:
-                camera = camera_controller.retrieve(camera_select.value)
                 template = template_controller.retrieve(template_select.value)
             except Exception as e:
                 logger.exception(e)
@@ -62,7 +58,6 @@ def get_view(node: Node):
                         title=profile_title.value.strip(),
                         description=profile_description.value.strip(),
                         identification_code=identification_code.value.strip(),
-                        camera=camera,
                         template=template,
                         accessor=accessor,
                         environment=profile_environment.value.strip(),
@@ -192,9 +187,6 @@ def get_view(node: Node):
                 inspection_profile = None
             else:
                 inspection_profile = inspection_profile_controller.retrieve(profile_id)
-            camera_list = dict(
-                [(obj.id, obj.title) for obj in camera_controller.list()]
-            )
             template_list = dict(
                 [(obj.id, obj.title) for obj in template_controller.list()]
             )
@@ -218,16 +210,6 @@ def get_view(node: Node):
             profile_description.set_enabled(inspection_profile is None)
             if inspection_profile is not None:
                 profile_description.set_value(inspection_profile.description)
-
-            camera_select = ui.select(
-                camera_list,
-                label="Camera",
-                clearable=True,
-                validation={"Camera is required": lambda value: value is not None},
-            ).classes("w-full")
-            camera_select.set_enabled(inspection_profile is None)
-            if inspection_profile is not None:
-                camera_select.set_value(inspection_profile.camera_id)
 
             identification_code = inject_text_field(
                 "Product identification code (barcode value)",
