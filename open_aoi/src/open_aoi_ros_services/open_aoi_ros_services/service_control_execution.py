@@ -6,7 +6,7 @@ import rclpy
 from io import StringIO
 from dotenv import dotenv_values
 
-from open_aoi_ros_services import StandardService
+from open_aoi_core.services import StandardService
 from open_aoi_ros_interfaces.msg import ControlLog
 from open_aoi_ros_interfaces.srv import ControlExecutionTrigger
 from open_aoi_core.constants import ControlExecutionConstants, ServiceStatusEnum
@@ -30,6 +30,7 @@ class Service(StandardService):
         request: ControlExecutionTrigger.Request,
         response: ControlExecutionTrigger.Response,
     ):
+        self.logger.info("Execution request received")
         self._set_status(ServiceStatusEnum.BUSY.value)
 
         # TODO: align and isolate product
@@ -45,6 +46,8 @@ class Service(StandardService):
             self._set_status(ServiceStatusEnum.IDLE.value)
             return response
 
+        self.logger.info("Test image decoded")
+
         try:
             template_image = decode_image(request.template_image)
         except Exception as e:
@@ -56,6 +59,8 @@ class Service(StandardService):
 
             self._set_status(ServiceStatusEnum.IDLE.value)
             return response
+
+        self.logger.info("Template image decoded")
 
         source = request.control_handler
         try:
@@ -74,6 +79,8 @@ class Service(StandardService):
             self._set_status(ServiceStatusEnum.IDLE.value)
             return response
 
+        self.logger.info("Controller is valid")
+
         environment = StringIO(request.environment)
         try:
             environment = dotenv_values(stream=environment)
@@ -87,32 +94,29 @@ class Service(StandardService):
             self._set_status(ServiceStatusEnum.IDLE.value)
             return response
 
+        self.logger.info("Environment is valid")
+
         control_zone_list = [
             IModule.ControlZone(
-                rotation=cz.rotation,
-                stat_left=cz.cc.stat_left,
-                stat_top=cz.cc.stat_top,
-                stat_width=cz.cc.stat_width,
-                stat_height=cz.cc.stat_height,
+                rotation=ct.rotation,
+                stat_left=ct.stat_left,
+                stat_top=ct.stat_top,
+                stat_width=ct.stat_width,
+                stat_height=ct.stat_height,
             )
-            for cz in request.control_zone_list
+            for ct in request.control_target_list
         ]
+        self.logger.info("Control zone list constructed")
 
         try:
-            log_list = module.process(
+            self.logger.info("Process requested")
+            control_log_list = module.process(
                 environment=environment,
                 test_image=test_image,
                 template_image=template_image,
                 control_zone_list=control_zone_list,
             )
-            for i, log in enumerate(log_list):
-                ros_log = ControlLog()
-                ros_log.log = log.log
-                ros_log.passed = log.passed
-                response.control_log_list[i] = ros_log
-                self._set_status(ServiceStatusEnum.IDLE.value)
-                return response
-
+            self.logger.info("Process finished")
         except Exception as e:
             self.logger.error(str(e))
             self.logger.info(f"Failed to execute control handler")
@@ -122,6 +126,18 @@ class Service(StandardService):
 
             self._set_status(ServiceStatusEnum.IDLE.value)
             return response
+
+        control_log_list_msg = []
+        for i, log in enumerate(control_log_list):
+            ros_log = ControlLog()
+            ros_log.log = log.log
+            ros_log.passed = log.passed
+        response.control_log_list = control_log_list_msg
+        response.error = ControlExecutionConstants.Error.NONE
+
+        self._set_status(ServiceStatusEnum.IDLE.value)
+        self.logger.info("Log constructed and returned")
+        return response
 
 
 def main(args=None):

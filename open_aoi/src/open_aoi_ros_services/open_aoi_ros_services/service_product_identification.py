@@ -7,7 +7,7 @@ import rclpy
 
 import cv2 as cv
 
-from open_aoi_ros_services import StandardService
+from open_aoi_core.services import StandardService
 from open_aoi_ros_interfaces.srv import IdentificationTrigger
 from open_aoi_core.utils import decode_image
 from open_aoi_core.constants import ProductIdentificationConstants, ServiceStatusEnum

@@ -5,8 +5,9 @@ import rclpy
 from rclpy.executors import ExternalShutdownException
 from nicegui import Client, app, ui, ui_run
 
-from open_aoi_core.settings import STORAGE_SECRET
 from open_aoi_portal.settings import *
+from open_aoi_core.settings import STORAGE_SECRET
+from open_aoi_core.services import StandardService
 from open_aoi_portal.views.view_home import get_view as get_view_home
 from open_aoi_portal.views.view_access import get_view as get_view_access
 from open_aoi_portal.views.view_devices import get_view as get_view_devices
@@ -21,7 +22,6 @@ from open_aoi_portal.views.view_inspection_profile import (
 from open_aoi_portal.views.view_inspection_live import (
     get_view as get_view_inspection_live,
 )
-from open_aoi_ros_services import StandardService
 
 # from views.view_inspection_log import (
 #     view as view_inspection_log,

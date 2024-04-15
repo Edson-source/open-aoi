@@ -13,6 +13,7 @@ from open_aoi_core.controllers.camera import CameraController
 from open_aoi_core.controllers.accessor import AccessorController
 from open_aoi_core.models import TITLE_LIMIT, DESCRIPTION_LIMIT, CameraModel
 from open_aoi_portal.common import (
+    scale,
     inject_header,
     inject_text_field,
     get_session,
@@ -103,7 +104,7 @@ def get_view(node: Node):
 
             # Reduce size to speed up network image transfer
             image_dialog.open()
-            image_element.set_source(im)
+            image_element.set_source(scale(im, 600))
 
             capture_image.enable()
 

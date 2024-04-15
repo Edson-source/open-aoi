@@ -14,6 +14,7 @@ from open_aoi_core.controllers.accessor import AccessorController
 from open_aoi_core.controllers.camera import CameraController
 from open_aoi_core.models import TITLE_LIMIT
 from open_aoi_portal.common import (
+    scale,
     confirm,
     inject_header,
     inject_text_field,
@@ -119,9 +120,8 @@ def get_view(node: Node):
                 return
 
             im = Image.fromarray(im)
-
             template_image = im
-            template_image_element.set_source(im)
+            template_image_element.set_source(scale(im, 600))
 
             capture_image.enable()
 

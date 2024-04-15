@@ -9,8 +9,7 @@ from rcl_interfaces.msg import ParameterDescriptor, SetParametersResult
 from open_aoi_core.utils import encode_image
 from open_aoi_core.constants import ImageAcquisitionConstants, ServiceStatusEnum
 from open_aoi_ros_interfaces.srv import ImageAcquisition
-from open_aoi_ros_services import StandardService
-
+from open_aoi_core.services import StandardService
 
 EMULATION_DIR = "./emulation"
 
@@ -167,9 +166,9 @@ class Service(StandardService):
         try:
             grab_result = self.camera.GrabOne(1000)
             if grab_result.GrabSucceeded():
-                self.logger.info("Grabbed successfully")
                 # Access the image data
                 image = grab_result.Array
+                self.logger.info(f"Grabbed successfully: {image.shape}")
                 grab_result.Release()
                 response.image = encode_image(image)
                 response.error = ImageAcquisitionConstants.Error.NONE

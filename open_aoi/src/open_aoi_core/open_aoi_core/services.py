@@ -1,4 +1,3 @@
-import time
 from typing import Optional, Tuple, List
 
 import numpy as np
@@ -11,92 +10,25 @@ from sensor_msgs.msg import Image as ImageMsg
 
 from open_aoi_core.utils import decode_image
 from open_aoi_core.exceptions import ROSServiceError
+from open_aoi_ros_interfaces.msg import ControlTarget
 from open_aoi_ros_interfaces.srv import (
     ServiceStatus,
     ImageAcquisition,
     IdentificationTrigger,
     InspectionTrigger,
+    ControlExecutionTrigger,
 )
 from open_aoi_core.constants import (
     ImageAcquisitionConstants,
     ProductIdentificationConstants,
     MediatorServiceConstants,
     ServiceStatusEnum,
+    ControlExecutionConstants,
 )
 
 
-class IntegratedClient(Node):
+class BaseClient:
     NODE_NAME: str
-
-    image_acquisition_capture_cli: ServiceClient
-    image_acquisition_get_status_cli: ServiceClient
-    image_acquisition_set_parameters_cli: ServiceClient
-
-    product_identification_get_barcode_cli: ServiceClient
-    product_identification_get_status_cli: ServiceClient
-
-    mediator_execute_inspection_cli: ServiceClient
-    mediator_get_status_cli: ServiceClient
-
-    def __init__(self) -> None:
-        super().__init__(self.NODE_NAME)
-        self.logger = self.get_logger()
-
-        # Solution to call services from service callback
-        # Credits https://robotics.stackexchange.com/a/94614/40411
-        self._group = ReentrantCallbackGroup()
-
-        # Image acquisition
-        self._acquire_service(
-            f"{ImageAcquisitionConstants.NODE_NAME}/capture",
-            "image_acquisition_capture_cli",
-            ImageAcquisition,
-        )
-        self._acquire_service(
-            f"{ImageAcquisitionConstants.NODE_NAME}/get_status",
-            "image_acquisition_get_status_cli",
-            ServiceStatus,
-        )
-        self._acquire_service(
-            f"{ImageAcquisitionConstants.NODE_NAME}/set_parameters",
-            "image_acquisition_set_parameters_cli",
-            SetParameters,
-        )
-
-        # Product identification
-        self._acquire_service(
-            f"{ProductIdentificationConstants.NODE_NAME}/get_barcode",
-            f"product_identification_get_barcode_cli",
-            IdentificationTrigger,
-        )
-        self._acquire_service(
-            f"{ProductIdentificationConstants.NODE_NAME}/get_status",
-            "product_identification_get_status_cli",
-            ServiceStatus,
-        )
-
-        # Mediator
-        self._acquire_service(
-            f"{MediatorServiceConstants.NODE_NAME}/execute_inspection",
-            f"mediator_execute_inspection_cli",
-            InspectionTrigger,
-        )
-        self._acquire_service(
-            f"{MediatorServiceConstants.NODE_NAME}/get_status",
-            "mediator_get_status_cli",
-            ServiceStatus,
-        )
-
-    def _acquire_service(self, name: str, property_name: str, msg):
-        cli = self.create_client(msg, name, callback_group=self._group)
-        setattr(self, property_name, cli)
-
-    def _await_dependencies(self, service_cli_list: List[ServiceClient]):
-        for cli in service_cli_list:
-            while not cli.wait_for_service(timeout_sec=1.0):
-                self.logger.info(
-                    f"Service {cli.srv_name} not available, waiting again..."
-                )
 
     @staticmethod
     def _resolve_param_type(param_value):
@@ -119,7 +51,11 @@ class IntegratedClient(Node):
         return val
 
 
-class ImageAcquisitionClient(IntegratedClient):
+class ImageAcquisitionClient(BaseClient):
+    image_acquisition_capture_cli: ServiceClient
+    image_acquisition_get_status_cli: ServiceClient
+    image_acquisition_set_parameters_cli: ServiceClient
+
     def image_acquisition_set_parameters(
         self,
         camera_ip_address: Optional[str] = None,
@@ -200,7 +136,10 @@ class ImageAcquisitionClient(IntegratedClient):
             )
 
 
-class ProductIdentificationClient(ImageAcquisitionClient):
+class ProductIdentificationClient(BaseClient):
+    product_identification_get_barcode_cli: ServiceClient
+    product_identification_get_status_cli: ServiceClient
+
     def product_identification_get_barcode(
         self, im_msg: ImageMsg  # Avoid conversion to image from acquisition node
     ) -> Tuple[Optional[np.ndarray], str, str]:
@@ -222,7 +161,50 @@ class ProductIdentificationClient(ImageAcquisitionClient):
             )
 
 
-class MediatorClient(ProductIdentificationClient):
+class ControlExecutionClient(BaseClient):
+    control_execution_execute_control_cli: ServiceClient
+    control_execution_get_status_cli: ServiceClient
+
+    def control_execution_execute_control(
+        self,
+        template_im_msg: ImageMsg,
+        test_im_msg: ImageMsg,
+        control_handler_source: str,
+        environment: str,
+        control_target_list: List[ControlTarget],
+    ) -> Tuple[Optional[np.ndarray], str, str]:
+        try:
+            req = ControlExecutionTrigger.Request()
+            req.test_image = test_im_msg
+            req.template_image = template_im_msg
+            req.control_handler = control_handler_source
+            req.environment = environment
+            req.control_target_list = control_target_list
+
+            future = self.control_execution_execute_control_cli.call_async(req)
+            self.logger.info("Execution request dispatched")
+            while not future.done():
+                pass
+            response = future.result()
+
+            self.logger.info(str(response))
+
+            return (
+                response.control_log_list,
+                response.error,
+                response.error_description,
+            )
+        except Exception as e:
+            self.logger.error(str(e))
+            raise ROSServiceError(
+                "Failed to identify product. Service did not respond correctly."
+            )
+
+
+class MediatorClient(BaseClient):
+    mediator_execute_inspection_cli: ServiceClient
+    mediator_get_status_cli: ServiceClient
+
     def mediator_execute_inspection(
         self, inspection_profile_id: int
     ) -> Tuple[Optional[np.ndarray], str, str]:
@@ -248,7 +230,88 @@ class MediatorClient(ProductIdentificationClient):
             )
 
 
-class StandardService(MediatorClient):
+class StandardClient(
+    Node,
+    MediatorClient,
+    ControlExecutionClient,
+    ProductIdentificationClient,
+    ImageAcquisitionClient,
+):
+
+    def __init__(self) -> None:
+        super().__init__(self.NODE_NAME)
+        self.logger = self.get_logger()
+
+        # Solution to call services from service callback
+        # Credits https://robotics.stackexchange.com/a/94614/40411
+        self._group = ReentrantCallbackGroup()
+
+        # Image acquisition
+        self._acquire_service(
+            f"{ImageAcquisitionConstants.NODE_NAME}/capture",
+            "image_acquisition_capture_cli",
+            ImageAcquisition,
+        )
+        self._acquire_service(
+            f"{ImageAcquisitionConstants.NODE_NAME}/get_status",
+            "image_acquisition_get_status_cli",
+            ServiceStatus,
+        )
+        self._acquire_service(
+            f"{ImageAcquisitionConstants.NODE_NAME}/set_parameters",
+            "image_acquisition_set_parameters_cli",
+            SetParameters,
+        )
+
+        # Product identification
+        self._acquire_service(
+            f"{ProductIdentificationConstants.NODE_NAME}/get_barcode",
+            f"product_identification_get_barcode_cli",
+            IdentificationTrigger,
+        )
+        self._acquire_service(
+            f"{ProductIdentificationConstants.NODE_NAME}/get_status",
+            "product_identification_get_status_cli",
+            ServiceStatus,
+        )
+
+        # Control execution
+        self._acquire_service(
+            f"{ControlExecutionConstants.NODE_NAME}/execute_control",
+            f"control_execution_execute_control_cli",
+            ControlExecutionTrigger,
+        )
+        self._acquire_service(
+            f"{ControlExecutionConstants.NODE_NAME}/get_status",
+            "control_execution_get_status_cli",
+            ServiceStatus,
+        )
+
+        # Mediator
+        self._acquire_service(
+            f"{MediatorServiceConstants.NODE_NAME}/execute_inspection",
+            f"mediator_execute_inspection_cli",
+            InspectionTrigger,
+        )
+        self._acquire_service(
+            f"{MediatorServiceConstants.NODE_NAME}/get_status",
+            "mediator_get_status_cli",
+            ServiceStatus,
+        )
+
+    def _acquire_service(self, name: str, property_name: str, msg):
+        cli = self.create_client(msg, name, callback_group=self._group)
+        setattr(self, property_name, cli)
+
+    def _await_dependencies(self, service_cli_list: List[ServiceClient]):
+        for cli in service_cli_list:
+            while not cli.wait_for_service(timeout_sec=1.0):
+                self.logger.info(
+                    f"Service {cli.srv_name} not available, waiting again..."
+                )
+
+
+class StandardService(StandardClient):
     service_status: ServiceStatusEnum = ServiceStatusEnum.IDLE
     service_status_reason: str = ""
 

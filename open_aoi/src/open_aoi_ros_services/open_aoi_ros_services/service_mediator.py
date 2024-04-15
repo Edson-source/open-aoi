@@ -11,10 +11,15 @@ from rclpy.executors import MultiThreadedExecutor
 
 from open_aoi_ros_interfaces.srv import InspectionTrigger
 from open_aoi_ros_interfaces.msg import ControlTarget
-from open_aoi_ros_services import StandardService
-from open_aoi_core.constants import MediatorServiceConstants, ImageAcquisitionConstants
+from open_aoi_core.services import StandardService
+from open_aoi_core.constants import (
+    MediatorServiceConstants,
+    ImageAcquisitionConstants,
+    ControlExecutionConstants,
+)
 from open_aoi_core.models import ControlTargetModel, engine
 from open_aoi_core.controllers.inspection_profile import InspectionProfileController
+from open_aoi_core.utils import encode_image
 
 
 class Service(StandardService):
@@ -32,6 +37,7 @@ class Service(StandardService):
             [
                 self.image_acquisition_capture_cli,
                 self.product_identification_get_barcode_cli,
+                self.control_execution_execute_control_cli,
             ]
         )
 
@@ -118,13 +124,14 @@ class Service(StandardService):
             try:
                 template_image = template.materialize_image()
                 template_image = np.array(template_image)
+                template_image_msg = encode_image(template_image)
             except Exception as e:
                 self.logger.error(str(e))
                 response.error = MediatorServiceConstants.Error.RESOURCE_FAILED
                 response.error_description = "Failed to retrieve related template."
                 return response
 
-            self.logger.info(f"Template image retrieved: {template_image}")
+            self.logger.info(f"Template image retrieved: {template_image.shape}")
 
             try:
                 # Do not decode image here, send directly to control execution
@@ -144,6 +151,37 @@ class Service(StandardService):
                     )
 
             self.logger.info(f"Test image captured as message")
+
+            for control_handler_id, control_handler_source in zip(
+                control_handler_list, control_handler_source_list
+            ):
+                self.logger.info(f"Executing: {control_handler_id}")
+                try:
+                    target_list = control_handler_related_control_target_msg_map[
+                        control_handler_id
+                    ]
+                    control_log_list, error, error_description = (
+                        self.control_execution_execute_control(
+                            template_image_msg,
+                            test_image_msg,
+                            control_handler_source,
+                            inspection_profile.environment,
+                            target_list,
+                        )
+                    )
+                    if error != ControlExecutionConstants.Error.NONE:
+                        self.logger.error(f"Failed to apply control execution. {error}: {error_description}")
+                        response.error = MediatorServiceConstants.Error.CONTROL_FAILED
+                        response.error_description = f"Failed to apply control handler {control_handler_id}. {error_description}"
+                        return response
+                except Exception as e:
+                    self.logger.error(str(e))
+                    response.error = MediatorServiceConstants.Error.CONTROL_FAILED
+                    response.error_description = (
+                        f"Failed to apply control handler {control_handler_id}."
+                    )
+                    return response
+                self.logger.info(f"Completed: {control_handler_id}")
 
             return response
 

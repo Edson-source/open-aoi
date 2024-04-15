@@ -21,7 +21,6 @@ find_package(sensor_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/ConnectedComponent.msg"
   "msg/ControlLog.msg"
   "msg/ControlTarget.msg"
   "srv/ImageAcquisition.srv"

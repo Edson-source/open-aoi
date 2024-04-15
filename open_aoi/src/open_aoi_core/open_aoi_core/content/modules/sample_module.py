@@ -13,8 +13,7 @@ class Module(IModule):
         template_image: np.array,
         control_zone_list: List[IModule.ControlZone],
     ) -> List[IModule.ControlLog]:
-        print("Hello AOI!")
-        return []
+        return [IModule.ControlLog("Sample!", False) for cz in control_zone_list]
 
 
 module = Module()

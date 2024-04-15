@@ -3,8 +3,8 @@ sensor_msgs/Image test_image
 sensor_msgs/Image template_image
 string control_handler
 string environment
-open_aoi_ros_interfaces/ControlTarget control_target_list
+open_aoi_ros_interfaces/ControlTarget[] control_target_list
 ---
-open_aoi_ros_interfaces/ControlLog control_log_list
+open_aoi_ros_interfaces/ControlLog[] control_log_list
 string error
 string error_description

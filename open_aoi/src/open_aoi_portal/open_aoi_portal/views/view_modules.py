@@ -126,7 +126,8 @@ def get_view(node: Node):
                     return
                 control_handler.publish_source(content)
                 control_handler_controller.commit()
-            except:
+            except Exception as e:
+                node.logger.error(str(e))
                 ui.notify("Failed to upload module source!")
                 return
 

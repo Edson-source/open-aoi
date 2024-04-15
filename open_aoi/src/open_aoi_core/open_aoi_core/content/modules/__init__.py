@@ -61,3 +61,5 @@ def dynamic_import(source: bytes) -> IModule:
         ), "Module does not provide IModule interface!"
     except AssertionError as e:
         raise InvalidAsset(f"Failed to validate module: {str(e)}") from e
+    
+    return ctx.get("module")

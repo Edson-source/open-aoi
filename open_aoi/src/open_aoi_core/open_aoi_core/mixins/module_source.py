@@ -20,7 +20,6 @@ class ModuleSourceMixin(Mixin):
         return getattr(self, "handler_blob", None) is not None
 
     def publish_source(self, content: bytes) -> str:
-        assert getattr(self, "handler_blob", None) is None
         client = self._client
 
         handler_blob = str(uuid4())
