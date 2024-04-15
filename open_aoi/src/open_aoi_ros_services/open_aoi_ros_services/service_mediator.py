@@ -22,7 +22,7 @@ class Service(StandardService):
 
     def __init__(self):
         super().__init__()
-        # --- Services ---
+
         self.inspection_trigger_service = self.create_service(
             InspectionTrigger,
             f"{self.NODE_NAME}/execute_inspection",
@@ -87,7 +87,7 @@ class Service(StandardService):
 
                 for cz in control_zone_list:
                     control_target_list = cz.control_target_list
-                    assert len(control_target_list), "Control target list is empty" 
+                    assert len(control_target_list), "Control target list is empty"
 
                     for ct in control_target_list:
                         ch = ct.control_handler
@@ -127,8 +127,9 @@ class Service(StandardService):
             self.logger.info(f"Template image retrieved: {template_image}")
 
             try:
-                test_image, error, error_description = (
-                    self.image_acquisition_capture_image(camera.ip_address, True)
+                # Do not decode image here, send directly to control execution
+                test_image_msg, error, error_description = (
+                    self.image_acquisition_capture_image_msg(camera.ip_address, True)
                 )
             except Exception as e:
                 self.logger.error(str(e))
@@ -142,7 +143,7 @@ class Service(StandardService):
                         f"Failed to capture image. {error_description}"
                     )
 
-            self.logger.info(f"Test image captured: {test_image}")
+            self.logger.info(f"Test image captured as message")
 
             return response
 
@@ -163,9 +164,14 @@ class Service(StandardService):
 
 def main(args=None):
     rclpy.init(args=args)
+    executor = MultiThreadedExecutor(10)
+
     service = Service()
-    exe = MultiThreadedExecutor(10)
-    rclpy.spin(service, exe)
+    executor.add_node(service)
+
+    executor.spin()
+
+    executor.shutdown()
     rclpy.shutdown()
 
 

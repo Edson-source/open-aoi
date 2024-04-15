@@ -1,11 +1,12 @@
+import time
 from typing import Optional, Tuple, List
 
-import rclpy
 import numpy as np
 from rclpy.node import Node
 from rclpy.client import Client as ServiceClient
 from rcl_interfaces.srv._set_parameters import SetParameters
 from rcl_interfaces.msg import Parameter, ParameterType, ParameterValue
+from rclpy.callback_groups import ReentrantCallbackGroup
 from sensor_msgs.msg import Image as ImageMsg
 
 from open_aoi_core.utils import decode_image
@@ -40,6 +41,10 @@ class IntegratedClient(Node):
     def __init__(self) -> None:
         super().__init__(self.NODE_NAME)
         self.logger = self.get_logger()
+
+        # Solution to call services from service callback
+        # Credits https://robotics.stackexchange.com/a/94614/40411
+        self._group = ReentrantCallbackGroup()
 
         # Image acquisition
         self._acquire_service(
@@ -83,7 +88,7 @@ class IntegratedClient(Node):
         )
 
     def _acquire_service(self, name: str, property_name: str, msg):
-        cli = self.create_client(msg, name)
+        cli = self.create_client(msg, name, callback_group=self._group)
         setattr(self, property_name, cli)
 
     def _await_dependencies(self, service_cli_list: List[ServiceClient]):
@@ -139,6 +144,8 @@ class ImageAcquisitionClient(IntegratedClient):
         req.parameters = parameters
 
         future = self.image_acquisition_set_parameters_cli.call_async(req)
+        while not future.done():
+            pass
         return future.result()
 
     def image_acquisition_capture_image(
@@ -146,6 +153,25 @@ class ImageAcquisitionClient(IntegratedClient):
         camera_ip_address: Optional[str] = None,
         camera_emulation_mode: bool = False,
     ) -> Tuple[Optional[np.ndarray], str, str]:
+        try:
+
+            im, error, error_description = self.image_acquisition_capture_image_msg(
+                camera_ip_address, camera_emulation_mode
+            )
+            if im is not None:
+                im = decode_image(im)
+            return im, error, error_description
+        except Exception as e:
+            self.logger.error(str(e))
+            raise ROSServiceError(
+                "Failed to capture image. Service did not respond correctly."
+            )
+
+    def image_acquisition_capture_image_msg(
+        self,
+        camera_ip_address: Optional[str] = None,
+        camera_emulation_mode: bool = False,
+    ) -> Tuple[Optional[ImageMsg], str, str]:
         try:
             self.logger.info("Image acquisition parameter update request dispatched")
 
@@ -157,11 +183,13 @@ class ImageAcquisitionClient(IntegratedClient):
             self.logger.info("Image acquisition request dispatched")
 
             future = self.image_acquisition_capture_cli.call_async(req)
+            while not future.done():
+                pass
             response = future.result()
 
             error = response.error
             error_description = response.error_description
-            im = decode_image(response.image)
+            im = response.image
 
             return im, error, error_description
 
@@ -182,6 +210,8 @@ class ProductIdentificationClient(ImageAcquisitionClient):
             self.logger.info("Identification request dispatched")
 
             future = self.product_identification_get_barcode_cli.call_async(req)
+            while not future.done():
+                pass
             response = future.result()
 
             return response.identification_code
@@ -202,6 +232,8 @@ class MediatorClient(ProductIdentificationClient):
             self.logger.info("Inspection request dispatched")
 
             future = self.mediator_execute_inspection_cli.call_async(req)
+            while not future.done():
+                pass
             response = future.result()
 
             return (
