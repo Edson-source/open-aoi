@@ -58,7 +58,7 @@ def extract(im: np.ndarray, color: list[int], mask: np.ndarray):
 
 
 def extract_with_mask(im: np.ndarray, mask: np.ndarray):
-    # Function perform extraction of white connected components from `im` according to `mask`. `color` is an B/W image.
+    # Function perform extraction of white connected components from `im` according to `mask` (B/W image).
     analysis = cv.connectedComponentsWithStats(mask, cv.CV_32S)
     (_, _, values, _) = analysis
 
@@ -173,8 +173,7 @@ def display_truth_ratio(predictions):
     Args:
         predictions: List of tuples containing (prediction, truth) pairs.
 
-    Returns:
-        None (prints the ratio of 'bool truth' values)
+    Returns:difference_threshold
     """
     total_samples = len(predictions)
     true_count = sum(
