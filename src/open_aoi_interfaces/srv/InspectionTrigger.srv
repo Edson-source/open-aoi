@@ -1,0 +1,14 @@
+# Moderator node inspection trigger interface
+int64 camera_id
+bool camera_id_valid
+int64 io_pin
+bool io_pin_valid
+---
+bool overall_passed
+
+sensor_msgs/Image image
+open_aoi_interfaces/ControlLog[] control_log_list
+open_aoi_interfaces/ControlTarget[] control_target_list
+
+string error
+string error_description

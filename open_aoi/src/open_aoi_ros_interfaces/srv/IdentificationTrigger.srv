@@ -1,4 +1,0 @@
-# Identification service trigger (identify product)
-sensor_msgs/Image image
----
-string identification_code

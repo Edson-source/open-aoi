@@ -1,6 +1,0 @@
-# Image acquisition service interface
----
-# Image
-sensor_msgs/Image image
-string error
-string error_description

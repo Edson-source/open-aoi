@@ -1,7 +1,7 @@
 FROM ros:foxy-ros-base
 
-WORKDIR /aoi/open_aoi_ros
-COPY open_aoi_ros /aoi/open_aoi_ros
+WORKDIR /aoi/open_aoi
+COPY open_aoi /aoi/open_aoi
 
 # General
 RUN apt-get update
