@@ -13,13 +13,6 @@ assert MYSQL_USER
 MYSQL_PASSWORD = os.environ["MYSQL_PASSWORD"]
 assert MYSQL_PASSWORD
 
-MYSQL_PORT = os.environ["MYSQL_PORT"]
-assert MYSQL_PORT
-try:
-    MYSQL_PORT = int(MYSQL_PORT)
-except ValueError:
-    raise RuntimeError("Failed to parse mysql port from environment")
-
 AOI_OPERATOR_INITIAL_PASSWORD = os.environ["AOI_OPERATOR_INITIAL_PASSWORD"]
 assert AOI_OPERATOR_INITIAL_PASSWORD
 
@@ -28,9 +21,6 @@ assert AOI_ADMINISTRATOR_INITIAL_PASSWORD
 
 STORAGE_SECRET = os.environ["STORAGE_SECRET"]
 assert STORAGE_SECRET and len(STORAGE_SECRET) > 10
-
-MINIO_PORT = os.environ["MINIO_PORT"]
-assert MINIO_PORT
 
 MINIO_ROOT_USER = os.environ["MINIO_ROOT_USER"]
 assert MINIO_ROOT_USER

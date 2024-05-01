@@ -23,7 +23,7 @@ class Service(StandardService):
 
     camera: Optional[pylon.InstantCamera] = None
 
-    emulation_images = os.listdir(EMULATION_DIR)
+    emulation_images = [f for f in os.listdir(EMULATION_DIR) if '.png' in f]
 
     def __init__(self):
         super().__init__()

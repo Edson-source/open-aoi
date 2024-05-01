@@ -1,6 +1,7 @@
 import time
 from typing import Optional, Tuple, List
 
+import rclpy
 import numpy as np
 from rclpy.node import Node
 from rclpy.client import Client as ServiceClient
@@ -120,6 +121,7 @@ class ImageAcquisitionClient(BaseClient):
             self.logger.info("Image acquisition request dispatched")
 
             future = self.image_acquisition_capture_cli.call_async(req)
+            # rclpy.spin_until_future_complete(self, future)
             while not future.done():
                 time.sleep(0.1)
             response = future.result()

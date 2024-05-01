@@ -1,14 +1,15 @@
 """
     This script is a definition of moderator node. Node control communication of other nodes with each other.
+    The basic function is to perform product inspection, which consists of the following steps:
+    - Identify camera from request (by camera id or I/O pin id, which is related to camera)
 """
 
 import rclpy
 import numpy as np
+from PIL import Image
 from sqlalchemy.orm import Session
 from collections import defaultdict
-
 from rclpy.executors import MultiThreadedExecutor
-from PIL import Image
 
 from open_aoi_interfaces.srv import InspectionTrigger
 from open_aoi_interfaces.msg import ControlTarget
@@ -23,7 +24,21 @@ from open_aoi_core.controllers.inspection_profile import InspectionProfileContro
 from open_aoi_core.controllers.inspection import InspectionController
 from open_aoi_core.controllers.control_log import ControlLogController
 from open_aoi_core.controllers.camera import CameraController
-from open_aoi_core.utils import encode_image, decode_image, isolate_product
+from open_aoi_core.utils import encode_image, decode_image
+
+
+def _control_target_to_msg(ct: ControlTargetModel) -> ControlTarget:
+    ct_msg = ControlTarget()
+    ct_msg.id = ct.id
+
+    ct_msg.rotation = float(ct.control_zone.rotation)
+
+    ct_msg.stat_left = ct.control_zone.cc.stat_left
+    ct_msg.stat_top = ct.control_zone.cc.stat_top
+    ct_msg.stat_width = ct.control_zone.cc.stat_width
+    ct_msg.stat_height = ct.control_zone.cc.stat_height
+
+    return ct_msg
 
 
 class Service(StandardService):
@@ -32,11 +47,13 @@ class Service(StandardService):
     def __init__(self):
         super().__init__()
 
+        # Register inspection service
         self.inspection_trigger_service = self.create_service(
             InspectionTrigger,
             f"{self.NODE_NAME}/execute_inspection",
             self.execute_inspection,
         )
+        # Wait for dependencies: image acquisition, product identification and control execution nodes
         self._await_dependencies(
             [
                 self.image_acquisition_capture_cli,
@@ -50,12 +67,15 @@ class Service(StandardService):
         response.overall_passed = False
 
         with Session(engine) as session:
+            # Node is going to communicate with database, so initiate controllers
             inspection_profile_controller = InspectionProfileController(session)
             inspection_controller = InspectionController(session)
             control_log_controller = ControlLogController(session)
             camera_controller = CameraController(session)
 
+            # Camera identification
             if request.camera_id_valid:
+                # Particular camera has been requested (request comes from UI)
                 try:
                     camera = camera_controller.retrieve(request.camera_id)
                 except Exception as e:
@@ -66,6 +86,8 @@ class Service(StandardService):
                     )
                     return response
             elif request.io_pin_valid:
+                # Particular pin was triggered (request comes from GPIO interface)
+                # Get camera with provided pin.
                 try:
                     camera = camera_controller.retrieve_by_io_pin(request.io_pin)
                 except Exception as e:
@@ -76,13 +98,15 @@ class Service(StandardService):
                     )
                     return response
             else:
+                # No camera - no candies
+                self.logger.warning("Camera identification not provided")
                 response.error = MediatorServiceConstants.Error.GENERAL
-                response.error_description = "Failed to retrieve related camera. No camera identification provided."
+                response.error_description = "No camera identification provided."
                 return response
 
             self.logger.info(f"Camera retrieved [{camera.id}]: {camera.title}")
 
-            # Capture tested image and identify board
+            # Capture test image
             try:
                 test_image_msg, error, error_description = (
                     self.image_acquisition_capture_image_msg(camera.ip_address, True)
@@ -272,28 +296,15 @@ class Service(StandardService):
             self.logger.info(f"Response constructed and returned")
             return response
 
-    @staticmethod
-    def _control_target_to_msg(ct: ControlTargetModel) -> ControlTarget:
-        ct_msg = ControlTarget()
-        ct_msg.id = ct.id
-
-        ct_msg.rotation = float(ct.control_zone.rotation)
-
-        ct_msg.stat_left = ct.control_zone.cc.stat_left
-        ct_msg.stat_top = ct.control_zone.cc.stat_top
-        ct_msg.stat_width = ct.control_zone.cc.stat_width
-        ct_msg.stat_height = ct.control_zone.cc.stat_height
-
-        return ct_msg
-
 
 def main(args=None):
     rclpy.init(args=args)
-    executor = MultiThreadedExecutor(None)
 
     service = Service()
-    executor.add_node(service)
 
+    # Use multithread executor to be avoid deadlocks while awaiting services responses
+    executor = MultiThreadedExecutor(None)
+    executor.add_node(service)
     executor.spin()
 
     executor.shutdown()

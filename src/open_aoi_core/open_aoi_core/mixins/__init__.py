@@ -1,7 +1,7 @@
 import urllib3
 from minio import Minio
 
-from open_aoi_core.settings import MINIO_PORT, MINIO_ROOT_USER, MINIO_ROOT_PASSWORD
+from open_aoi_core.settings import MINIO_ROOT_USER, MINIO_ROOT_PASSWORD
 from open_aoi_core.exceptions import ConnectivityError
 
 
@@ -9,7 +9,7 @@ class Mixin:
     id: int
 
     _client = Minio(
-        f"127.0.0.1:{MINIO_PORT}",
+        f"127.0.0.1",
         access_key=MINIO_ROOT_USER,
         secret_key=MINIO_ROOT_PASSWORD,
         secure=False,

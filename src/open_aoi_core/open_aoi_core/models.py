@@ -19,7 +19,6 @@ from open_aoi_core.settings import (
     MYSQL_DATABASE,
     MYSQL_PASSWORD,
     MYSQL_USER,
-    MYSQL_PORT,
 )
 from open_aoi_core.constants import RoleEnum, AccessorEnum
 from open_aoi_core.mixins.authentication import AuthMixin, SessionCredentialsMixin
@@ -37,7 +36,7 @@ DESCRIPTION_LIMIT = 500
 
 metadata_obj = MetaData()
 engine = create_engine(
-    f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@localhost:{MYSQL_PORT}/{MYSQL_DATABASE}"
+    f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@127.0.0.1:10002/{MYSQL_DATABASE}"
 )
 
 

@@ -17,17 +17,18 @@ docker-compose up -d
 # Development guide
 Basic system configuration is provided by `.env` file from root directory.
 ```
+MYSQL_DATABASE=<database name to use>
+MYSQL_USER=<SQL user name>
+MYSQL_PASSWORD=<SQL user password>
 MYSQL_ROOT_PASSWORD=<SQL root password>
-MYSQL_DATABASE=<preferred database name>
-MYSQL_USER=<Name for new SQL user>
-MYSQL_PASSWORD=<Password for new SQL user>
 
-SIMULATION=<1|0, is 1 (allow) system will run in simulation mode>
+AOI_OPERATOR_INITIAL_PASSWORD=<password>
+AOI_ADMINISTRATOR_INITIAL_PASSWORD=<password>
 
-STORAGE_SECRET=<Really strong secret string>
+STORAGE_SECRET=<NiceGUI storage secret>
 
-AOI_OPERATOR_INITIAL_PASSWORD=<Initial password for operator>
-AOI_ADMINISTRATOR_INITIAL_PASSWORD=<Initial password for administrator>
+MINIO_ROOT_USER=<Minio user name>
+MINIO_ROOT_PASSWORD=<Minio user password>
 ```
 
 ## ROS2 services
