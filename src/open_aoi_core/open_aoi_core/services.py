@@ -1,8 +1,6 @@
 import time
-from typing import Optional, Tuple, List
+from typing import Optional, List
 
-import rclpy
-import numpy as np
 from rclpy.node import Node
 from rclpy.client import Client as ServiceClient
 from rcl_interfaces.srv._set_parameters import SetParameters
@@ -10,7 +8,6 @@ from rcl_interfaces.msg import Parameter, ParameterType, ParameterValue
 from rclpy.callback_groups import ReentrantCallbackGroup
 from sensor_msgs.msg import Image as ImageMsg
 
-from open_aoi_core.utils import decode_image
 from open_aoi_core.exceptions import ROSServiceError
 from open_aoi_interfaces.msg import ControlTarget
 from open_aoi_interfaces.srv import (
@@ -62,7 +59,7 @@ class ImageAcquisitionClient(BaseClient):
         self,
         camera_ip_address: Optional[str] = None,
         camera_emulation_mode: bool = False,
-    ) -> bool:
+    ):
         # https://github.com/ros-planning/navigation2/issues/2415#issuecomment-1028468173
         req = SetParameters.Request()
         parameters = []
@@ -80,36 +77,13 @@ class ImageAcquisitionClient(BaseClient):
             val = self._resolve_param_type(param_value)
             parameters.append(Parameter(name=param_name, value=val))
         req.parameters = parameters
-
-        future = self.image_acquisition_set_parameters_cli.call_async(req)
-        while not future.done():
-            time.sleep(0.1)
-        return future.result()
+        return self.image_acquisition_set_parameters_cli.call_async(req)
 
     def image_acquisition_capture_image(
         self,
         camera_ip_address: Optional[str] = None,
         camera_emulation_mode: bool = False,
-    ) -> Tuple[Optional[np.ndarray], str, str]:
-        try:
-
-            im, error, error_description = self.image_acquisition_capture_image_msg(
-                camera_ip_address, camera_emulation_mode
-            )
-            if im is not None:
-                im = decode_image(im)
-            return im, error, error_description
-        except Exception as e:
-            self.logger.error(str(e))
-            raise ROSServiceError(
-                "Failed to capture image. Service did not respond correctly."
-            )
-
-    def image_acquisition_capture_image_msg(
-        self,
-        camera_ip_address: Optional[str] = None,
-        camera_emulation_mode: bool = False,
-    ) -> Tuple[Optional[ImageMsg], str, str]:
+    ):
         try:
             self.logger.info("Image acquisition parameter update request dispatched")
 
@@ -118,20 +92,9 @@ class ImageAcquisitionClient(BaseClient):
             )
 
             req = ImageAcquisition.Request()
+
             self.logger.info("Image acquisition request dispatched")
-
-            future = self.image_acquisition_capture_cli.call_async(req)
-            # rclpy.spin_until_future_complete(self, future)
-            while not future.done():
-                time.sleep(0.1)
-            response = future.result()
-
-            error = response.error
-            error_description = response.error_description
-            im = response.image
-
-            return im, error, error_description
-
+            return self.image_acquisition_capture_cli.call_async(req)
         except Exception as e:
             self.logger.error(str(e))
             raise ROSServiceError(
@@ -145,18 +108,13 @@ class ProductIdentificationClient(BaseClient):
 
     def product_identification_get_barcode(
         self, im_msg: ImageMsg  # Avoid conversion to image from acquisition node
-    ) -> str:
+    ):
         try:
             req = IdentificationTrigger.Request()
             req.image = im_msg
+
             self.logger.info("Identification request dispatched")
-
-            future = self.product_identification_get_barcode_cli.call_async(req)
-            while not future.done():
-                time.sleep(0.1)
-            response = future.result()
-
-            return response.identification_code
+            return self.product_identification_get_barcode_cli.call_async(req)
         except Exception as e:
             self.logger.error(str(e))
             raise ROSServiceError(
@@ -175,7 +133,7 @@ class ControlExecutionClient(BaseClient):
         control_handler_source: str,
         environment: str,
         control_target_list: List[ControlTarget],
-    ) -> Tuple[Optional[np.ndarray], str, str]:
+    ):
         try:
             req = ControlExecutionTrigger.Request()
             req.test_image = test_im_msg
@@ -184,19 +142,8 @@ class ControlExecutionClient(BaseClient):
             req.environment = environment
             req.control_target_list = control_target_list
 
-            future = self.control_execution_execute_control_cli.call_async(req)
             self.logger.info("Execution request dispatched")
-            while not future.done():
-                time.sleep(0.1)
-            response = future.result()
-
-            self.logger.info(str(response))
-
-            return (
-                response.control_log_list,
-                response.error,
-                response.error_description,
-            )
+            return self.control_execution_execute_control_cli.call_async(req)
         except Exception as e:
             self.logger.error(str(e))
             raise ROSServiceError(
@@ -212,7 +159,7 @@ class MediatorClient(BaseClient):
         self,
         camera_id: Optional[int] = None,
         io_pin: Optional[int] = None,
-    ) -> Tuple[Optional[np.ndarray], bool, List, List, str, str]:
+    ):
         assert camera_id is not None or io_pin is not None
         try:
             req = InspectionTrigger.Request()
@@ -224,24 +171,7 @@ class MediatorClient(BaseClient):
             req.io_pin_valid = True if io_pin is not None else False
 
             self.logger.info("Inspection request dispatched")
-
-            future = self.mediator_execute_inspection_cli.call_async(req)
-            while not future.done():
-                time.sleep(0.1)
-            response = future.result()
-
-            im = None
-            if response.image is not None:
-                im = decode_image(response.image)
-
-            return (
-                im,
-                response.overall_passed,
-                response.control_log_list,
-                response.control_target_list,
-                response.error,
-                response.error_description,
-            )
+            return self.mediator_execute_inspection_cli.call_async(req)
         except Exception as e:
             self.logger.error(str(e))
             raise ROSServiceError(
@@ -329,6 +259,11 @@ class StandardClient(
                     f"Service {cli.srv_name} not available, waiting again..."
                 )
 
+    def _await_future(self, future):
+        while not future.done():
+            time.sleep(0.1)
+        return future.result()
+
 
 class StandardService(StandardClient):
     service_status: ServiceStatusEnum = ServiceStatusEnum.IDLE
@@ -342,6 +277,7 @@ class StandardService(StandardClient):
             ServiceStatus,
             f"{self.NODE_NAME}/get_status",
             self._get_status,
+            callback_group=self._group,
         )
         self.logger.info("Service started")
 

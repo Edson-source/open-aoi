@@ -9,7 +9,7 @@ class Mixin:
     id: int
 
     _client = Minio(
-        f"127.0.0.1",
+        f"127.0.0.1:10004",
         access_key=MINIO_ROOT_USER,
         secret_key=MINIO_ROOT_PASSWORD,
         secure=False,
