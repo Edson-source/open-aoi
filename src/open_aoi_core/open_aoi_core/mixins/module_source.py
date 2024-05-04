@@ -1,6 +1,6 @@
 """
-    Module provide control handler storing capabilities. Control handler code is stored as bytes on Minio blob storage.
-    Module provide functions to publish, materialize and destroy control handler source.
+    Module provide inspection handler storing capabilities. Inspection handler code is stored as bytes on Minio blob storage.
+    Module provide functions to publish, materialize and destroy inspectionhandler source.
 """
 
 import io

@@ -126,16 +126,16 @@ class DefectTypeModel(Base):
         String(SystemLimit.DESCRIPTION_LENGTH), nullable=False
     )
 
-    # Related control handlers
-    control_handler_list: Mapped[List["ControlHandlerModel"]] = relationship(
+    # Related inspection handlers
+    inspection_handler_list: Mapped[List["InspectionHandlerModel"]] = relationship(
         back_populates="defect_type"
     )
 
 
-class ControlHandlerModel(Base, ModuleSourceMixin):
-    """Database representation of control handler. Used to store blob reference and control handler metadata"""
+class InspectionHandlerModel(Base, ModuleSourceMixin):
+    """Database representation of inspection handler. Used to store blob reference and inspection handler metadata"""
 
-    __tablename__ = "ControlHandler"
+    __tablename__ = "InspectionHandler"
 
     # Public description
     title: Mapped[str] = mapped_column(String(SystemLimit.TITLE_LENGTH), nullable=False)
@@ -148,48 +148,48 @@ class ControlHandlerModel(Base, ModuleSourceMixin):
         String(SystemLimit.BLOB_UID_LENGTH), nullable=True
     )
 
-    # Related defect, that is handled by that control handler
+    # Related defect, that is handled by that inspection handler
     defect_type_id: Mapped[int] = mapped_column(
         ForeignKey("DefectType.id"), nullable=False
     )
     defect_type: Mapped["DefectTypeModel"] = relationship(
-        back_populates="control_handler_list"
+        back_populates="inspection_handler_list"
     )
 
-    # Related control targets
-    control_target_list: Mapped[List["ControlTargetModel"]] = relationship(
-        back_populates="control_handler"
+    # Related inspection targets
+    inspection_target_list: Mapped[List["InspectionTargetModel"]] = relationship(
+        back_populates="inspection_handler"
     )
 
 
-class ControlTargetModel(Base):
+class InspectionTargetModel(Base):
     """
-    Helper object to map control handler to the control zone.
-    Multiple control targets are allowed for single control zone.
+    Helper object to map inspection handler to the inspection zone.
+    Multiple inspection targets are allowed for single inspection zone.
     """
 
-    __tablename__ = "ControlTarget"
+    __tablename__ = "InspectionTarget"
 
-    # Control handler
-    control_handler_id: Mapped[int] = mapped_column(
-        ForeignKey("ControlHandler.id"), nullable=False
+    # Inspection handler
+    inspection_handler_id: Mapped[int] = mapped_column(
+        ForeignKey("InspectionHandler.id"), nullable=False
     )
-    control_handler: Mapped["ControlHandlerModel"] = relationship(
-        back_populates="control_target_list"
+    inspection_handler: Mapped["InspectionHandlerModel"] = relationship(
+        back_populates="inspection_target_list"
     )
 
-    # Control zone
-    control_zone_id: Mapped[int] = mapped_column(
-        ForeignKey("ControlZone.id"), nullable=False
+    # Inspection zone
+    inspection_zone_id: Mapped[int] = mapped_column(
+        ForeignKey("InspectionZone.id"), nullable=False
     )
-    control_zone: Mapped["ControlZoneModel"] = relationship(
-        back_populates="control_target_list"
+    inspection_zone: Mapped["InspectionZoneModel"] = relationship(
+        back_populates="inspection_target_list"
     )
 
 
 class ConnectedComponentModel(Base):
     """
-    Describe coordinates for control zone (where to expect the defect)
+    Describe coordinates for inspection zone (where to expect the defect)
     """
 
     __tablename__ = "ConnectedComponent"
@@ -200,37 +200,37 @@ class ConnectedComponentModel(Base):
     stat_width: Mapped[int] = mapped_column(Integer, nullable=False)
     stat_height: Mapped[int] = mapped_column(Integer, nullable=False)
 
-    # Related control zone
-    control_zone_id: Mapped[int] = mapped_column(
-        ForeignKey("ControlZone.id"), nullable=False
+    # Related inspection zone
+    inspection_zone_id: Mapped[int] = mapped_column(
+        ForeignKey("InspectionZone.id"), nullable=False
     )
-    control_zone: Mapped["ControlZoneModel"] = relationship(back_populates="cc")
+    inspection_zone: Mapped["InspectionZoneModel"] = relationship(back_populates="cc")
 
 
-class ControlZoneModel(Base):
+class InspectionZoneModel(Base):
     """
     Small zone on image (tested and template) where defect is expected. Coordinates are identified with
-    related connected component. Rotation parameter may be applied. Related control handler is identified via
-    helper control target object.
+    related connected component. Rotation parameter may be applied. Related inspection handler is identified via
+    helper inspection target object.
     """
 
-    __tablename__ = "ControlZone"
+    __tablename__ = "InspectionZone"
 
     title: Mapped[str] = mapped_column(String(SystemLimit.TITLE_LENGTH), nullable=False)
 
     # Related template
     template_id: Mapped[int] = mapped_column(ForeignKey("Template.id"), nullable=False)
-    template: Mapped["TemplateModel"] = relationship(back_populates="control_zone_list")
+    template: Mapped["TemplateModel"] = relationship(back_populates="inspection_zone_list")
 
     # Related connected component and rotation
     cc: Mapped["ConnectedComponentModel"] = relationship(
-        back_populates="control_zone", cascade="all, delete-orphan"
+        back_populates="inspection_zone", cascade="all, delete-orphan"
     )
     rotation: Mapped[float] = mapped_column(Numeric(precision=10, scale=2))
 
-    # Related control targets (lead to control handler)
-    control_target_list: Mapped[List["ControlTargetModel"]] = relationship(
-        back_populates="control_zone",  # Cascade -prevent delete if any target use this control zone
+    # Related inspection targets (lead to inspection handler)
+    inspection_target_list: Mapped[List["InspectionTargetModel"]] = relationship(
+        back_populates="inspection_zone",  # Cascade -prevent delete if any target use this inspection zone
     )
 
     # Accessor relation for log purposes
@@ -242,18 +242,18 @@ class ControlZoneModel(Base):
 
 class InspectionLogModel(Base):
     """
-    Helper to map defect type that was found to control zone. Multiple control logs are allowed.
+    Helper to map defect type that was found to inspection zone. Multiple inspection logs are allowed.
     """
 
-    __tablename__ = "ControlLog"
+    __tablename__ = "InspectionLog"
 
-    # Related control target
-    control_target_id: Mapped[int] = mapped_column(
-        ForeignKey("ControlTarget.id"), nullable=False
+    # Related inspection target
+    inspection_target_id: Mapped[int] = mapped_column(
+        ForeignKey("InspectionTarget.id"), nullable=False
     )
-    control_target: Mapped["ControlTargetModel"] = relationship()
+    inspection_target: Mapped["InspectionTargetModel"] = relationship()
 
-    # Control results (for concrete control zone)
+    # Inspection results (for concrete inspection zone)
     passed: Mapped[bool] = mapped_column(Boolean(), default=False, nullable=False)
     log: Mapped[str] = mapped_column(String(200), nullable=True)
 
@@ -303,7 +303,7 @@ class InspectionModel(Base, InspectionImageSourceMixin):
 
 class TemplateModel(Base, TemplateImageSourceMixin):
     """
-    Main reference image. Aggregate all control zones.
+    Main reference image. Aggregate all inspection zones.
     """
 
     __tablename__ = "Template"
@@ -312,9 +312,9 @@ class TemplateModel(Base, TemplateImageSourceMixin):
 
     blob: Mapped[str] = mapped_column(String(100), nullable=True)
 
-    # Related control zones
-    control_zone_list: Mapped[List["ControlZoneModel"]] = relationship(
-        back_populates="template",  # Delete cascade - prevent if control zone use template
+    # Related inspection zones
+    inspection_zone_list: Mapped[List["InspectionZoneModel"]] = relationship(
+        back_populates="template",  # Delete cascade - prevent if inspection zone use template
     )
 
     # Related inspection profiles
@@ -376,7 +376,7 @@ class InspectionProfileModel(Base):
         String(SystemLimit.DESCRIPTION_LENGTH), nullable=False
     )
 
-    # Environment variables for control handler
+    # Environment variables for inspection handler
     environment: Mapped[str] = mapped_column(Text(), nullable=True)
 
     # Product identification

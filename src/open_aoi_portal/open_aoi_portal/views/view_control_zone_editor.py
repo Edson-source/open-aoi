@@ -12,9 +12,9 @@ from open_aoi_core.exceptions import AuthenticationException
 from open_aoi_core.controllers.accessor import AccessorController
 from open_aoi_core.controllers.template import TemplateController
 from open_aoi_core.controllers.connected_component import ConnectedComponentController
-from open_aoi_core.controllers.control_zone import ControlZoneController
-from open_aoi_core.controllers.control_handler import ControlHandlerController
-from open_aoi_core.controllers.control_target import ControlTargetController
+from open_aoi_core.controllers.inspection_zone import InspectionZoneController
+from open_aoi_core.controllers.inspection_handler import InspectionHandlerController
+from open_aoi_core.controllers.inspection_target import InspectionTargetController
 from open_aoi_portal.common import (
     ACCESS_PAGE,
     inject_header,
@@ -26,7 +26,7 @@ from open_aoi_portal.common import (
 
 from PIL import Image
 
-logger = logging.getLogger("ui.control_zone_editor")
+logger = logging.getLogger("ui.inspection_zone_editor")
 
 
 class Manager:
@@ -95,7 +95,7 @@ class Manager:
                         on_click=lambda: self._zoom(1.1),
                     ).props("size=small round")
 
-    def control_zone(self):
+    def inspection_zone(self):
         if self._global_p1 is None or self._global_p2 is None:
             return None
 
@@ -240,10 +240,10 @@ def get_view(node: Node):
         session = get_session()
         access_controller = AccessorController(session)
         template_controller = TemplateController(session)
-        control_zone_controller = ControlZoneController(session)
+        inspection_zone_controller = InspectionZoneController(session)
         connected_component_controller = ConnectedComponentController(session)
-        control_handler_controller = ControlHandlerController(session)
-        control_target_controller = ControlTargetController(session)
+        inspection_handler_controller = InspectionHandlerController(session)
+        inspection_target_controller = InspectionTargetController(session)
 
         try:
             accessor = access_controller.identify_session_accessor(app.storage.user)
@@ -254,68 +254,68 @@ def get_view(node: Node):
 
         # -----------------------------------
         # Handlers
-        def _handle_control_zone_create():
-            cc = manager.control_zone()
+        def _handle_inspection_zone_create():
+            cc = manager.inspection_zone()
             logger.info(str(cc))
             try:
-                assert control_zone_title.validate()
-                assert control_handler_selection.validate()
+                assert inspection_zone_title.validate()
+                assert inspection_handler_selection.validate()
                 assert cc is not None
             except AssertionError:
                 ui.notify(
-                    "Control zone require a title. control handler and selected zone in the template image.",
+                    "Inspection zone require a title. inspection handler and selected zone in the template image.",
                     type="negative",
                 )
                 return
 
             try:
-                control_handler = control_handler_controller.retrieve(
-                    control_handler_selection.value
+                inspection_handler = inspection_handler_controller.retrieve(
+                    inspection_handler_selection.value
                 )
-                control_zone = control_zone_controller.create(
-                    control_zone_title.value.strip(), template, accessor
+                inspection_zone = inspection_zone_controller.create(
+                    inspection_zone_title.value.strip(), template, accessor
                 )
                 connected_component = connected_component_controller.create(
-                    cc[0], cc[1], cc[2], cc[3], control_zone
+                    cc[0], cc[1], cc[2], cc[3], inspection_zone
                 )
-                control_target = control_target_controller.create(
-                    control_handler, control_zone
+                inspection_target = inspection_target_controller.create(
+                    inspection_handler, inspection_zone
                 )
-                control_zone_controller.commit()
+                inspection_zone_controller.commit()
             except Exception as e:
                 logger.exception(e)
-                ui.notify("Failed to create control zone!", type="negative")
+                ui.notify("Failed to create inspection zone!", type="negative")
                 return
 
-            ui.notify("Control zone created.", type="positive")
-            _inject_control_zone_list()
+            ui.notify("Inspection zone created.", type="positive")
+            _inject_inspection_zone_list()
 
-        def _handle_control_zone_delete(control_zone):
+        def _handle_inspection_zone_delete(inspection_zone):
             def execute():
                 try:
-                    for control_target in control_zone.control_target_list:
-                        control_target_controller.delete(control_target)
-                    connected_component_controller.delete(control_zone.cc)
-                    control_zone_controller.delete(control_zone)
-                    control_zone_controller.commit()
+                    for inspection_target in inspection_zone.inspection_target_list:
+                        inspection_target_controller.delete(inspection_target)
+                    connected_component_controller.delete(inspection_zone.cc)
+                    inspection_zone_controller.delete(inspection_zone)
+                    inspection_zone_controller.commit()
                 except Exception as e:
                     logger.exception(e)
                     ui.notify(
-                        "Failed to delete control zone as it is a dependency!",
+                        "Failed to delete inspection zone as it is a dependency!",
                         type="negative",
                     )
                     return
-                ui.notify("Control zone deleted!", type="positive")
-                _inject_control_zone_list()
+                ui.notify("Inspection zone deleted!", type="positive")
+                _inject_inspection_zone_list()
 
             confirm("Are you sure?", execute)
 
-        def _handle_control_zone_preview(control_zone):
+        def _handle_inspection_zone_preview(inspection_zone):
             stat = [
-                control_zone.cc.stat_left,
-                control_zone.cc.stat_top,
-                control_zone.cc.stat_width,
-                control_zone.cc.stat_height,
+                inspection_zone.cc.stat_left,
+                inspection_zone.cc.stat_top,
+                inspection_zone.cc.stat_width,
+                inspection_zone.cc.stat_height,
             ]
             cropped = crop_stat_image(im, stat)
             with ui.dialog() as dialog, ui.card():
@@ -326,47 +326,47 @@ def get_view(node: Node):
             dialog.open()
 
         # Local injections
-        def _inject_control_zone_list():
-            control_zone_container.clear()
+        def _inject_inspection_zone_list():
+            inspection_zone_container.clear()
 
             try:
                 # TODO: filter with where
-                control_zone_list = [
+                inspection_zone_list = [
                     cz
-                    for cz in control_zone_controller.list()
+                    for cz in inspection_zone_controller.list()
                     if cz.template_id == template.id
                 ]
             except:
-                ui.notify("Failed to list control zones!", type="negative")
+                ui.notify("Failed to list inspectionzones!", type="negative")
                 return
 
-            if len(control_zone_list):
-                with control_zone_container:
-                    for control_zone in control_zone_list:
+            if len(inspection_zone_list):
+                with inspection_zone_container:
+                    for inspection_zone in inspection_zone_list:
                         with ui.item().classes("w-full").props("clickable"):
                             with ui.item_section():
                                 with ui.row():
-                                    ui.label(f"{control_zone.title}")
+                                    ui.label(f"{inspection_zone.title}")
                                     ui.space()
                                     ui.button(
                                         icon="preview",
                                         on_click=(
-                                            lambda cz: lambda: _handle_control_zone_preview(
+                                            lambda cz: lambda: _handle_inspection_zone_preview(
                                                 cz
                                             )
-                                        )(control_zone),
+                                        )(inspection_zone),
                                     ).props("size=sm")
                                     ui.button(
                                         "Remove",
                                         color="negative",
                                         on_click=(
-                                            lambda cz: lambda: _handle_control_zone_delete(
+                                            lambda cz: lambda: _handle_inspection_zone_delete(
                                                 cz
                                             )
-                                        )(control_zone),
+                                        )(inspection_zone),
                                     ).props("size=sm")
             else:
-                with control_zone_container:
+                with inspection_zone_container:
                     with ui.card().classes("w-full bg-primary text-white"):
                         ui.markdown("**No zones to show**")
 
@@ -374,19 +374,19 @@ def get_view(node: Node):
 
         try:
             template = template_controller.retrieve(template_id)
-            control_handler_list = control_handler_controller.list()
+            inspection_handler_list = inspection_handler_controller.list()
         except Exception as e:
             logger.exception(e)
             ui.notify("Failed to get data fro database!", type="negative")
             return
 
         with ui.column().classes("w-full"):
-            ui.markdown("### **Control zone editor**")
+            ui.markdown("### **Inspection zone editor**")
             ui.markdown(f"#### **Template: {template.title}**")
             ui.markdown(
                 (
-                    "Define control zone and select related module (control handler) to be applied on defined zone. "
-                    "Each module may define it's own requirements for control zone, other wise module is not guaranteed to function correctly."
+                    "Define inspection zone and select related module (inspection handler) to be applied on defined zone. "
+                    "Each module may define it's own requirements for inspection zone, other wise module is not guaranteed to function correctly."
                 )
             )
 
@@ -403,22 +403,22 @@ def get_view(node: Node):
                     await manager.create_ui()
                 with ui.list().classes("col-span-1").props(
                     "dense"
-                ) as control_zone_container:
-                    _inject_control_zone_list()
+                ) as inspection_zone_container:
+                    _inject_inspection_zone_list()
 
-            control_zone_title = inject_text_field(
-                "Title", "Enter short name for this control zone", TITLE_LIMIT
+            inspection_zone_title = inject_text_field(
+                "Title", "Enter short name for this inspection zone", TITLE_LIMIT
             )
-            control_handler_selection = ui.select(
-                label="Control handler (module)",
-                options=dict([(ch.id, ch.title) for ch in control_handler_list]),
+            inspection_handler_selection = ui.select(
+                label="Inspection handler (module)",
+                options=dict([(ch.id, ch.title) for ch in inspection_handler_list]),
                 validation={"Value is required": lambda value: value is not None},
             ).classes("w-full")
 
             with ui.row().classes("w-full"):
                 ui.space()
                 ui.button(
-                    "Save", on_click=_handle_control_zone_create, color="positive"
+                    "Save", on_click=_handle_inspection_zone_create, color="positive"
                 )
 
     return view

@@ -1,9 +1,9 @@
 int64 id
 
-# Merged from control zone
+# Merged from inspection zone
 float32 rotation
 
-# Merged from control zone connected component (cc) 
+# Merged from inspection zone connected component (cc) 
 int32 stat_left
 int32 stat_top
 int32 stat_width

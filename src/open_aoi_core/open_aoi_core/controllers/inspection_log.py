@@ -4,7 +4,7 @@ from open_aoi_core.controllers import Controller
 from open_aoi_core.models import (
     InspectionModel,
     InspectionLogModel,
-    ControlTargetModel,
+    InspectionTargetModel,
 )
 
 
@@ -13,14 +13,14 @@ class InspectionLogController(Controller):
 
     def create(
         self,
-        control_target: ControlTargetModel,
+        inspection_target: InspectionTargetModel,
         inspection: InspectionModel,
         log: str,
         passed: bool,
     ) -> InspectionLogModel:
         """Create inspection log record"""
         entity = InspectionLogModel(
-            control_target=control_target,
+            inspection_target=inspection_target,
             inspection=inspection,
             log=log,
             passed=passed,

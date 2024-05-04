@@ -16,13 +16,13 @@ from rcl_interfaces.srv._set_parameters import SetParameters
 from rcl_interfaces.msg import Parameter, ParameterType, ParameterValue
 from sensor_msgs.msg import Image as ImageMsg
 
-from open_aoi_interfaces.msg import ControlTarget as ControlTargetMSg
+from open_aoi_interfaces.msg import InspectionTarget as InspectionTargetMSg
 from open_aoi_interfaces.srv import (
     ServiceStatus,
     ImageAcquisition,
     IdentificationTrigger,
     InspectionTrigger,
-    ControlExecutionTrigger,
+    InspectionExecutionTrigger,
     GPIOPropagation,
 )
 from open_aoi_core.exceptions import SystemServiceException
@@ -32,7 +32,7 @@ from open_aoi_core.constants import (
     ProductIdentificationConstants,
     MediatorServiceConstants,
     SystemServiceStatus,
-    ControlExecutionConstants,
+    InspectionExecutionConstants,
 )
 
 
@@ -151,38 +151,38 @@ class ProductIdentificationClient(BaseClient):
             raise SystemServiceException("Failed to identify product.")
 
 
-class ControlExecutionClient(BaseClient):
-    control_execution_execute_control_cli: ServiceClient
-    control_execution_get_status_cli: ServiceClient
+class InspectionExecutionClient(BaseClient):
+    inspection_execution_execute_inspection_cli: ServiceClient
+    inspection_execution_get_status_cli: ServiceClient
 
-    def control_execution_execute_control(
+    def inspection_execution_execute_inspection(
         self,
         test_image_msg: ImageMsg,
         template_image_msg: ImageMsg,
         environment: str,
-        control_handler_source: str,
-        control_target_list: List[ControlTargetMSg],
+        inspection_handler_source: str,
+        inspection_target_list: List[InspectionTargetMSg],
     ):
         """
-        Dispatch control execution request. Require image as message as it is meant to work on
+        Dispatch inspection execution request. Require image as message as it is meant to work on
         image acquisition service results (prevent unnecessary conversion from message  to image and back)
         - raise: SystemServiceException if any exception occur
         """
         try:
-            req = ControlExecutionTrigger.Request()
+            req = InspectionExecutionTrigger.Request()
 
             req.test_image = test_image_msg
             req.template_image = template_image_msg
 
             req.environment = environment
-            req.control_handler = control_handler_source
-            req.control_target_list = control_target_list
+            req.inspection_handler = inspection_handler_source
+            req.inspection_target_list = inspection_target_list
 
-            self.logger.info("Control execution request dispatched")
-            return self.control_execution_execute_control_cli.call_async(req)
+            self.logger.info("Inspection execution request dispatched")
+            return self.inspection_execution_execute_inspection_cli.call_async(req)
         except Exception as e:
             self.logger.error(str(e))
-            raise SystemServiceException("Failed to execute control.")
+            raise SystemServiceException("Failed to execute inspection.")
 
 
 class GPIOInterfaceClient(BaseClient):
@@ -276,7 +276,7 @@ class MediatorClient(BaseClient):
 class StandardClient(
     Node,
     MediatorClient,
-    ControlExecutionClient,
+    InspectionExecutionClient,
     ProductIdentificationClient,
     ImageAcquisitionClient,
 ):
@@ -316,15 +316,15 @@ class StandardClient(
             SetParameters,
         )
 
-        # Control execution
+        # Inspection execution
         self._acquire_service(
-            f"{ControlExecutionConstants.NODE_NAME}/execute_control",
-            f"control_execution_execute_control_cli",
-            ControlExecutionTrigger,
+            f"{InspectionExecutionConstants.NODE_NAME}/execute_inspection",
+            f"inspection_execution_execute_inspection_cli",
+            InspectionExecutionTrigger,
         )
         self._acquire_service(
-            f"{ControlExecutionConstants.NODE_NAME}/get_status",
-            "control_execution_get_status_cli",
+            f"{InspectionExecutionConstants.NODE_NAME}/get_status",
+            "inspection_execution_get_status_cli",
             SystemServiceStatus,
         )
 

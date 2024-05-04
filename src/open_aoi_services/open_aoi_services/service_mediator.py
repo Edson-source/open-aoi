@@ -1,13 +1,13 @@
 """
-    This script is a definition of moderator node. Node control communication of other nodes with each other.
+    This script is a definition of moderator node. Node inspection communication of other nodes with each other.
     The basic function is to perform product inspection, which consists of the following steps:
     - Identify camera from request (by camera id or I/O pin id, which is related to camera)
     - Get test image
     - Identify product from test image
-    - Get related inspection profile, template and control zone list
-    - Iterate over control zones and get each used control handler
-    - Pass control handler with related control zones to control executor and wait for logs
-    - Create inspection profile and control logs records in database to store results
+    - Get related inspection profile, template and inspection zone list
+    - Iterate over inspection zones and get each used inspection handler
+    - Pass inspection handler with related inspection zones to inspection executor and wait for logs
+    - Create inspection profile and inspection logs records in database to store results
 """
 
 import rclpy
@@ -17,14 +17,14 @@ from sqlalchemy.orm import Session
 from collections import defaultdict
 
 from open_aoi_interfaces.srv import InspectionTrigger
-from open_aoi_interfaces.msg import ControlTarget
+from open_aoi_interfaces.msg import InspectionTarget
 from open_aoi_core.services import StandardService
 from open_aoi_core.constants import (
     MediatorServiceConstants,
     ImageAcquisitionConstants,
-    ControlExecutionConstants,
+    InspectionExecutionConstants,
 )
-from open_aoi_core.models import ControlTargetModel, engine
+from open_aoi_core.models import InspectionTargetModel, engine
 from open_aoi_core.controllers.inspection_profile import InspectionProfileController
 from open_aoi_core.controllers.inspection import InspectionController
 from open_aoi_core.controllers.inspection_log import InspectionLogController
@@ -32,16 +32,16 @@ from open_aoi_core.controllers.camera import CameraController
 from open_aoi_core.utils import image_to_msg, msg_to_image
 
 
-def _control_target_to_msg(ct: ControlTargetModel) -> ControlTarget:
-    ct_msg = ControlTarget()
+def _inspection_target_to_msg(ct: InspectionTargetModel) -> InspectionTarget:
+    ct_msg = InspectionTarget()
     ct_msg.id = ct.id
 
-    ct_msg.rotation = float(ct.control_zone.rotation)
+    ct_msg.rotation = float(ct.inspection_zone.rotation)
 
-    ct_msg.stat_left = ct.control_zone.cc.stat_left
-    ct_msg.stat_top = ct.control_zone.cc.stat_top
-    ct_msg.stat_width = ct.control_zone.cc.stat_width
-    ct_msg.stat_height = ct.control_zone.cc.stat_height
+    ct_msg.stat_left = ct.inspection_zone.cc.stat_left
+    ct_msg.stat_top = ct.inspection_zone.cc.stat_top
+    ct_msg.stat_width = ct.inspection_zone.cc.stat_width
+    ct_msg.stat_height = ct.inspection_zone.cc.stat_height
 
     return ct_msg
 
@@ -59,12 +59,12 @@ class Service(StandardService):
             self.execute_inspection,
             # callback_group=self._group,
         )
-        # Wait for dependencies: image acquisition, product identification and control execution nodes
+        # Wait for dependencies: image acquisition, product identification and inspection execution nodes
         self.await_dependencies(
             [
                 self.image_acquisition_capture_cli,
                 self.product_identification_get_barcode_cli,
-                self.control_execution_execute_control_cli,
+                self.inspection_execution_execute_inspection_cli,
             ]
         )
 
@@ -76,7 +76,7 @@ class Service(StandardService):
             # Node is going to communicate with database, so initiate controllers
             inspection_profile_controller = InspectionProfileController(session)
             inspection_controller = InspectionController(session)
-            control_log_controller = InspectionLogController(session)
+            inspection_log_controller = InspectionLogController(session)
             camera_controller = CameraController(session)
 
             # Camera identification
@@ -177,44 +177,44 @@ class Service(StandardService):
 
             self.logger.info(f"Template retrieved [{template.id}]: {template.title}")
 
-            # Map each required control handler to related control zones
-            # Retrieve control handler source
-            control_handler_list = []
-            control_handler_source_list = []
-            control_handler_related_control_target_msg_map = defaultdict(list)
+            # Map each required inspection handler to related inspection zones
+            # Retrieve inspection handler source
+            inspection_handler_list = []
+            inspection_handler_source_list = []
+            inspection_handler_related_inspection_target_msg_map = defaultdict(list)
             try:
-                control_zone_list = template.control_zone_list
-                assert len(control_zone_list), "Control zone list is empty"
+                inspection_zone_list = template.inspection_zone_list
+                assert len(inspection_zone_list), "Inspection zone list is empty"
 
-                for cz in control_zone_list:
-                    control_target_list = cz.control_target_list
-                    assert len(control_target_list), "Control target list is empty"
+                for cz in inspection_zone_list:
+                    inspection_target_list = cz.inspection_target_list
+                    assert len(inspection_target_list), "Inspection target list is empty"
 
-                    for ct in control_target_list:
-                        ch = ct.control_handler
+                    for ct in inspection_target_list:
+                        ch = ct.inspection_handler
                         self.logger.info(
-                            f"Registering control target [{ct.id}]: control zone: {cz.title}, control handler: {ch.title}"
+                            f"Registering inspection target [{ct.id}]: inspection zone: {cz.title}, inspection handler: {ch.title}"
                         )
-                        control_handler_related_control_target_msg_map[ch.id].append(
-                            _control_target_to_msg(ct)
+                        inspection_handler_related_inspection_target_msg_map[ch.id].append(
+                            _inspection_target_to_msg(ct)
                         )
 
-                        if ch.id in control_handler_list:
+                        if ch.id in inspection_handler_list:
                             continue
 
-                        control_handler_list.append(ch.id)
-                        # Materialize control handler source
+                        inspection_handler_list.append(ch.id)
+                        # Materialize inspection handler source
                         source = ch.materialize_source().decode()
-                        control_handler_source_list.append(source)
+                        inspection_handler_source_list.append(source)
             except Exception as e:
                 self.logger.error(str(e))
                 own_response.error = MediatorServiceConstants.Error.RESOURCE_FAILED
                 own_response.error_description = (
-                    "Failed to retrieve related control handler."
+                    "Failed to retrieve related inspection handler."
                 )
                 return own_response
 
-            self.logger.info(f"Control handler retrieved and control targets are ready")
+            self.logger.info(f"Inspection handler retrieved and inspection targets are ready")
 
             # Template image materialization
 
@@ -230,64 +230,64 @@ class Service(StandardService):
 
             self.logger.info(f"Template image retrieved: {template_image.shape}")
 
-            control_target_list_full_msg = []
-            control_log_list_full_msg = []
-            for control_handler_id, control_handler_source in zip(
-                control_handler_list, control_handler_source_list
+            inspection_target_list_full_msg = []
+            inspection_log_list_full_msg = []
+            for inspection_handler_id, inspection_handler_source in zip(
+                inspection_handler_list, inspection_handler_source_list
             ):
-                self.logger.info(f"Executing: {control_handler_id}")
+                self.logger.info(f"Executing: {inspection_handler_id}")
                 try:
-                    control_target_list = (
-                        control_handler_related_control_target_msg_map[
-                            control_handler_id
+                    inspection_target_list = (
+                        inspection_handler_related_inspection_target_msg_map[
+                            inspection_handler_id
                         ]
                     )
-                    future = self.control_execution_execute_control(
+                    future = self.inspection_execution_execute_inspection(
                         template_image_msg,
                         test_image_msg,
-                        control_handler_source,
+                        inspection_handler_source,
                         inspection_profile.environment,
-                        control_target_list,
+                        inspection_target_list,
                     )
                     response = self.await_future(future)
-                    if response.error != ControlExecutionConstants.Error.NONE:
+                    if response.error != InspectionExecutionConstants.Error.NONE:
                         self.logger.error(
-                            f"Failed to apply control execution. {response.error}: {response.error_description}"
+                            f"Failed to apply inspection execution. {response.error}: {response.error_description}"
                         )
                         own_response.error = (
                             MediatorServiceConstants.Error.CONTROL_FAILED
                         )
-                        own_response.error_description = f"Failed to apply control handler {control_handler_id}. {error_description}"
+                        own_response.error_description = f"Failed to apply inspection handler {inspection_handler_id}. {error_description}"
                         return own_response
-                    for control_target, control_log in zip(
-                        control_target_list, response.control_log_list
+                    for inspection_target, inspection_log in zip(
+                        inspection_target_list, response.inspection_log_list
                     ):
                         assert (
-                            control_target.id == control_log.id
-                        ), "Control log disorder detected."
+                            inspection_target.id == inspection_log.id
+                        ), "Inspection log disorder detected."
 
                     # Collect all logs before creating inspection record
-                    control_target_list_full_msg.extend(control_target_list)
-                    control_log_list_full_msg.extend(response.control_log_list)
+                    inspection_target_list_full_msg.extend(inspection_target_list)
+                    inspection_log_list_full_msg.extend(response.inspection_log_list)
                 except Exception as e:
                     self.logger.error(str(e))
                     own_response.error = MediatorServiceConstants.Error.CONTROL_FAILED
                     own_response.error_description = (
-                        f"Failed to apply control handler {control_handler_id}."
+                        f"Failed to apply inspection handler {inspection_handler_id}."
                     )
                     return own_response
-                self.logger.info(f"Completed: {control_handler_id}")
+                self.logger.info(f"Completed: {inspection_handler_id}")
 
-            self.logger.info(f"Control execution completed")
+            self.logger.info(f"Inspection execution completed")
 
             try:
                 inspection = inspection_controller.create(inspection_profile)
                 inspection.publish_image(Image.fromarray(test_image))
-                for control_target, control_log in zip(
-                    control_target_list_full_msg, control_log_list_full_msg
+                for inspection_target, inspection_log in zip(
+                    inspection_target_list_full_msg, inspection_log_list_full_msg
                 ):
-                    control_log_controller.create(
-                        control_target, inspection, control_log.log, control_log.passed
+                    inspection_log_controller.create(
+                        inspection_target, inspection, inspection_log.log, inspection_log.passed
                     )
                 inspection_controller.commit()
             except Exception as e:
@@ -297,11 +297,11 @@ class Service(StandardService):
                 return own_response
 
             own_response.overall_passed = all(
-                [cl.passed for cl in control_log_list_full_msg]
+                [cl.passed for cl in inspection_log_list_full_msg]
             )
             own_response.image = test_image_msg
-            own_response.control_log_list = control_log_list_full_msg
-            own_response.control_target_list = control_target_list_full_msg
+            own_response.inspection_log_list = inspection_log_list_full_msg
+            own_response.inspection_target_list = inspection_target_list_full_msg
             own_response.error = MediatorServiceConstants.Error.NONE
 
             self.logger.info(f"Response constructed and returned")

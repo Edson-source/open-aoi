@@ -33,8 +33,8 @@ class SystemBuckets:
     MODULE_SOURCES = "modules"
 
 
-class ControlExecutionConstants:
-    NODE_NAME = "control_execution"
+class InspectionExecutionConstants:
+    NODE_NAME = "inspection_execution"
 
     class Error:
         NONE = "NONE"

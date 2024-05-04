@@ -7,8 +7,8 @@ bool io_pin_valid
 bool overall_passed
 
 sensor_msgs/Image image
-open_aoi_interfaces/ControlLog[] control_log_list
-open_aoi_interfaces/ControlTarget[] control_target_list
+open_aoi_interfaces/InspectionLog[] inspection_log_list
+open_aoi_interfaces/InspectionTarget[] inspection_target_list
 
 string error
 string error_description

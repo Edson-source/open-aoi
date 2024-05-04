@@ -9,7 +9,7 @@ from open_aoi_core.models import (
     TemplateModel,
     AccessorModel,
     InspectionProfileModel,
-    ControlZoneModel,
+    InspectionZoneModel,
 )
 from open_aoi_core.controllers import Controller
 
@@ -35,15 +35,15 @@ class TemplateController(Controller):
             .where(InspectionProfileModel.template_id == id)
             .exists()
         ).scalar()
-        any_control_zone = self.session.query(
-            select(ControlZoneModel).where(ControlZoneModel.template_id == id).exists()
+        any_inspection_zone = self.session.query(
+            select(InspectionZoneModel).where(InspectionZoneModel.template_id == id).exists()
         ).scalar()
-        return not (any_inspection_profile or any_control_zone)
+        return not (any_inspection_profile or any_inspection_zone)
 
     def list_nested(self) -> List[TemplateModel]:
         return (
             self.session.query(self._model)
-            .options(joinedload(TemplateModel.control_zone_list))
+            .options(joinedload(TemplateModel.inspection_zone_list))
             .options(joinedload(TemplateModel.inspection_profile_list))
             .all()
         )

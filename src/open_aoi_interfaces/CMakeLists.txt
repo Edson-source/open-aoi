@@ -21,14 +21,14 @@ find_package(sensor_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/ControlLog.msg"
-  "msg/ControlTarget.msg"
+  "msg/InspectionLog.msg"
+  "msg/InspectionTarget.msg"
   "srv/ImageAcquisition.srv"
   "srv/ServiceStatus.srv"
   "srv/GPIOPropagation.srv"
   "srv/InspectionTrigger.srv"
   "srv/IdentificationTrigger.srv"
-  "srv/ControlExecutionTrigger.srv"
+  "srv/InspectionExecutionTrigger.srv"
   DEPENDENCIES sensor_msgs std_msgs
 )
 

@@ -1,0 +1,10 @@
+# Service conduct inspection execution directly on provided images with provided code and provided environment
+sensor_msgs/Image test_image
+sensor_msgs/Image template_image
+string inspection_handler
+string environment
+open_aoi_interfaces/InspectionTarget[] inspection_target_list
+---
+open_aoi_interfaces/InspectionLog[] inspection_log_list
+string error
+string error_description

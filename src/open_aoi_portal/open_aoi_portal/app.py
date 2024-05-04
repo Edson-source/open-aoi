@@ -13,8 +13,8 @@ from open_aoi_portal.views.view_access import get_view as get_view_access
 from open_aoi_portal.views.view_devices import get_view as get_view_devices
 from open_aoi_portal.views.view_modules import get_view as get_view_modules
 from open_aoi_portal.views.view_template import get_view as get_view_template
-from open_aoi_portal.views.view_control_zone_editor import (
-    get_view as get_control_zone_editor_view,
+from open_aoi_portal.views.view_inspection_zone_editor import (
+    get_view as get_inspection_zone_editor_view,
 )
 from open_aoi_portal.views.view_inspection_profile import (
     get_view as get_view_inspection_profile,
@@ -55,8 +55,8 @@ class Service(StandardService):
             )
             ui.page(
                 CONTROL_ZONE_PAGE,
-                title=f"Control zone editor | {APP_TITLE}",
-            )(get_control_zone_editor_view(self))
+                title=f"Inspection zone editor | {APP_TITLE}",
+            )(get_inspection_zone_editor_view(self))
             ui.page(
                 INSPECTION_PROFILE_CREATE_PAGE,
                 title=f"Inspection profiles | {APP_TITLE}",

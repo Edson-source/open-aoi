@@ -9,7 +9,7 @@ class Module(IModule):
         environment: dict,
         test_image: np.ndarray,
         template_image: np.array,
-        control_zone_list: List[IModule.ControlZone],
-    ) -> List[IModule.ControlLog]:
+        inspection_zone_list: List[IModule.InspectionZone],
+    ) -> List[IModule.InspectionLog]:
         print("Hello AOI!")
         return []

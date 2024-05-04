@@ -63,7 +63,6 @@ if __name__ == "__main__":
 
         # Accessors
         a_operator = AccessorModel(
-            id=AccessorEnum.OPERATOR.value,
             username="operator",
             title="Operator (default)",
             description="Operator is capable of basic sytem control including inspection requests.",
@@ -71,7 +70,6 @@ if __name__ == "__main__":
             hash=AccessorModel._hash_password(AOI_OPERATOR_INITIAL_PASSWORD),
         )
         a_administrator = AccessorModel(
-            id=AccessorEnum.ADMINISTRATOR.value,
             username="administrator",
             title="Administrator (default)",
             description="Administrator is granted full access to system including security section and inspection configuration.",

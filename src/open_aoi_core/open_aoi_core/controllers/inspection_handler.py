@@ -5,48 +5,48 @@ from sqlalchemy.orm import joinedload
 
 from open_aoi_core.controllers import Controller
 from open_aoi_core.models import (
-    ControlHandlerModel,
+    InspectionHandlerModel,
     DefectTypeModel,
-    ControlTargetModel,
+    InspectionTargetModel,
 )
 
 
-class ControlHandlerController(Controller):
-    _model = ControlHandlerModel
+class InspectionHandlerController(Controller):
+    _model = InspectionHandlerModel
 
     # Aliases
-    test_store_connection = ControlHandlerModel.test_store_connection
+    test_store_connection = InspectionHandlerModel.test_store_connection
 
     def create(
         self, title: str, description: str, defect_type: DefectTypeModel
-    ) -> ControlHandlerModel:
+    ) -> InspectionHandlerModel:
         """
         Create blank controller representation, should be
         populated with content separately (due to UI file upload util)
         """
-        entity = ControlHandlerModel(
+        entity = InspectionHandlerModel(
             title=title, description=description, defect_type=defect_type
         )
         self.session.add(entity)
         return entity
 
-    def list_nested(self) -> List[ControlHandlerModel]:
-        """List control handlers with defect types"""
+    def list_nested(self) -> List[InspectionHandlerModel]:
+        """List inspection handlers with defect types"""
         return (
             self.session.query(self._model)
-            .options(joinedload(ControlHandlerModel.defect_type))
+            .options(joinedload(InspectionHandlerModel.defect_type))
             .all()
         )
 
     def allow_delete_hook(self, id: int) -> bool:
-        """Prevent delete is control target use control handler"""
+        """Prevent delete is inspection target use inspection handler"""
         return not self.session.query(
-            select(ControlTargetModel)
-            .where(ControlTargetModel.control_handler_id == id)
+            select(InspectionTargetModel)
+            .where(InspectionTargetModel.inspection_handler_id == id)
             .exists()
         ).scalar()
 
-    def post_delete_hook(self, obj: ControlHandlerModel):
-        """Delete control handler source"""
+    def post_delete_hook(self, obj: InspectionHandlerModel):
+        """Delete inspection handler source"""
         if obj.is_valid:
             obj.destroy_source()

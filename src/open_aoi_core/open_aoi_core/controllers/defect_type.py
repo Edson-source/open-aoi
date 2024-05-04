@@ -1,7 +1,7 @@
 from sqlalchemy import select
 
 from open_aoi_core.controllers import Controller
-from open_aoi_core.models import DefectTypeModel, ControlHandlerModel
+from open_aoi_core.models import DefectTypeModel, InspectionHandlerModel
 
 
 class DefectTypeController(Controller):
@@ -9,8 +9,8 @@ class DefectTypeController(Controller):
 
     def allow_delete_hook(self, id: int) -> bool:
         return not self.session.query(
-            select(ControlHandlerModel)
-            .where(ControlHandlerModel.defect_type_id == id)
+            select(InspectionHandlerModel)
+            .where(InspectionHandlerModel.defect_type_id == id)
             .exists()
         ).scalar()
 

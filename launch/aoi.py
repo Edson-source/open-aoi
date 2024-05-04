@@ -11,9 +11,9 @@ def aoi_launch_description():
         package="open_aoi_services",
         executable="open_aoi_product_identification",
     )
-    aoi_control_execution = Node(
+    aoi_inspection_execution = Node(
         package="open_aoi_services",
-        executable="open_aoi_control_execution",
+        executable="open_aoi_inspection_execution",
     )
     aoi_mediator = Node(
         package="open_aoi_services",
@@ -33,7 +33,7 @@ def aoi_launch_description():
             # Independent
             aoi_image_acquisition,
             aoi_product_identification,
-            aoi_control_execution,
+            aoi_inspection_execution,
             aoi_gpio,
             # Dependent
             aoi_mediator,

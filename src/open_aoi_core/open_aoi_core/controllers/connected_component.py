@@ -1,4 +1,4 @@
-from open_aoi_core.models import ConnectedComponentModel, ControlZoneModel
+from open_aoi_core.models import ConnectedComponentModel, InspectionZoneModel
 from open_aoi_core.controllers import Controller
 
 
@@ -11,7 +11,7 @@ class ConnectedComponentController(Controller):
         stat_top: int,
         stat_width: int,
         stat_height: int,
-        control_zone: ControlZoneModel,
+        inspection_zone: InspectionZoneModel,
     ) -> ConnectedComponentModel:
         """Create connected component"""
         assert stat_left >= 0
@@ -24,7 +24,7 @@ class ConnectedComponentController(Controller):
             stat_top=stat_top,
             stat_width=stat_width,
             stat_height=stat_height,
-            control_zone=control_zone,
+            inspection_zone=inspection_zone,
         )
         self.session.add(entity)
         return entity

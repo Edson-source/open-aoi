@@ -44,8 +44,8 @@ def get_view(node: Node):
                 (
                     im,
                     overall_passed,
-                    control_log_list,
-                    control_target_list,
+                    inspection_log_list,
+                    inspection_target_list,
                     error,
                     error_description,
                 ) = await to_thread(partial)

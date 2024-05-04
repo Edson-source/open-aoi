@@ -80,8 +80,8 @@ class Module(IModule):
         environment: dict,
         test_image: np.ndarray,
         template_image: np.array,
-        control_zone_list: List[IModule.ControlZone],
-    ) -> List[IModule.ControlLog]:
+        inspection_zone_list: List[IModule.InspectionZone],
+    ) -> List[IModule.InspectionLog]:
         # Algorithm does not require preprocessing for whole image
 
         COMPRESSION_RATIO = int(environment["COMPRESSION_RATIO"])
@@ -97,10 +97,10 @@ class Module(IModule):
         ALLOWED_DIFFERENCE = float(environment["ALLOWED_DIFFERENCE"])
         assert 1 >= ALLOWED_DIFFERENCE >= 0, "Allowed threshold should be from 0 to 1."
 
-        control_log_list = []
-        for control_zone in control_zone_list:
-            test_chunk = self.apply_control_zone(test_image, control_zone)
-            template_chunk = self.apply_control_zone(template_image, control_zone)
+        inspection_log_list = []
+        for inspection_zone in inspection_zone_list:
+            test_chunk = self.apply_inspection_zone(test_image, inspection_zone)
+            template_chunk = self.apply_inspection_zone(template_image, inspection_zone)
 
             passed = test_passed(
                 test_chunk,
@@ -109,6 +109,6 @@ class Module(IModule):
                 binarization_threshold=BINARIZATION_THRESHOLD,
                 allowed_difference=ALLOWED_DIFFERENCE,
             )
-            control_log = IModule.ControlLog("Ok", passed)
-            control_zone_list.append(control_log)
-        return control_log_list
+            inspection_log = IModule.InspectionLog("Ok", passed)
+            inspection_zone_list.append(inspection_log)
+        return inspection_log_list

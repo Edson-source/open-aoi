@@ -7,38 +7,38 @@ from sqlalchemy.orm import joinedload
 from open_aoi_core.controllers import Controller
 from open_aoi_core.models import (
     TemplateModel,
-    ControlTargetModel,
-    ControlZoneModel,
+    InspectionTargetModel,
+    InspectionZoneModel,
     AccessorModel,
 )
 
 
-class ControlZoneController(Controller):
-    _model = ControlZoneModel
+class InspectionZoneController(Controller):
+    _model = InspectionZoneModel
 
     def create(
         self,
         title: str,
         template: TemplateModel,
         accessor: AccessorModel,
-    ) -> ControlZoneModel:
-        obj = ControlZoneModel(
+    ) -> InspectionZoneModel:
+        obj = InspectionZoneModel(
             title=title, template=template, created_by=accessor, created_at=datetime.now(), rotation=0
         )
         self.session.add(obj)
         return obj
 
-    def list_nested(self) -> List[ControlZoneModel]:
+    def list_nested(self) -> List[InspectionZoneModel]:
         return (
             self.session.query(self._model)
-            .options(joinedload(ControlZoneModel.cc))
-            .options(joinedload(ControlZoneModel.control_target_list))
+            .options(joinedload(InspectionZoneModel.cc))
+            .options(joinedload(InspectionZoneModel.inspection_target_list))
             .all()
         )
 
     def allow_delete_hook(self, id: int) -> bool:
         return not self.session.query(
-            select(ControlTargetModel)
-            .where(ControlTargetModel.control_zone_id == id)
+            select(InspectionTargetModel)
+            .where(InspectionTargetModel.inspection_zone_id == id)
             .exists()
         ).scalar()

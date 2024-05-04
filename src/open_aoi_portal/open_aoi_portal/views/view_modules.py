@@ -7,7 +7,7 @@ from fastapi.responses import RedirectResponse
 
 from open_aoi_core.models import TITLE_LIMIT, DESCRIPTION_LIMIT
 from open_aoi_core.exceptions import AuthenticationException, ConnectionFailedException, SystemIntegrityException
-from open_aoi_core.controllers.control_handler import ControlHandlerController
+from open_aoi_core.controllers.inspection_handler import InspectionHandlerController
 from open_aoi_core.controllers.accessor import AccessorController
 from open_aoi_core.controllers.defect_type import DefectTypeController
 from open_aoi_portal.common import (
@@ -34,7 +34,7 @@ def _handle_store_connection_test():
         global IS_STORE_CONNECTED
         nonlocal verbose
         try:
-            ControlHandlerController.test_store_connection()
+            InspectionHandlerController.test_store_connection()
             if not IS_STORE_CONNECTED:
                 ui.notify("Store connected!", type="positive")
                 IS_STORE_CONNECTED = True
@@ -53,7 +53,7 @@ def get_view(node: Node):
         session = get_session()
         access_controller = AccessorController(session)
         defect_type_controller = DefectTypeController(session)
-        control_handler_controller = ControlHandlerController(session)
+        inspection_handler_controller = InspectionHandlerController(session)
 
         # Define functions here to access ui elements directly
         # -------------------------------------------------------------------------
@@ -98,7 +98,7 @@ def get_view(node: Node):
             confirm("Are you sure?", _execute)
 
         # Handlers: module
-        def _handle_module_upload_request(control_handler_id: int):
+        def _handle_module_upload_request(inspection_handler_id: int):
             with ui.dialog() as dialog, ui.card().classes("w-[600px]"):
                 ui.markdown("#### **Upload source**")
                 ui.upload(
@@ -106,7 +106,7 @@ def get_view(node: Node):
                         lambda c_h_id: lambda e: _handle_module_upload_process(
                             e, c_h_id
                         )
-                    )(control_handler_id),
+                    )(inspection_handler_id),
                     max_files=1,
                 ).classes("w-full")
                 with ui.row().classes("w-full justify-end"):
@@ -114,18 +114,18 @@ def get_view(node: Node):
 
             dialog.open()
 
-        def _handle_module_upload_process(e, control_handler_id: int):
+        def _handle_module_upload_process(e, inspection_handler_id: int):
             content = e.content.read()
             try:
-                control_handler = control_handler_controller.retrieve(
-                    control_handler_id
+                inspection_handler = inspection_handler_controller.retrieve(
+                    inspection_handler_id
                 )
-                valid, error = control_handler.validate_source(content)
+                valid, error = inspection_handler.validate_source(content)
                 if not valid:
                     ui.notify(error, type="negative")
                     return
-                control_handler.publish_source(content)
-                control_handler_controller.commit()
+                inspection_handler.publish_source(content)
+                inspection_handler_controller.commit()
             except Exception as e:
                 node.logger.error(str(e))
                 ui.notify("Failed to upload module source!")
@@ -135,12 +135,12 @@ def get_view(node: Node):
 
             _inject_module_list()
 
-        def _handle_module_download_request(control_handler_id: int):
+        def _handle_module_download_request(inspection_handler_id: int):
             try:
-                control_handler = control_handler_controller.retrieve(
-                    control_handler_id
+                inspection_handler = inspection_handler_controller.retrieve(
+                    inspection_handler_id
                 )
-                module = control_handler.materialize_source()
+                module = inspection_handler.materialize_source()
             except:
                 ui.notify("Failed to obtain module source!")
                 return
@@ -160,12 +160,12 @@ def get_view(node: Node):
                 defect_type = defect_type_controller.retrieve(
                     module_defect_type_selection.value
                 )
-                control_handler_controller.create(
+                inspection_handler_controller.create(
                     title=module_title_input.value,
                     description=module_description_input.value,
                     defect_type=defect_type,
                 )
-                control_handler_controller.commit()
+                inspection_handler_controller.commit()
             except:
                 ui.notify("Failed to create module!", type="negative")
                 return
@@ -174,11 +174,11 @@ def get_view(node: Node):
 
             _inject_module_list()
 
-        def _handle_module_delete(control_handler_id: int):
+        def _handle_module_delete(inspection_handler_id: int):
             def _execute():
                 try:
-                    control_handler_controller.delete_by_id(control_handler_id)
-                    control_handler_controller.commit()
+                    inspection_handler_controller.delete_by_id(inspection_handler_id)
+                    inspection_handler_controller.commit()
                 except SystemIntegrityException as e:
                     ui.notify(str(e), type="negative")
                     return
@@ -229,23 +229,23 @@ def get_view(node: Node):
             modules_container.clear()
 
             try:
-                control_handlers = control_handler_controller.list_nested()
+                inspection_handlers = inspection_handler_controller.list_nested()
             except:
                 ui.notify("Failed to get modules!", type="negative")
                 return
 
             with modules_container:
-                if len(control_handlers):
+                if len(inspection_handlers):
                     with ui.scroll_area().classes("w-full"):
                         with ui.list().classes("w-full"):
-                            for control_handler in control_handlers:
+                            for inspection_handler in inspection_handlers:
                                 with ui.item().props("clickable").classes("w-full"):
                                     with ui.item_section():
                                         ui.item_label(
-                                            f"{ICON_INVALID_MODULE if control_handler.blob is None else ICON_VALID_MODULE} {control_handler.defect_type.title} | {control_handler.title}"
+                                            f"{ICON_INVALID_MODULE if inspection_handler.blob is None else ICON_VALID_MODULE} {inspection_handler.defect_type.title} | {inspection_handler.title}"
                                         )
                                         ui.item_label(
-                                            control_handler.description
+                                            inspection_handler.description
                                         ).props("caption")
                                     with ui.item_section().props("side"):
                                         with ui.row():
@@ -254,7 +254,7 @@ def get_view(node: Node):
                                                     lambda c_h: lambda: _handle_module_upload_request(
                                                         c_h.id
                                                     )
-                                                )(control_handler),
+                                                )(inspection_handler),
                                                 icon="upload",
                                             ).props(
                                                 "size=sm",
@@ -264,19 +264,19 @@ def get_view(node: Node):
                                                     lambda c_h: lambda: _handle_module_download_request(
                                                         c_h.id,
                                                     )
-                                                )(control_handler),
+                                                )(inspection_handler),
                                                 icon="download",
                                             ).props(
                                                 "size=sm",
                                             )
-                                            if control_handler.blob is None:
+                                            if inspection_handler.blob is None:
                                                 download.disable()
                                             ui.button(
                                                 on_click=(
                                                     lambda c_h: lambda: _handle_module_delete(
                                                         c_h.id,
                                                     )
-                                                )(control_handler),
+                                                )(inspection_handler),
                                                 icon="close",
                                                 color="negative",
                                             ).props(

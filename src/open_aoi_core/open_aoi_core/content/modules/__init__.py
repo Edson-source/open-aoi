@@ -9,7 +9,7 @@ from open_aoi_core.utils import crop_stat_cv
 
 class IModule:
     @dataclass
-    class ControlZone:
+    class InspectionZone:
         rotation: float
         stat_left: int
         stat_top: int
@@ -17,7 +17,7 @@ class IModule:
         stat_height: int
 
     @dataclass
-    class ControlLog:
+    class InspectionLog:
         log: str
         passed: bool
 
@@ -26,16 +26,16 @@ class IModule:
         environment: dict,
         test_image: np.ndarray,
         template_image: np.array,
-        control_zone_list: List[ControlZone],
-    ) -> List[ControlLog]:
+        inspection_zone_list: List[InspectionZone],
+    ) -> List[InspectionLog]:
         raise NotImplementedError()
 
-    def apply_control_zone(im: np.ndarray, control_zone: ControlZone) -> np.ndarray:
+    def apply_inspection_zone(im: np.ndarray, inspection_zone: InspectionZone) -> np.ndarray:
         stat = [
-            control_zone.stat_left,
-            control_zone.stat_top,
-            control_zone.stat_width,
-            control_zone.stat_height,
+            inspection_zone.stat_left,
+            inspection_zone.stat_top,
+            inspection_zone.stat_width,
+            inspection_zone.stat_height,
         ]
         chunk = crop_stat_cv(im, stat)
         # TODO: Rotation
