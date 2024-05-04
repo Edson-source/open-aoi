@@ -27,7 +27,7 @@ from open_aoi_core.constants import (
 from open_aoi_core.models import ControlTargetModel, engine
 from open_aoi_core.controllers.inspection_profile import InspectionProfileController
 from open_aoi_core.controllers.inspection import InspectionController
-from open_aoi_core.controllers.control_log import ControlLogController
+from open_aoi_core.controllers.inspection_log import InspectionLogController
 from open_aoi_core.controllers.camera import CameraController
 from open_aoi_core.utils import image_to_msg, msg_to_image
 
@@ -76,7 +76,7 @@ class Service(StandardService):
             # Node is going to communicate with database, so initiate controllers
             inspection_profile_controller = InspectionProfileController(session)
             inspection_controller = InspectionController(session)
-            control_log_controller = ControlLogController(session)
+            control_log_controller = InspectionLogController(session)
             camera_controller = CameraController(session)
 
             # Camera identification
@@ -95,7 +95,7 @@ class Service(StandardService):
                 # Particular pin was triggered (request comes from GPIO interface)
                 # Get camera with provided pin.
                 try:
-                    camera = camera_controller.retrieve_by_io_pin(request.io_pin)
+                    camera = camera_controller.retrieve_by_io_pin_trigger(request.io_pin)
                 except Exception as e:
                     self.logger.error(str(e))
                     response.error = MediatorServiceConstants.Error.GENERAL

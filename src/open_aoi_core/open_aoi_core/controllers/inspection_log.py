@@ -8,7 +8,7 @@ from open_aoi_core.models import (
 )
 
 
-class ControlLogController(Controller):
+class InspectionLogController(Controller):
     _model = InspectionLogModel
 
     def create(
@@ -18,15 +18,16 @@ class ControlLogController(Controller):
         log: str,
         passed: bool,
     ) -> InspectionLogModel:
-        obj = InspectionLogModel(
+        """Create inspection log record"""
+        entity = InspectionLogModel(
             control_target=control_target,
             inspection=inspection,
             log=log,
             passed=passed,
             created_at=datetime.now(),
         )
-        self.session.add(obj)
-        return obj
+        self.session.add(entity)
+        return entity
 
     def allow_delete_hook(self, id: int) -> bool:
         return False  # Do not delete log
