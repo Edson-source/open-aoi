@@ -24,7 +24,6 @@ class TemplateController(Controller):
             title=title,
             image_blob=image_blob,
             created_by=accessor,
-            created_at=datetime.now(),
         )
         self.session.add(obj)
         return obj

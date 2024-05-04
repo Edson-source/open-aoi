@@ -22,13 +22,18 @@ class InspectionZoneController(Controller):
         template: TemplateModel,
         accessor: AccessorModel,
     ) -> InspectionZoneModel:
-        obj = InspectionZoneModel(
-            title=title, template=template, created_by=accessor, created_at=datetime.now(), rotation=0
+        """Create inspection zone"""
+        entity = InspectionZoneModel(
+            title=title,
+            template=template,
+            created_by=accessor,
+            rotation=0,  # TODO: real rotation
         )
-        self.session.add(obj)
-        return obj
+        self.session.add(entity)
+        return entity
 
     def list_nested(self) -> List[InspectionZoneModel]:
+        """List inspection zones with related connected components and targets"""
         return (
             self.session.query(self._model)
             .options(joinedload(InspectionZoneModel.cc))
@@ -37,6 +42,7 @@ class InspectionZoneController(Controller):
         )
 
     def allow_delete_hook(self, id: int) -> bool:
+        """Allow delete if no inspection target refer the zone"""
         return not self.session.query(
             select(InspectionTargetModel)
             .where(InspectionTargetModel.inspection_zone_id == id)

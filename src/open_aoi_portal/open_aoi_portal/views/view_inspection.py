@@ -39,7 +39,7 @@ def get_view(node: Node):
 
             try:
                 partial = functools.partial(
-                    node.mediator_execute_inspection, camera_selection.value
+                    node.mediator_inspection, camera_selection.value
                 )
                 (
                     im,

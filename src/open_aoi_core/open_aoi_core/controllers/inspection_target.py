@@ -17,13 +17,15 @@ class InspectionTargetController(Controller):
         inspection_handler: InspectionHandlerModel,
         inspection_zone: InspectionZoneModel,
     ) -> InspectionTargetModel:
-        obj = InspectionTargetModel(
+        """Create inspection target"""
+        entity = InspectionTargetModel(
             inspection_handler=inspection_handler, inspection_zone=inspection_zone
         )
-        self.session.add(obj)
-        return obj
+        self.session.add(entity)
+        return entity
 
     def allow_delete_hook(self, id: int) -> bool:
+        """Allow delete if no inspection refer to this target"""
         return not self.session.query(
             select(InspectionLogModel)
             .where(InspectionLogModel.inspection_target_id == id)

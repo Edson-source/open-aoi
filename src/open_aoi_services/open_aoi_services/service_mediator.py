@@ -55,7 +55,7 @@ class Service(StandardService):
         # Register inspection service
         self.inspection_trigger_service = self.create_service(
             InspectionTrigger,
-            f"{self.NODE_NAME}/execute_inspection",
+            f"{self.NODE_NAME}/inspection",
             self.execute_inspection,
             # callback_group=self._group,
         )
@@ -68,9 +68,9 @@ class Service(StandardService):
             ]
         )
 
-    def execute_inspection(self, request, own_response):
+    def execute_inspection(self, request, response):
         self.logger.info("Inspection requested")
-        own_response.overall_passed = False
+        response.overall_passed = False
 
         with Session(engine) as session:
             # Node is going to communicate with database, so initiate controllers
@@ -86,11 +86,11 @@ class Service(StandardService):
                     camera = camera_controller.retrieve(request.camera_id)
                 except Exception as e:
                     self.logger.error(str(e))
-                    response.error = MediatorServiceConstants.Error.GENERAL
-                    response.error_description = (
+                    sub_response.error = MediatorServiceConstants.Error.GENERAL
+                    sub_response.error_description = (
                         "Failed to retrieve related camera by id."
                     )
-                    return response
+                    return sub_response
             elif request.io_pin_valid:
                 # Particular pin was triggered (request comes from GPIO interface)
                 # Get camera with provided pin.
@@ -98,57 +98,57 @@ class Service(StandardService):
                     camera = camera_controller.retrieve_by_io_pin_trigger(request.io_pin)
                 except Exception as e:
                     self.logger.error(str(e))
-                    response.error = MediatorServiceConstants.Error.GENERAL
-                    response.error_description = (
+                    sub_response.error = MediatorServiceConstants.Error.GENERAL
+                    sub_response.error_description = (
                         "Failed to retrieve related camera by I/O pin."
                     )
-                    return response
+                    return sub_response
             else:
                 # No camera - no candies
                 self.logger.warning("Camera identification not provided")
-                own_response.error = MediatorServiceConstants.Error.GENERAL
-                own_response.error_description = "No camera identification provided."
-                return own_response
+                response.error = MediatorServiceConstants.Error.GENERAL
+                response.error_description = "No camera identification provided."
+                return response
 
             self.logger.info(f"Camera retrieved [{camera.id}]: {camera.title}")
 
             # Capture test image
             future = self.image_acquisition_capture_image(camera.ip_address, True)
-            response = self.await_future(future)
-            if response.error != ImageAcquisitionConstants.Error.NONE:
-                own_response.error = MediatorServiceConstants.Error.CAPTURE_FAILED
-                own_response.error_description = (
+            sub_response = self.await_future(future)
+            if sub_response.error != ImageAcquisitionConstants.Error.NONE:
+                response.error = MediatorServiceConstants.Error.CAPTURE_FAILED
+                response.error_description = (
                     f"Failed to capture image. {response.error_description}"
                 )
-                return own_response
-            test_image_msg = response.image
+                return response
+            test_image_msg = sub_response.image
             self.logger.info(f"Test image captured as message")
 
             # Product identification
             future = self.product_identification_get_barcode(test_image_msg)
-            # Decode test image while waiting for response (will be used for logging purposed)
+            # Decode test image while waiting for sub_response (will be used for logging purposed)
             test_image = msg_to_image(test_image_msg)
-            response = self.await_future(future)
+            sub_response = self.await_future(future)
 
             self.logger.info(f"Test image captured as message")
 
             try:
                 assert (
-                    response.identification_code is not None
-                    and response.identification_code.strip()
+                    sub_response.identification_code is not None
+                    and sub_response.identification_code.strip()
                 )
             except AssertionError:
-                own_response.error = (
+                response.error = (
                     MediatorServiceConstants.Error.IDENTIFICATION_FAILED
                 )
-                own_response.error_description = f"Failed to identify product."
-                return own_response
+                response.error_description = f"Failed to identify product."
+                return response
 
             # Inspection profile retrieval
             try:
                 inspection_profile = (
                     inspection_profile_controller.retrieve_by_identification_code(
-                        response.identification_code
+                        sub_response.identification_code
                     )
                 )
                 assert (
@@ -156,11 +156,11 @@ class Service(StandardService):
                 ), "Inspection profile not detected by product code"
             except Exception as e:
                 self.logger.error(str(e))
-                own_response.error = MediatorServiceConstants.Error.GENERAL
-                own_response.error_description = (
+                response.error = MediatorServiceConstants.Error.GENERAL
+                response.error_description = (
                     "Failed to retrieve inspection profile. Is profile active?"
                 )
-                return own_response
+                return response
 
             self.logger.info(
                 f"Inspection profile retrieved [{inspection_profile.id}]: {inspection_profile.title}"
@@ -171,9 +171,9 @@ class Service(StandardService):
                 template = inspection_profile.template
             except Exception as e:
                 self.logger.error(str(e))
-                own_response.error = MediatorServiceConstants.Error.GENERAL
-                own_response.error_description = "Failed to retrieve related template."
-                return own_response
+                response.error = MediatorServiceConstants.Error.GENERAL
+                response.error_description = "Failed to retrieve related template."
+                return response
 
             self.logger.info(f"Template retrieved [{template.id}]: {template.title}")
 
@@ -208,11 +208,11 @@ class Service(StandardService):
                         inspection_handler_source_list.append(source)
             except Exception as e:
                 self.logger.error(str(e))
-                own_response.error = MediatorServiceConstants.Error.RESOURCE_FAILED
-                own_response.error_description = (
+                response.error = MediatorServiceConstants.Error.RESOURCE_FAILED
+                response.error_description = (
                     "Failed to retrieve related inspection handler."
                 )
-                return own_response
+                return response
 
             self.logger.info(f"Inspection handler retrieved and inspection targets are ready")
 
@@ -224,9 +224,9 @@ class Service(StandardService):
                 template_image_msg = image_to_msg(template_image)
             except Exception as e:
                 self.logger.error(str(e))
-                own_response.error = MediatorServiceConstants.Error.RESOURCE_FAILED
-                own_response.error_description = "Failed to retrieve related template."
-                return own_response
+                response.error = MediatorServiceConstants.Error.RESOURCE_FAILED
+                response.error_description = "Failed to retrieve related template."
+                return response
 
             self.logger.info(f"Template image retrieved: {template_image.shape}")
 
@@ -249,18 +249,18 @@ class Service(StandardService):
                         inspection_profile.environment,
                         inspection_target_list,
                     )
-                    response = self.await_future(future)
-                    if response.error != InspectionExecutionConstants.Error.NONE:
+                    sub_response = self.await_future(future)
+                    if sub_response.error != InspectionExecutionConstants.Error.NONE:
                         self.logger.error(
                             f"Failed to apply inspection execution. {response.error}: {response.error_description}"
                         )
-                        own_response.error = (
+                        response.error = (
                             MediatorServiceConstants.Error.CONTROL_FAILED
                         )
-                        own_response.error_description = f"Failed to apply inspection handler {inspection_handler_id}. {error_description}"
-                        return own_response
+                        response.error_description = f"Failed to apply inspection handler {inspection_handler_id}. {error_description}"
+                        return response
                     for inspection_target, inspection_log in zip(
-                        inspection_target_list, response.inspection_log_list
+                        inspection_target_list, sub_response.inspection_log_list
                     ):
                         assert (
                             inspection_target.id == inspection_log.id
@@ -271,11 +271,11 @@ class Service(StandardService):
                     inspection_log_list_full_msg.extend(response.inspection_log_list)
                 except Exception as e:
                     self.logger.error(str(e))
-                    own_response.error = MediatorServiceConstants.Error.CONTROL_FAILED
-                    own_response.error_description = (
+                    response.error = MediatorServiceConstants.Error.CONTROL_FAILED
+                    response.error_description = (
                         f"Failed to apply inspection handler {inspection_handler_id}."
                     )
-                    return own_response
+                    return response
                 self.logger.info(f"Completed: {inspection_handler_id}")
 
             self.logger.info(f"Inspection execution completed")
@@ -292,20 +292,20 @@ class Service(StandardService):
                 inspection_controller.commit()
             except Exception as e:
                 self.logger.error(str(e))
-                own_response.error = MediatorServiceConstants.Error.CONTROL_FAILED
-                own_response.error_description = f"Failed to store inspection results."
-                return own_response
+                response.error = MediatorServiceConstants.Error.CONTROL_FAILED
+                response.error_description = f"Failed to store inspection results."
+                return response
 
-            own_response.overall_passed = all(
+            response.overall_passed = all(
                 [cl.passed for cl in inspection_log_list_full_msg]
             )
-            own_response.image = test_image_msg
-            own_response.inspection_log_list = inspection_log_list_full_msg
-            own_response.inspection_target_list = inspection_target_list_full_msg
-            own_response.error = MediatorServiceConstants.Error.NONE
+            response.image = test_image_msg
+            response.inspection_log_list = inspection_log_list_full_msg
+            response.inspection_target_list = inspection_target_list_full_msg
+            response.error = MediatorServiceConstants.Error.NONE
 
             self.logger.info(f"Response constructed and returned")
-            return own_response
+            return response
 
 
 def main(args=None):
@@ -313,7 +313,7 @@ def main(args=None):
 
     service = Service()
 
-    # Use multithread executor to be avoid deadlocks while awaiting services responses
+    # Use multithread executor to be avoid deadlocks while awaiting services sub_responses
     executor = rclpy.executors.MultiThreadedExecutor()
     executor.add_node(service)
     executor.spin()

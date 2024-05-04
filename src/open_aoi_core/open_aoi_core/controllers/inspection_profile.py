@@ -28,7 +28,7 @@ class InspectionProfileController(Controller):
         Create blank controller representation, should be
         populated with content separately (due to UI file upload util)
         """
-        obj = InspectionProfileModel(
+        entity = InspectionProfileModel(
             title=title,
             description=description,
             identification_code=identification_code,
@@ -36,12 +36,13 @@ class InspectionProfileController(Controller):
             created_by=accessor,
             environment=environment,
         )
-        self.session.add(obj)
-        return obj
+        self.session.add(entity)
+        return entity
 
     def retrieve_by_identification_code(
         self, identification_code: str
-    ) -> InspectionProfileModel:
+    ) -> Optional[InspectionProfileModel]:
+        """Retrieve inspection profile by related identification code. Profile should be active"""
         return (
             self.session.query(self._model)
             .filter(
@@ -54,6 +55,7 @@ class InspectionProfileController(Controller):
         )
 
     def allow_delete_hook(self, id: int) -> bool:
+        """Allow delete if no inspection refer to this profile"""
         return not self.session.query(
             select(InspectionModel)
             .where(InspectionModel.inspection_profile_id == id)
@@ -61,6 +63,7 @@ class InspectionProfileController(Controller):
         ).scalar()
 
     def list_nested(self) -> List[InspectionProfileModel]:
+        """List profiles with template"""
         return (
             self.session.query(self._model)
             .options(joinedload(InspectionProfileModel.template))
@@ -68,14 +71,13 @@ class InspectionProfileController(Controller):
         )
 
     def activate(self, profile: InspectionProfileModel):
-        # for p in (  # Leaving in case single active profile constrain is required
-        #     self.session.query(self._model).filter(self._model.is_active == True).all()
-        # ):
-        #     p.is_active = False
+        """Activates profile"""
         profile.is_active = True
 
     def deactivate(self, profile: InspectionProfileModel):
+        """Deactivates profile"""
         profile.is_active = False
 
     def list_active(self):
+        """List active profiles"""
         self.session.query(self._model).filter(self._model.is_active == True).one()

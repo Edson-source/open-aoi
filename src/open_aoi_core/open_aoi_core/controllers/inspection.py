@@ -18,18 +18,19 @@ class InspectionController(Controller):
         inspection_profile: InspectionProfileModel,
         image_blob: Optional[str] = None,
     ) -> InspectionModel:
-        obj = InspectionModel(
+        """Create inspection"""
+        entity = InspectionModel(
             inspection_profile=inspection_profile,
             image_blob=image_blob,
-            created_at=datetime.now(),
         )
-        self.session.add(obj)
-        return obj
+        self.session.add(entity)
+        return entity
 
     def allow_delete_hook(self, id: int) -> bool:
         return False  # Prevent log delete
 
     def list_nested(self) -> List[InspectionModel]:
+        """Return list of inspections with related log and profiles"""
         return (
             self.session.query(self._model)
             .options(joinedload(InspectionModel.inspection_log_list))

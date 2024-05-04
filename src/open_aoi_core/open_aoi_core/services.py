@@ -18,7 +18,6 @@ from sensor_msgs.msg import Image as ImageMsg
 
 from open_aoi_interfaces.msg import InspectionTarget as InspectionTargetMSg
 from open_aoi_interfaces.srv import (
-    ServiceStatus,
     ImageAcquisition,
     IdentificationTrigger,
     InspectionTrigger,
@@ -105,7 +104,9 @@ class ImageAcquisitionClient(BaseClient):
             return self.image_acquisition_set_parameters_cli.call_async(req)
         except Exception as e:
             self.logger.error(str(e))
-            raise SystemServiceException("Failed to set image acquisition parameters.") from e
+            raise SystemServiceException(
+                "Failed to set image acquisition parameters."
+            ) from e
 
     def image_acquisition_capture_image(
         self,
@@ -217,7 +218,9 @@ class GPIOInterfaceClient(BaseClient):
             return self.gpio_interface_set_parameters_cli.call_async(req)
         except Exception as e:
             self.logger.error(str(e))
-            raise SystemServiceException("Failed to set GPIO interface parameters.") from e
+            raise SystemServiceException(
+                "Failed to set GPIO interface parameters."
+            ) from e
 
     def gpio_interface_propagate_results(
         self,
@@ -243,10 +246,10 @@ class GPIOInterfaceClient(BaseClient):
 
 
 class MediatorClient(BaseClient):
-    mediator_execute_inspection_cli: ServiceClient
+    mediator_inspection_cli: ServiceClient
     mediator_get_status_cli: ServiceClient
 
-    def mediator_execute_inspection(
+    def mediator_inspection(
         self,
         camera_id: Optional[int] = None,
         io_pin: Optional[int] = None,
@@ -267,7 +270,7 @@ class MediatorClient(BaseClient):
             req.io_pin_valid = True if io_pin is not None else False
 
             self.logger.info("Inspection request dispatched")
-            return self.mediator_execute_inspection_cli.call_async(req)
+            return self.mediator_inspection_cli.call_async(req)
         except Exception as e:
             self.logger.error(str(e))
             raise SystemServiceException("Failed to inspect product.") from e
@@ -342,8 +345,8 @@ class StandardClient(
 
         # Mediator
         self._acquire_service(
-            f"{MediatorServiceConstants.NODE_NAME}/execute_inspection",
-            f"mediator_execute_inspection_cli",
+            f"{MediatorServiceConstants.NODE_NAME}/inspection",
+            f"mediator_inspection_cli",
             InspectionTrigger,
         )
         self._acquire_service(

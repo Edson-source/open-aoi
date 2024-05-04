@@ -55,7 +55,7 @@ class Service(StandardService):
         # GPIO watch god
         self.timer = self.create_timer(0.1, self._watch_dog)
 
-        self.await_dependencies([self.mediator_execute_inspection_cli])
+        self.await_dependencies([self.mediator_inspection_cli])
 
     def _update_parameters(self, parameters: List[rclpy.Parameter]):
         self.logger.info("Parameters update triggered")
@@ -74,7 +74,7 @@ class Service(StandardService):
         for pin in self.WATCH_PINS:
             if pin not in self.WIP_PINS and GPIO.input(pin):
                 # Request inspection and stop watching changes on pin
-                self.mediator_execute_inspection(io_pin=pin)
+                self.mediator_inspection(io_pin=pin)
                 self.WIP_PINS.append(pin)
 
     def propagate_result(

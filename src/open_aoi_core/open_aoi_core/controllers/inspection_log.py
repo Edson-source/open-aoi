@@ -24,7 +24,6 @@ class InspectionLogController(Controller):
             inspection=inspection,
             log=log,
             passed=passed,
-            created_at=datetime.now(),
         )
         self.session.add(entity)
         return entity
