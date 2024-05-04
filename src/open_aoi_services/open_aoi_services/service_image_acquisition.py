@@ -113,13 +113,13 @@ class Service(StandardService):
                 self.camera.TestImageSelector = "Off"
                 self.camera.Height = 2048
                 self.camera.Width = 2592
-                self._set_status(
+                self.set_status(
                     ServiceStatusEnum.IDLE, "Connected to camera: EMULATION"
                 )
                 return
             except Exception as e:
                 self.logger.error(str(e))
-                self._set_status(ServiceStatusEnum.ERROR, "Failed to setup emulator")
+                self.set_status(ServiceStatusEnum.ERROR, "Failed to setup emulator")
                 return
         # Real camera
         else:
@@ -134,25 +134,25 @@ class Service(StandardService):
                         self.camera = pylon.InstantCamera(tlf.CreateDevice(dev_info))
                         break
                 else:
-                    self._set_status(
+                    self.set_status(
                         ServiceStatusEnum.ERROR,
                         f"Failed to acquire camera with IP: {self.camera_ip_address}",
                     )
                     return
                 self.camera.Open()
-                self._set_status(
+                self.set_status(
                     ServiceStatusEnum.IDLE,
                     f"Connected to camera: {self.CAMERA_IP_ADDRESS}",
                 )
                 return
             except Exception as e:
                 self.logger.error(str(e))
-                self._set_status(ServiceStatusEnum.ERROR, "Failed to setup camera")
+                self.set_status(ServiceStatusEnum.ERROR, "Failed to setup camera")
                 return
 
     def acquire_image(self, request, response):
         self.logger.info("Image requested")
-        self._set_status(ServiceStatusEnum.BUSY)
+        self.set_status(ServiceStatusEnum.BUSY)
 
         if self.camera is None:
             self.logger.error("Camera not initialized")
@@ -160,7 +160,7 @@ class Service(StandardService):
             response.error_description = (
                 "Capture image called before camera initialization"
             )
-            self._set_status(ServiceStatusEnum.IDLE)
+            self.set_status(ServiceStatusEnum.IDLE)
             self.logger.info("Response returned")
             return response
         try:
@@ -174,7 +174,7 @@ class Service(StandardService):
                 response.error = ImageAcquisitionConstants.Error.NONE
                 response.error_description = ""
                 self.logger.info("Image returned")
-                self._set_status(ServiceStatusEnum.IDLE)
+                self.set_status(ServiceStatusEnum.IDLE)
                 return response
             else:
                 self.logger.error("Grabbed unsuccessfully")
@@ -185,13 +185,13 @@ class Service(StandardService):
                 response.error = ImageAcquisitionConstants.Error.GENERAL
                 response.error_description = "Capture image failed"
                 self.logger.info("Response returned")
-                self._set_status(ServiceStatusEnum.IDLE)
+                self.set_status(ServiceStatusEnum.IDLE)
                 return response
         except Exception as e:
             self.logger.error(str(e))
             response.error = ImageAcquisitionConstants.Error.GENERAL
             response.error_description = "Capture image failed"
-            self._set_status(ServiceStatusEnum.IDLE)
+            self.set_status(ServiceStatusEnum.IDLE)
             self.logger.info("Response returned")
             return response
 

@@ -27,7 +27,7 @@ class Service(StandardService):
 
     def get_barcode(self, request, response):
         self.logger.info("Barcode identification triggered")
-        self._set_status(ServiceStatusEnum.BUSY.value)
+        self.set_status(ServiceStatusEnum.BUSY.value)
 
         try:
             im = decode_image(request.image)
@@ -43,7 +43,7 @@ class Service(StandardService):
             # No errors expected
             self.logger.error(str(e))
 
-        self._set_status(ServiceStatusEnum.IDLE.value)
+        self.set_status(ServiceStatusEnum.IDLE.value)
         self.logger.info(f"Barcode identification returned: {identification_code}")
         return response
 

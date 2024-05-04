@@ -1,0 +1,4 @@
+# Interface to GPIO propagation service. Related pin will be set to HIGH according to OpenAOI GPIO protocol.
+int64 propagate_pin  # Pin to send signal to
+int64 release_pin  # Pin to watch (stopped watching after requesting inspection - inspection end needs to be confirmed)
+---

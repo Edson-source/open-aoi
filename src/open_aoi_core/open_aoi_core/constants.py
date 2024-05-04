@@ -64,3 +64,10 @@ class MediatorServiceConstants:
         CAPTURE_FAILED = "CAPTURE_FAILED"
         IDENTIFICATION_FAILED = "IDENTIFICATION_FAILED"
         CONTROL_FAILED = "CONTROL_FAILED"
+
+
+class GPIOInterfaceConstants:
+    NODE_NAME = "gpio_interface"
+
+    class Parameter:
+        WATCH_PINS = "WATCH_PINS"

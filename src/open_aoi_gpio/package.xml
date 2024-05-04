@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>open_aoi_gpio</name>
+  <version>0.0.1</version>
+  <description>GPIO interface for Open AOI</description>
+  <maintainer email="chrnyaevek@gmail.com">egor</maintainer>
+  <license>MIT License</license>
+  
+  <depend>rclpy</depend>
+  
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

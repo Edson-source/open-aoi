@@ -1,19 +1,5 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.actions import RegisterEventHandler
-from launch.events.process.process_exited import ProcessExited
-from launch.event_handlers.on_process_exit import OnProcessExit
-
-
-def on_exit_restart(event: ProcessExited, context):
-    print(
-        "[Custom handler] Process [{}] exited, pid: {}, return code: {}\n\n".format(
-            event.action.name, event.pid, event.returncode
-        )
-    )
-    if event.returncode != 0 and "aoi" in event.action.name:
-        print(f"Respawning AOI service: {event.action.name}")
-        return aoi_launch_description()  # Respawn node
 
 
 def aoi_launch_description():
@@ -33,17 +19,22 @@ def aoi_launch_description():
         package="open_aoi_services",
         executable="open_aoi_mediator",
     )
+    aoi_gpio = Node(
+        package="open_aoi_gpio",
+        executable="open_aoi_gpio",
+    )
     aoi_portal = Node(
         package="open_aoi_portal",
-        executable="app",
+        executable="open_aoi_portal",
     )
-    
+
     return LaunchDescription(
         [
             # Independent
             aoi_image_acquisition,
             aoi_product_identification,
             aoi_control_execution,
+            aoi_gpio,
             # Dependent
             aoi_mediator,
             aoi_portal,
@@ -52,9 +43,4 @@ def aoi_launch_description():
 
 
 def generate_launch_description():
-    return LaunchDescription(
-        [
-            aoi_launch_description(),
-            # RegisterEventHandler(event_handler=OnProcessExit(on_exit=on_exit_restart)),
-        ]
-    )
+    return LaunchDescription([aoi_launch_description()])

@@ -34,7 +34,7 @@ class Service(StandardService):
     def __init__(self) -> None:
         super().__init__()
 
-        self._await_dependencies(
+        self.await_dependencies(
             [
                 self.image_acquisition_capture_cli,
                 self.mediator_execute_inspection_cli,

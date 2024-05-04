@@ -1,11 +1,24 @@
-pypylon
+# Environemental variables
 python-dotenv
-opencv-python
-python-dotenv
+
+# Portal UI framework
 nicegui
+
+# Database
 sqlalchemy
 pymysql
+
+# Cryptography support
 cryptography
 bcrypt
+
+# Image processing
+pypylon
 pillow
-minio
+opencv-python
+
+# Minio blob storage SDK
+minio  
+
+# GPIO
+SimulRPi  # Used for simulation mode, RPi.GPIO should be available in production (in case of deployment to RaspberryPi)

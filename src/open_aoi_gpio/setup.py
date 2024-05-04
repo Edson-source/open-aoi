@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = "open_aoi_portal"
+package_name = "open_aoi_gpio"
 setup(
     name=package_name,
     version="0.0.1",
@@ -16,7 +16,7 @@ setup(
     maintainer_email="chrnyaevek@gmail.com",
     entry_points={
         "console_scripts": [
-            f"open_aoi_portal = {package_name}.app:main"
+            f"open_aoi_gpio = {package_name}.app:main",
         ],
     },
 )

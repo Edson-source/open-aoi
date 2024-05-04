@@ -1,24 +1,34 @@
+""" 
+    Module provide SDK to OpenAOI services to communicate with each other. Module
+    also define standard service class, which should be used by all nodes. This allow 
+    to automatically define status logic (used to identify service status) and prevent 
+    dead locks when calling service from callbacks. Deadlock prevention logic is based 
+    on this solution: https://robotics.stackexchange.com/a/94614/40411
+"""
+
 import time
 from typing import Optional, List
 
 from rclpy.node import Node
 from rclpy.client import Client as ServiceClient
+from rclpy.callback_groups import ReentrantCallbackGroup
 from rcl_interfaces.srv._set_parameters import SetParameters
 from rcl_interfaces.msg import Parameter, ParameterType, ParameterValue
-from rclpy.callback_groups import ReentrantCallbackGroup
 from sensor_msgs.msg import Image as ImageMsg
 
-from open_aoi_core.exceptions import ROSServiceError
-from open_aoi_interfaces.msg import ControlTarget
+from open_aoi_interfaces.msg import ControlTarget as ControlTargetMSg
 from open_aoi_interfaces.srv import (
     ServiceStatus,
     ImageAcquisition,
     IdentificationTrigger,
     InspectionTrigger,
     ControlExecutionTrigger,
+    GPIOPropagation,
 )
+from open_aoi_core.exceptions import ROSServiceError
 from open_aoi_core.constants import (
     ImageAcquisitionConstants,
+    GPIOInterfaceConstants,
     ProductIdentificationConstants,
     MediatorServiceConstants,
     ServiceStatusEnum,
@@ -47,6 +57,10 @@ class BaseClient:
             val = ParameterValue(
                 bool_value=param_value, type=ParameterType.PARAMETER_BOOL
             )
+        elif isinstance(param_value, list) and isinstance(param_value[0], int):
+            val = ParameterValue(
+                bool_value=param_value, type=ParameterType.PARAMETER_INTEGER_ARRAY
+            )
         return val
 
 
@@ -58,35 +72,51 @@ class ImageAcquisitionClient(BaseClient):
     def image_acquisition_set_parameters(
         self,
         camera_ip_address: Optional[str] = None,
-        camera_emulation_mode: bool = False,
+        camera_emulation_mode: Optional[bool] = False,
     ):
-        # https://github.com/ros-planning/navigation2/issues/2415#issuecomment-1028468173
-        req = SetParameters.Request()
-        parameters = []
-        for param_name, param_value in [
-            [
-                ImageAcquisitionConstants.Parameter.CAMERA_EMULATION_MODE,
-                camera_emulation_mode,
-            ],
-            [
-                ImageAcquisitionConstants.Parameter.CAMERA_IP_ADDRESS,
-                camera_ip_address,
-            ],
-            [ImageAcquisitionConstants.Parameter.CAMERA_ENABLED, True],
-        ]:
-            val = self._resolve_param_type(param_value)
-            parameters.append(Parameter(name=param_name, value=val))
-        req.parameters = parameters
-        return self.image_acquisition_set_parameters_cli.call_async(req)
+        """
+        Dispatch parameters update request to image acquisition service
+        - raise: ROSServiceError if any exception occur
+        """
+
+        try:
+            req = SetParameters.Request()
+
+            parameters = []
+            for param_name, param_value in [
+                [
+                    ImageAcquisitionConstants.Parameter.CAMERA_EMULATION_MODE,
+                    camera_emulation_mode,
+                ],
+                [
+                    ImageAcquisitionConstants.Parameter.CAMERA_IP_ADDRESS,
+                    camera_ip_address,
+                ],
+                [ImageAcquisitionConstants.Parameter.CAMERA_ENABLED, True],
+            ]:
+                val = self._resolve_param_type(param_value)
+                parameters.append(Parameter(name=param_name, value=val))
+
+            req.parameters = parameters
+
+            self.logger.info(
+                "Parameter update request on image acquisition service dispatched"
+            )
+            return self.image_acquisition_set_parameters_cli.call_async(req)
+        except Exception as e:
+            self.logger.error(str(e))
+            raise ROSServiceError("Failed to set image acquisition parameters.") from e
 
     def image_acquisition_capture_image(
         self,
         camera_ip_address: Optional[str] = None,
         camera_emulation_mode: bool = False,
     ):
+        """
+        Dispatch image capturing request.
+        - raise: ROSServiceError if any exception occur
+        """
         try:
-            self.logger.info("Image acquisition parameter update request dispatched")
-
             self.image_acquisition_set_parameters(
                 camera_ip_address, camera_emulation_mode
             )
@@ -97,29 +127,28 @@ class ImageAcquisitionClient(BaseClient):
             return self.image_acquisition_capture_cli.call_async(req)
         except Exception as e:
             self.logger.error(str(e))
-            raise ROSServiceError(
-                "Failed to capture image. Service did not respond correctly."
-            )
+            raise ROSServiceError("Failed to capture image.") from e
 
 
 class ProductIdentificationClient(BaseClient):
     product_identification_get_barcode_cli: ServiceClient
     product_identification_get_status_cli: ServiceClient
 
-    def product_identification_get_barcode(
-        self, im_msg: ImageMsg  # Avoid conversion to image from acquisition node
-    ):
+    def product_identification_get_barcode(self, image_msg: ImageMsg):
+        """
+        Dispatch product identification request. Require image as message as it is meant to work on
+        image acquisition service results (prevent unnecessary conversion from message  to image and back)
+        - raise: ROSServiceError if any exception occur
+        """
         try:
             req = IdentificationTrigger.Request()
-            req.image = im_msg
+            req.image = image_msg
 
             self.logger.info("Identification request dispatched")
             return self.product_identification_get_barcode_cli.call_async(req)
         except Exception as e:
             self.logger.error(str(e))
-            raise ROSServiceError(
-                "Failed to identify product. Service did not respond correctly."
-            )
+            raise ROSServiceError("Failed to identify product.")
 
 
 class ControlExecutionClient(BaseClient):
@@ -128,27 +157,89 @@ class ControlExecutionClient(BaseClient):
 
     def control_execution_execute_control(
         self,
-        template_im_msg: ImageMsg,
-        test_im_msg: ImageMsg,
-        control_handler_source: str,
+        test_image_msg: ImageMsg,
+        template_image_msg: ImageMsg,
         environment: str,
-        control_target_list: List[ControlTarget],
+        control_handler_source: str,
+        control_target_list: List[ControlTargetMSg],
     ):
+        """
+        Dispatch control execution request. Require image as message as it is meant to work on
+        image acquisition service results (prevent unnecessary conversion from message  to image and back)
+        - raise: ROSServiceError if any exception occur
+        """
         try:
             req = ControlExecutionTrigger.Request()
-            req.test_image = test_im_msg
-            req.template_image = template_im_msg
-            req.control_handler = control_handler_source
+
+            req.test_image = test_image_msg
+            req.template_image = template_image_msg
+
             req.environment = environment
+            req.control_handler = control_handler_source
             req.control_target_list = control_target_list
 
-            self.logger.info("Execution request dispatched")
+            self.logger.info("Control execution request dispatched")
             return self.control_execution_execute_control_cli.call_async(req)
         except Exception as e:
             self.logger.error(str(e))
-            raise ROSServiceError(
-                "Failed to identify product. Service did not respond correctly."
-            )
+            raise ROSServiceError("Failed to execute control.")
+
+
+class GPIOInterfaceClient(BaseClient):
+    gpio_interface_propagate_results_cli: ServiceClient
+    gpio_interface_get_status_cli: ServiceClient
+    gpio_interface_set_parameters_cli: ServiceClient
+
+    def gpio_interface_set_parameters(
+        self,
+        watch_pins: List[int],
+    ):
+        """
+        Dispatch parameters update request on GPIO service.
+        - raise: ROSServiceError if any exception occur
+        """
+        try:
+            req = SetParameters.Request()
+
+            parameters = []
+            for param_name, param_value in [
+                [
+                    GPIOInterfaceConstants.Parameter.WATCH_PINS,
+                    watch_pins,
+                ],
+            ]:
+                val = self._resolve_param_type(param_value)
+                parameters.append(Parameter(name=param_name, value=val))
+
+            req.parameters = parameters
+
+            self.logger.info("GPIO parameter update request dispatched")
+            return self.gpio_interface_set_parameters_cli.call_async(req)
+        except Exception as e:
+            self.logger.error(str(e))
+            raise ROSServiceError("Failed to set GPIO interface parameters.") from e
+
+    def gpio_interface_propagate_results(
+        self,
+        propagate_pin: int,
+        release_pin: int,
+    ):
+        """
+        Dispatch GPIO result propagation request. Request will reset trigger pin and make it
+        active again allowing inspection requests.
+        - raise: ROSServiceError if any exception occur
+        """
+        try:
+            req = GPIOPropagation.Request()
+
+            req.propagate_pin = propagate_pin
+            req.release_pin = release_pin
+
+            self.logger.info("GPIO propagation request dispatched")
+            return self.gpio_interface_propagate_results_cli.call_async(req)
+        except Exception as e:
+            self.logger.error(str(e))
+            raise ROSServiceError("Failed to propagate GPIO results.") from e
 
 
 class MediatorClient(BaseClient):
@@ -160,6 +251,11 @@ class MediatorClient(BaseClient):
         camera_id: Optional[int] = None,
         io_pin: Optional[int] = None,
     ):
+        """
+        Dispatch inspection request. Inspection may be triggered directly for camera of indirectly for pin,
+        which should be assigned to camera in database. Provide ONE of two identifications (camera id or pin number)
+        - raise: ROSServiceError if any exception occur.
+        """
         assert camera_id is not None or io_pin is not None
         try:
             req = InspectionTrigger.Request()
@@ -174,9 +270,7 @@ class MediatorClient(BaseClient):
             return self.mediator_execute_inspection_cli.call_async(req)
         except Exception as e:
             self.logger.error(str(e))
-            raise ROSServiceError(
-                "Failed to inspect product. Service did not respond correctly."
-            )
+            raise ROSServiceError("Failed to inspect product.") from e
 
 
 class StandardClient(
@@ -191,8 +285,6 @@ class StandardClient(
         super().__init__(self.NODE_NAME)
         self.logger = self.get_logger()
 
-        # Solution to call services from service callback
-        # Credits https://robotics.stackexchange.com/a/94614/40411
         self._group = ReentrantCallbackGroup()
 
         # Product identification
@@ -236,6 +328,18 @@ class StandardClient(
             ServiceStatus,
         )
 
+        # GPIO interface
+        self._acquire_service(
+            f"{GPIOInterfaceConstants.NODE_NAME}/propagate_result",
+            f"gpio_interface_propagate_result_cli",
+            GPIOPropagation,
+        )
+        self._acquire_service(
+            f"{GPIOInterfaceConstants.NODE_NAME}/get_status",
+            "gpio_interface_get_status_cli",
+            ServiceStatus,
+        )
+
         # Mediator
         self._acquire_service(
             f"{MediatorServiceConstants.NODE_NAME}/execute_inspection",
@@ -252,16 +356,16 @@ class StandardClient(
         cli = self.create_client(msg, name, callback_group=self._group)
         setattr(self, property_name, cli)
 
-    def _await_dependencies(self, service_cli_list: List[ServiceClient]):
+    def await_dependencies(self, service_cli_list: List[ServiceClient]):
         for cli in service_cli_list:
             while not cli.wait_for_service(timeout_sec=1.0):
                 self.logger.info(
                     f"Service {cli.srv_name} not available, waiting again..."
                 )
 
-    def _await_future(self, future):
+    def await_future(self, future):
         while not future.done():
-            time.sleep(0.1)
+            time.sleep(0.05)
         return future.result()
 
 
@@ -281,7 +385,7 @@ class StandardService(StandardClient):
         )
         self.logger.info("Service started")
 
-    def _set_status(self, status: ServiceStatusEnum, reason: str = ""):
+    def set_status(self, status: ServiceStatusEnum, reason: str = ""):
         self.service_status = status
         self.service_status_reason = reason
 

@@ -25,6 +25,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ControlTarget.msg"
   "srv/ImageAcquisition.srv"
   "srv/ServiceStatus.srv"
+  "srv/GPIOPropagation.srv"
   "srv/InspectionTrigger.srv"
   "srv/IdentificationTrigger.srv"
   "srv/ControlExecutionTrigger.srv"

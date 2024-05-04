@@ -31,7 +31,7 @@ class Service(StandardService):
         response: ControlExecutionTrigger.Response,
     ):
         self.logger.info("Execution request received")
-        self._set_status(ServiceStatusEnum.BUSY.value)
+        self.set_status(ServiceStatusEnum.BUSY.value)
 
         # TODO: align and isolate product
         try:
@@ -43,7 +43,7 @@ class Service(StandardService):
             request.error = ControlExecutionConstants.Error.IMAGE_INVALID
             request.error_description = "Failed to decode test image"
 
-            self._set_status(ServiceStatusEnum.IDLE.value)
+            self.set_status(ServiceStatusEnum.IDLE.value)
             return response
 
         self.logger.info("Test image decoded")
@@ -57,7 +57,7 @@ class Service(StandardService):
             response.error = ControlExecutionConstants.Error.IMAGE_INVALID
             response.error_description = "Failed to decode template image"
 
-            self._set_status(ServiceStatusEnum.IDLE.value)
+            self.set_status(ServiceStatusEnum.IDLE.value)
             return response
 
         self.logger.info("Template image decoded")
@@ -76,7 +76,7 @@ class Service(StandardService):
                 "Failed to import control handler specification from source"
             )
 
-            self._set_status(ServiceStatusEnum.IDLE.value)
+            self.set_status(ServiceStatusEnum.IDLE.value)
             return response
 
         self.logger.info("Controller is valid")
@@ -91,7 +91,7 @@ class Service(StandardService):
             response.error = ControlExecutionConstants.Error.ENVIRONMENT_INVALID
             response.error_description = f"Failed to load environment"
 
-            self._set_status(ServiceStatusEnum.IDLE.value)
+            self.set_status(ServiceStatusEnum.IDLE.value)
             return response
 
         self.logger.info("Environment is valid")
@@ -124,7 +124,7 @@ class Service(StandardService):
             response.error = ControlExecutionConstants.Error.GENERAL
             response.error_description = f"Failed to execute control handler: {str(e)}"
 
-            self._set_status(ServiceStatusEnum.IDLE.value)
+            self.set_status(ServiceStatusEnum.IDLE.value)
             return response
 
         control_log_list_msg = []
@@ -135,7 +135,7 @@ class Service(StandardService):
         response.control_log_list = control_log_list_msg
         response.error = ControlExecutionConstants.Error.NONE
 
-        self._set_status(ServiceStatusEnum.IDLE.value)
+        self.set_status(ServiceStatusEnum.IDLE.value)
         self.logger.info("Log constructed and returned")
         return response
 
