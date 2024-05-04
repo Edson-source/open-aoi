@@ -22,6 +22,7 @@ from open_aoi_interfaces.srv import (
     IdentificationTrigger,
     InspectionTrigger,
     InspectionExecutionTrigger,
+    ServiceStatus,
     GPIOPropagation,
 )
 from open_aoi_core.exceptions import SystemServiceException
@@ -299,7 +300,7 @@ class StandardClient(
         self._acquire_service(
             f"{ProductIdentificationConstants.NODE_NAME}/get_status",
             "product_identification_get_status_cli",
-            SystemServiceStatus,
+            ServiceStatus,
         )
 
         # Image acquisition
@@ -311,7 +312,7 @@ class StandardClient(
         self._acquire_service(
             f"{ImageAcquisitionConstants.NODE_NAME}/get_status",
             "image_acquisition_get_status_cli",
-            SystemServiceStatus,
+            ServiceStatus,
         )
         self._acquire_service(
             f"{ImageAcquisitionConstants.NODE_NAME}/set_parameters",
@@ -328,7 +329,7 @@ class StandardClient(
         self._acquire_service(
             f"{InspectionExecutionConstants.NODE_NAME}/get_status",
             "inspection_execution_get_status_cli",
-            SystemServiceStatus,
+            ServiceStatus,
         )
 
         # GPIO interface
@@ -340,7 +341,7 @@ class StandardClient(
         self._acquire_service(
             f"{GPIOInterfaceConstants.NODE_NAME}/get_status",
             "gpio_interface_get_status_cli",
-            SystemServiceStatus,
+            ServiceStatus,
         )
 
         # Mediator
@@ -352,7 +353,7 @@ class StandardClient(
         self._acquire_service(
             f"{MediatorServiceConstants.NODE_NAME}/get_status",
             "mediator_get_status_cli",
-            SystemServiceStatus,
+            ServiceStatus,
         )
 
     def _acquire_service(self, name: str, property_name: str, msg):
@@ -373,7 +374,7 @@ class StandardClient(
 
 
 class StandardService(StandardClient):
-    service_status: SystemServiceStatus = SystemServiceStatus.IDLE
+    service_status: str = SystemServiceStatus.IDLE
     service_status_reason: str = ""
 
     def __init__(self):
@@ -381,14 +382,14 @@ class StandardService(StandardClient):
         self.logger = self.get_logger()
 
         self._status_service_instance = self.create_service(
-            SystemServiceStatus,
+            ServiceStatus,
             f"{self.NODE_NAME}/get_status",
             self._get_status,
             callback_group=self._group,
         )
         self.logger.info("Service started")
 
-    def set_status(self, status: SystemServiceStatus, reason: str = ""):
+    def set_status(self, status: str, reason: str = ""):
         self.service_status = status
         self.service_status_reason = reason
 

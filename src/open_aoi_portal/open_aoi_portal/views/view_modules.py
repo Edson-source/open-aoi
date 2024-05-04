@@ -34,7 +34,7 @@ def _handle_store_connection_test():
         global IS_STORE_CONNECTED
         nonlocal verbose
         try:
-            InspectionHandlerController.test_store_connection()
+            InspectionHandlerController.test_minio_connection()
             if not IS_STORE_CONNECTED:
                 ui.notify("Store connected!", type="positive")
                 IS_STORE_CONNECTED = True

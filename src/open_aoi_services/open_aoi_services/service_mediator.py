@@ -57,7 +57,6 @@ class Service(StandardService):
             InspectionTrigger,
             f"{self.NODE_NAME}/inspection",
             self.execute_inspection,
-            # callback_group=self._group,
         )
         # Wait for dependencies: image acquisition, product identification and inspection execution nodes
         self.await_dependencies(

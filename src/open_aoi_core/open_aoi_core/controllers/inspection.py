@@ -38,4 +38,4 @@ class InspectionController(Controller):
             .all()
         )
 
-    test_store_connection = _model.test_store_connection
+    test_minio_connection = _model.test_minio_connection

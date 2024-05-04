@@ -15,7 +15,7 @@ class InspectionHandlerController(Controller):
     _model = InspectionHandlerModel
 
     # Aliases
-    test_store_connection = InspectionHandlerModel.test_store_connection
+    test_minio_connection = InspectionHandlerModel.test_minio_connection
 
     def create(
         self, title: str, description: str, defect_type: DefectTypeModel

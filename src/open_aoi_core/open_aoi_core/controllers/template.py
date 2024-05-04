@@ -51,4 +51,4 @@ class TemplateController(Controller):
         if obj.has_source_blob:
             obj.destroy_image()
 
-    test_store_connection = _model.test_store_connection
+    test_minio_connection = _model.test_minio_connection

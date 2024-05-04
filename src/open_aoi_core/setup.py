@@ -10,7 +10,6 @@ setup(
         f"{package_name}/controllers",
         f"{package_name}/mixins",
         f"{package_name}/content",
-        f"{package_name}/tests",
     ],
     data_files=[
         ("share/" + package_name, ["package.xml"]),
