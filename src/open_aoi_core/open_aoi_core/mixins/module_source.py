@@ -1,66 +1,58 @@
+"""
+    Module provide control handler storing capabilities. Control handler code is stored as bytes on Minio blob storage.
+    Module provide functions to publish, materialize and destroy control handler source.
+"""
+
 import io
-import logging
-from uuid import uuid4
 from typing import Optional, Tuple
 
-from open_aoi_core.mixins import Mixin
+from open_aoi_core.mixins import MinioBasedMixin
+from open_aoi_core.constants import SystemBuckets
 from open_aoi_core.content.modules import dynamic_import
-from open_aoi_core.exceptions import IntegrityError, InvalidAsset
+from open_aoi_core.exceptions import AssetIntegrityException
 
 
-logger = logging.getLogger("controller.control_handler")
+class ModuleSourceMixin(MinioBasedMixin):
+    _bucket_name = SystemBuckets.MODULE_SOURCES
 
+    # Module source
+    source: Optional[bytes] = None
 
-class ModuleSourceMixin(Mixin):
-    handler_blob: Optional[str]
-    _bucket_name = "modules"
-
-    @property
-    def is_valid(self):
-        return getattr(self, "handler_blob", None) is not None
-
-    def publish_source(self, content: bytes) -> str:
-        client = self._client
-
-        handler_blob = str(uuid4())
-
-        if not client.bucket_exists(self._bucket_name):
-            client.make_bucket(self._bucket_name)
-
-        blob = io.BytesIO(content)
-        blob.seek(0)
-        client.put_object(self._bucket_name, handler_blob, blob, len(content))
-
-        self.handler_blob = handler_blob
+    def publish_source(self, source: bytes):
+        """
+        Upload content to storage.
+        - raise: SystemIntegrityException if upload fails
+        - raise: AssetIntegrityException if asset already exist
+        """
+        blob_content = io.BytesIO(source)
+        self.publish(blob_content)
+        self.source = source
 
     def materialize_source(self) -> bytes:
-        assert getattr(self, "handler_blob") is not None
-        client = self._client
-
-        if not client.bucket_exists(self._bucket_name):
-            raise IntegrityError("Module does not exist")
-
-        obj = client.get_object(self._bucket_name, self.handler_blob)
-        source = obj.read()
-        obj.close()
-
+        """
+        Download content from storage.
+        - raise: AssetIntegrityException if asset does not exist
+        - raise: SystemIntegrityException if bucket does not exist or download failed
+        """
+        blob_content = self.materialize()
+        source = blob_content.read()
+        self.source = source
         return source
 
     def destroy_source(self):
-        assert getattr(self, "handler_blob") is not None
-        client = self._client
-
-        if not client.bucket_exists(self._bucket_name):
-            raise IntegrityError("Module does not exist")
-
-        client.remove_object(self._bucket_name, self.handler_blob)
-
-        self.handler_blob = None
+        """
+        Delete source at storage.
+        - raise: AssetIntegrityException if asset does not exist
+        - raise: SystemIntegrityException if bucket does not exist or delete operation failed
+        """
+        self.destroy()
+        self.source = None
 
     @classmethod
-    def validate_source(cls, source: bytes) -> Tuple[bool, Optional[str]]:
+    def validate_source(cls, source: bytes) -> Tuple[bool, str]:
+        """Validate modules content (python code). Call before uploading source to storage."""
         try:
             dynamic_import(source)
-        except InvalidAsset as e:
+        except AssetIntegrityException as e:
             return False, str(e)
-        return True, None
+        return True, "Module is valid."

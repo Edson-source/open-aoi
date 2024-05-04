@@ -7,7 +7,7 @@ from rclpy.node import Node
 from fastapi.responses import RedirectResponse
 
 from open_aoi_core.controllers.accessor import AccessorController
-from open_aoi_core.exceptions import AuthException
+from open_aoi_core.exceptions import AuthenticationException
 from open_aoi_portal.common import HOME_PAGE, get_session
 
 logger = logging.getLogger("ui.access")
@@ -22,7 +22,7 @@ def get_view(node: Node):
             accessor = access_controller.retrieve_by_username(username_input.value)
             try:
                 accessor.test_credentials(password=password_input.value)
-            except AuthException:
+            except AuthenticationException:
                 logger.info("Failed to test credentials")
                 ui.notify("Invalid credentials", type="negative")
             else:

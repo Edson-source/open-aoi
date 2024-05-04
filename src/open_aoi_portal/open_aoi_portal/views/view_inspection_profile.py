@@ -7,7 +7,7 @@ from nicegui import ui, app
 from fastapi.responses import RedirectResponse
 
 from open_aoi_core.models import TITLE_LIMIT, DESCRIPTION_LIMIT, InspectionProfileModel
-from open_aoi_core.exceptions import AuthException, IntegrityError
+from open_aoi_core.exceptions import AuthenticationException, SystemIntegrityException
 from open_aoi_core.controllers.accessor import AccessorController
 from open_aoi_core.controllers.template import TemplateController
 from open_aoi_core.controllers.inspection_profile import InspectionProfileController
@@ -83,7 +83,7 @@ def get_view(node: Node):
             try:
                 inspection_profile_controller.delete(profile)
                 inspection_profile_controller.commit()
-            except IntegrityError as e:
+            except SystemIntegrityException as e:
                 logger.exception(e)
                 ui.notify(str(e), type="warning")
                 return
@@ -105,7 +105,7 @@ def get_view(node: Node):
             try:
                 inspection_profile_controller.activate(profile)
                 inspection_profile_controller.commit()
-            except IntegrityError as e:
+            except SystemIntegrityException as e:
                 logger.exception(e)
                 ui.notify(str(e), type="warning")
                 return
@@ -119,7 +119,7 @@ def get_view(node: Node):
             try:
                 inspection_profile_controller.deactivate(profile)
                 inspection_profile_controller.commit()
-            except IntegrityError as e:
+            except SystemIntegrityException as e:
                 logger.exception(e)
                 ui.notify(str(e), type="warning")
                 return
@@ -177,7 +177,7 @@ def get_view(node: Node):
 
         try:
             accessor = access_controller.identify_session_accessor(app.storage.user)
-        except AuthException:
+        except AuthenticationException:
             return RedirectResponse(ACCESS_PAGE)
 
         inject_header()

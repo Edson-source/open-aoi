@@ -36,7 +36,7 @@ if __name__ == "__main__":
 
         # Roles
         r_operator = RoleModel(
-            id=RoleEnum.OPERATOR.value,
+            id=SystemRole.OPERATOR,
             allow_system_view=True,
             allow_inspection_log_view=True,
             allow_inspection_details_view=True,
@@ -49,7 +49,7 @@ if __name__ == "__main__":
         )
 
         r_administrator = RoleModel(
-            id=RoleEnum.ADMINISTRATOR.value,
+            id=SystemRole.ADMINISTRATOR,
             allow_system_view=True,
             allow_inspection_log_view=True,
             allow_inspection_details_view=True,
@@ -67,7 +67,7 @@ if __name__ == "__main__":
             username="operator",
             title="Operator (default)",
             description="Operator is capable of basic sytem control including inspection requests.",
-            role_id=RoleEnum.OPERATOR.value,
+            role_id=SystemRole.OPERATOR,
             hash=AccessorModel._hash_password(AOI_OPERATOR_INITIAL_PASSWORD),
         )
         a_administrator = AccessorModel(
@@ -75,7 +75,7 @@ if __name__ == "__main__":
             username="administrator",
             title="Administrator (default)",
             description="Administrator is granted full access to system including security section and inspection configuration.",
-            role_id=RoleEnum.ADMINISTRATOR.value,
+            role_id=SystemRole.ADMINISTRATOR,
             hash=AccessorModel._hash_password(AOI_ADMINISTRATOR_INITIAL_PASSWORD),
         )
 

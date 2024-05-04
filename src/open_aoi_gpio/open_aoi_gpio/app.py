@@ -14,7 +14,7 @@ from typing import List
 import rclpy
 from rcl_interfaces.msg import ParameterDescriptor, SetParametersResult
 
-from open_aoi_core.services import StandardService, ServiceStatusEnum
+from open_aoi_core.services import StandardService, SystemServiceStatus
 from open_aoi_core.constants import GPIOInterfaceConstants
 from open_aoi_interfaces.srv import GPIOPropagation
 
@@ -83,7 +83,7 @@ class Service(StandardService):
         response: GPIOPropagation.Response,
     ):
         self.logger.info("Propagation request received")
-        self.set_status(ServiceStatusEnum.BUSY.value)
+        self.set_status(SystemServiceStatus.BUSY)
 
         self.WIP_PINS.remove(request.release_pin)
         GPIO.setup(request.propagate_pin, GPIO.OUT)
@@ -91,7 +91,7 @@ class Service(StandardService):
         time.sleep(0.5)
         GPIO.output(request.propagate_pin, GPIO.LOW)
 
-        self.set_status(ServiceStatusEnum.IDLE.value)
+        self.set_status(SystemServiceStatus.IDLE)
         self.logger.info("Log constructed and returned")
         return response
 

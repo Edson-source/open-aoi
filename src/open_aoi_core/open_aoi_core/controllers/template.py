@@ -49,7 +49,7 @@ class TemplateController(Controller):
         )
 
     def post_delete_hook(self, obj: TemplateModel):
-        if obj.is_valid:
+        if obj.has_source_blob:
             obj.destroy_image()
 
     test_store_connection = _model.test_store_connection

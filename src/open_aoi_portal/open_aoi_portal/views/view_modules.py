@@ -6,7 +6,7 @@ from nicegui import ui, app
 from fastapi.responses import RedirectResponse
 
 from open_aoi_core.models import TITLE_LIMIT, DESCRIPTION_LIMIT
-from open_aoi_core.exceptions import AuthException, ConnectivityError, IntegrityError
+from open_aoi_core.exceptions import AuthenticationException, ConnectionFailedException, SystemIntegrityException
 from open_aoi_core.controllers.control_handler import ControlHandlerController
 from open_aoi_core.controllers.accessor import AccessorController
 from open_aoi_core.controllers.defect_type import DefectTypeController
@@ -39,7 +39,7 @@ def _handle_store_connection_test():
                 ui.notify("Store connected!", type="positive")
                 IS_STORE_CONNECTED = True
                 verbose = True
-        except ConnectivityError as e:
+        except ConnectionFailedException as e:
             if verbose:
                 ui.notify(str(e), type="negative")
             IS_STORE_CONNECTED = False
@@ -86,7 +86,7 @@ def get_view(node: Node):
                 try:
                     defect_type_controller.delete_by_id(defect_type_id)
                     defect_type_controller.commit()
-                except IntegrityError as e:
+                except SystemIntegrityException as e:
                     ui.notify(str(e), type="negative")
                     return
 
@@ -179,7 +179,7 @@ def get_view(node: Node):
                 try:
                     control_handler_controller.delete_by_id(control_handler_id)
                     control_handler_controller.commit()
-                except IntegrityError as e:
+                except SystemIntegrityException as e:
                     ui.notify(str(e), type="negative")
                     return
                 ui.notify("Deleted!", type="positive")
@@ -242,7 +242,7 @@ def get_view(node: Node):
                                 with ui.item().props("clickable").classes("w-full"):
                                     with ui.item_section():
                                         ui.item_label(
-                                            f"{ICON_INVALID_MODULE if control_handler.handler_blob is None else ICON_VALID_MODULE} {control_handler.defect_type.title} | {control_handler.title}"
+                                            f"{ICON_INVALID_MODULE if control_handler.blob is None else ICON_VALID_MODULE} {control_handler.defect_type.title} | {control_handler.title}"
                                         )
                                         ui.item_label(
                                             control_handler.description
@@ -269,7 +269,7 @@ def get_view(node: Node):
                                             ).props(
                                                 "size=sm",
                                             )
-                                            if control_handler.handler_blob is None:
+                                            if control_handler.blob is None:
                                                 download.disable()
                                             ui.button(
                                                 on_click=(
@@ -300,7 +300,7 @@ def get_view(node: Node):
         # -------------------------------------------------------------------------
         try:
             accessor = access_controller.identify_session_accessor(app.storage.user)
-        except AuthException:
+        except AuthenticationException:
             return RedirectResponse(ACCESS_PAGE)
         
         inject_header()

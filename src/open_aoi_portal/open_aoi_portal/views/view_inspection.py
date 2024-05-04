@@ -7,7 +7,7 @@ from nicegui import ui, app
 from fastapi.responses import RedirectResponse
 
 from open_aoi_portal.settings import ACCESS_PAGE, HOME_PAGE
-from open_aoi_core.exceptions import AuthException
+from open_aoi_core.exceptions import AuthenticationException
 from open_aoi_core.controllers.camera import CameraController
 from open_aoi_core.controllers.accessor import AccessorController
 from open_aoi_core.constants import MediatorServiceConstants
@@ -22,7 +22,7 @@ def get_view(node: Node):
 
         try:
             accessor = access_controller.identify_session_accessor(app.storage.user)
-        except AuthException:
+        except AuthenticationException:
             return RedirectResponse(ACCESS_PAGE)
 
         # ------------------------------------

@@ -7,7 +7,7 @@ from nicegui import ui, app
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
-from open_aoi_core.exceptions import AuthException
+from open_aoi_core.exceptions import AuthenticationException
 from open_aoi_core.controllers.accessor import AccessorController
 from open_aoi_core.models import TITLE_LIMIT, DESCRIPTION_LIMIT, AccessorModel, TemplateModel
 from open_aoi_portal.common import (
@@ -36,7 +36,7 @@ def view() -> Optional[RedirectResponse]:
     access_controller = AccessorController(session)
     try:
         access_controller.identify_session_accessor(app.storage.user)
-    except AuthException:
+    except AuthenticationException:
         return RedirectResponse(ACCESS_PAGE)
 
     inject_header()

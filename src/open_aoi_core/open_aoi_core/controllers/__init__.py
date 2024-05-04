@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from open_aoi_core.models import Base
-from open_aoi_core.exceptions import IntegrityError
+from open_aoi_core.exceptions import SystemIntegrityException
 
 
 class Controller:
@@ -23,7 +23,7 @@ class Controller:
             self.session.query(self._model).filter(self._model.id == obj.id).delete()
             self.post_delete_hook(obj)
         else:
-            raise IntegrityError(
+            raise SystemIntegrityException(
                 "Unable to delete. Object is a dependency for other objects."
             )
 
@@ -33,7 +33,7 @@ class Controller:
             self.session.query(self._model).filter(self._model.id == id).delete()
             self.post_delete_hook(obj)
         else:
-            raise IntegrityError(
+            raise SystemIntegrityException(
                 "Unable to delete. Object is a dependency for other objects."
             )
 

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from open_aoi_core.exceptions import InvalidAsset
+from open_aoi_core.exceptions import AssetIntegrityException
 from open_aoi_core.utils import crop_stat_cv
 
 
@@ -51,7 +51,7 @@ def dynamic_import(source: bytes) -> IModule:
     try:
         exec(source.decode(), ctx, ctx)
     except Exception as e:
-        raise InvalidAsset(f"Failed to execute module: {str(e)}") from e
+        raise AssetIntegrityException(f"Failed to execute module: {str(e)}") from e
 
     try:
         assert ctx.get("DOCUMENTATION") is not None, "Documentation is missing!"
@@ -60,6 +60,6 @@ def dynamic_import(source: bytes) -> IModule:
             ctx.get("module"), IModule
         ), "Module does not provide IModule interface!"
     except AssertionError as e:
-        raise InvalidAsset(f"Failed to validate module: {str(e)}") from e
+        raise AssetIntegrityException(f"Failed to validate module: {str(e)}") from e
     
     return ctx.get("module")

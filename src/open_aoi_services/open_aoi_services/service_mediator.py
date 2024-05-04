@@ -29,7 +29,7 @@ from open_aoi_core.controllers.inspection_profile import InspectionProfileContro
 from open_aoi_core.controllers.inspection import InspectionController
 from open_aoi_core.controllers.control_log import ControlLogController
 from open_aoi_core.controllers.camera import CameraController
-from open_aoi_core.utils import encode_image, decode_image
+from open_aoi_core.utils import image_to_msg, msg_to_image
 
 
 def _control_target_to_msg(ct: ControlTargetModel) -> ControlTarget:
@@ -127,7 +127,7 @@ class Service(StandardService):
             # Product identification
             future = self.product_identification_get_barcode(test_image_msg)
             # Decode test image while waiting for response (will be used for logging purposed)
-            test_image = decode_image(test_image_msg)
+            test_image = msg_to_image(test_image_msg)
             response = self.await_future(future)
 
             self.logger.info(f"Test image captured as message")
@@ -221,7 +221,7 @@ class Service(StandardService):
             try:
                 template_image = template.materialize_image()
                 template_image = np.array(template_image)
-                template_image_msg = encode_image(template_image)
+                template_image_msg = image_to_msg(template_image)
             except Exception as e:
                 self.logger.error(str(e))
                 own_response.error = MediatorServiceConstants.Error.RESOURCE_FAILED

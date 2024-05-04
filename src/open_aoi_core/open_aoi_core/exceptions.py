@@ -1,29 +1,25 @@
 from abc import ABC
 
 
-class General(Exception, ABC):
+class OpenAOIGeneralException(Exception, ABC):
     pass
 
 
-class SecurityException(General, ABC):
-    """Base exception for security issues"""
+class AuthenticationException:
+    """Authentication attempt failed"""
 
 
-class AuthException(SecurityException):
-    """Raised on auth attempt fail"""
+class SystemIntegrityException(OpenAOIGeneralException):
+    """System integrity was violated"""
 
 
-class IntegrityError(General):
-    """Raised if internal integrity was violated"""
+class AssetIntegrityException(OpenAOIGeneralException):
+    """Asset integrity was violated"""
 
 
-class InvalidAsset(General):
-    """Raised asset integrity is violated"""
+class ConnectionFailedException(OpenAOIGeneralException):
+    """Connection to service or resource could not be established"""
 
 
-class ConnectivityError(General):
-    """Raised if connection to resource could not be established"""
-
-
-class ROSServiceError(General):
-    """Raised if ROS service fails"""
+class SystemServiceException(OpenAOIGeneralException):
+    """Open AOI service failed"""

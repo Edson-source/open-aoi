@@ -8,7 +8,7 @@ from fastapi.responses import RedirectResponse
 from PIL import Image
 
 from open_aoi_core.constants import ImageAcquisitionConstants
-from open_aoi_core.exceptions import AuthException, ROSServiceError
+from open_aoi_core.exceptions import AuthenticationException, SystemServiceException
 from open_aoi_core.controllers.template import TemplateController
 from open_aoi_core.controllers.accessor import AccessorController
 from open_aoi_core.controllers.camera import CameraController
@@ -105,7 +105,7 @@ def get_view(node: Node):
                     camera_ip_address=camera.ip_address,
                     camera_emulation_mode=True,
                 )
-            except ROSServiceError as e:
+            except SystemServiceException as e:
                 ui.notify(str(e), type="warning")
                 capture_image.enable()
                 return
@@ -172,7 +172,7 @@ def get_view(node: Node):
         camera_controller = CameraController(session)
         try:
             accessor = access_controller.identify_session_accessor(app.storage.user)
-        except AuthException:
+        except AuthenticationException:
             return RedirectResponse(ACCESS_PAGE)
 
         inject_header()

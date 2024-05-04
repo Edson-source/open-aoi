@@ -1,73 +1,66 @@
-import io
-import logging
-import numpy as np
-from uuid import uuid4
-from typing import Optional
+"""
+    Module provide image storing capabilities. Image is stored as blob on Minio blob storage.
+    Mixin provide functions to publish (upload), materialize (download) and destroy (delete) image.
+    Mixin does not commit anything to database, commit operation should be performed externally:
+    ```
+        template.publish_image(...)
+        session.commit()
+    ```
+"""
 
+import io
+
+import numpy as np
 from PIL import Image
 
-from open_aoi_core.mixins import Mixin
-from open_aoi_core.exceptions import IntegrityError
+from open_aoi_core.mixins import MinioBasedMixin
+from open_aoi_core.constants import SystemBuckets
+from open_aoi_core.exceptions import AssetIntegrityException
 
-logger = logging.getLogger("mixin.image_source")
 
+class ImageSourceMixin(MinioBasedMixin):
+    image: np.ndarray  # Materialized image
 
-class ImageSourceMixin(Mixin):
-    image: np.ndarray
-    image_blob: Optional[str]
+    def publish_image(self, image: Image):
+        """
+        Upload image to storage.
+        - raise: AssetIntegrityException if image already exist
+        - raise: SystemIntegrityException if upload fails
+        """
 
-    _bucket_name: str
-
-    @property
-    def is_valid(self):
-        return getattr(self, "image_blob", None) is not None
-
-    def publish_image(self, im: Image):
-        assert getattr(self, "image_blob", None) is None
-        client = self._client
-
-        if not client.bucket_exists(self._bucket_name):
-            client.make_bucket(self._bucket_name)
-
-        image_blob = str(uuid4())
-        blob = io.BytesIO()
-
-        im.save(blob, format="PNG")
-        length = blob.tell()
-        blob.seek(0)
-
-        client.put_object(self._bucket_name, image_blob, blob, length)
-
-        self.image_blob = image_blob
+        blob_content = io.BytesIO()
+        image.save(blob_content, format="PNG")
+        self.publish(blob_content)
+        self.image = np.array(image)
 
     def materialize_image(self) -> Image.Image:
-        assert getattr(self, "image_blob") is not None
-        client = self._client
+        """
+        Download image source and convert it to PIL image
+        - raise: AssetIntegrityException if asset does not exist or is corrupted
+        - raise: SystemIntegrityException if bucket does not exist or download failed
+        """
 
-        if not client.bucket_exists(self._bucket_name):
-            raise IntegrityError("Image does not exist")
-
-        obj = client.get_object(self._bucket_name, self.image_blob)
-        im = Image.open(obj, formats=["PNG"])
-        obj.close()
-
-        return im
+        blob_content = self.materialize()
+        try:
+            image = Image.open(blob_content, formats=["PNG"])
+        except Exception as e:
+            raise AssetIntegrityException("Failed to convert asset to image.") from e
+        self.image = np.array(image)
+        return image
 
     def destroy_image(self):
-        assert getattr(self, "image_blob") is not None
-        client = self._client
-
-        if not client.bucket_exists(self._bucket_name):
-            raise IntegrityError("Image does not exist")
-
-        client.remove_object(self._bucket_name, self.image_blob)
-
-        self.image_blob = None
+        """
+        Delete image source.
+        - raise: AssetIntegrityException if image does not exist
+        - raise: SystemIntegrityException if bucket does not exist or delete operation failed
+        """
+        self.destroy()
+        self.image = None
 
 
 class InspectionImageSourceMixin(ImageSourceMixin):
-    _bucket_name = "inspections"
+    _bucket_name = SystemBuckets.INSPECTION_IMAGES
 
 
 class TemplateImageSourceMixin(ImageSourceMixin):
-    _bucket_name = "templates"
+    _bucket_name = SystemBuckets.TEMPLATE_IMAGES

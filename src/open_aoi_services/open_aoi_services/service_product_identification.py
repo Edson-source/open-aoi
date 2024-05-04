@@ -9,8 +9,8 @@ from rclpy.executors import MultiThreadedExecutor
 
 from open_aoi_core.services import StandardService
 from open_aoi_interfaces.srv import IdentificationTrigger
-from open_aoi_core.utils import decode_image, isolate_product
-from open_aoi_core.constants import ProductIdentificationConstants, ServiceStatusEnum
+from open_aoi_core.utils import msg_to_image, isolate_product
+from open_aoi_core.constants import ProductIdentificationConstants, SystemServiceStatus
 
 
 class Service(StandardService):
@@ -27,10 +27,10 @@ class Service(StandardService):
 
     def get_barcode(self, request, response):
         self.logger.info("Barcode identification triggered")
-        self.set_status(ServiceStatusEnum.BUSY.value)
+        self.set_status(SystemServiceStatus.BUSY)
 
         try:
-            im = decode_image(request.image)
+            im = msg_to_image(request.image)
 
             isolated = isolate_product(im)  # TODO: set as parameters
             isolated = cv.resize(isolated, (1000, 1000), interpolation=cv.INTER_LINEAR) 
@@ -43,7 +43,7 @@ class Service(StandardService):
             # No errors expected
             self.logger.error(str(e))
 
-        self.set_status(ServiceStatusEnum.IDLE.value)
+        self.set_status(SystemServiceStatus.IDLE)
         self.logger.info(f"Barcode identification returned: {identification_code}")
         return response
 

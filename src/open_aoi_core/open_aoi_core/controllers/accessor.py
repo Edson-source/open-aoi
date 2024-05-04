@@ -9,7 +9,7 @@ from open_aoi_core.models import (
 class AccessorController(Controller):
     _model = AccessorModel
     revoke_session_access = AccessorModel.revoke_session_access
-    identify_session_accessor_id = AccessorModel.identify_session_access
+    identify_session_accessor_id = AccessorModel.identify_session_accessor_id
 
     def retrieve_by_username(self, username: str) -> AccessorModel:
         q = select(self._model).where(self._model.username == username)

@@ -9,8 +9,8 @@ from dotenv import dotenv_values
 from open_aoi_core.services import StandardService
 from open_aoi_interfaces.msg import ControlLog
 from open_aoi_interfaces.srv import ControlExecutionTrigger
-from open_aoi_core.constants import ControlExecutionConstants, ServiceStatusEnum
-from open_aoi_core.utils import decode_image
+from open_aoi_core.constants import ControlExecutionConstants, SystemServiceStatus
+from open_aoi_core.utils import msg_to_image
 from open_aoi_core.content.modules import dynamic_import, IModule
 
 
@@ -31,11 +31,11 @@ class Service(StandardService):
         response: ControlExecutionTrigger.Response,
     ):
         self.logger.info("Execution request received")
-        self.set_status(ServiceStatusEnum.BUSY.value)
+        self.set_status(SystemServiceStatus.BUSY)
 
         # TODO: align and isolate product
         try:
-            test_image = decode_image(request.test_image)
+            test_image = msg_to_image(request.test_image)
         except Exception as e:
             self.logger.error(str(e))
             self.logger.info("Failed to decode test image")
@@ -43,13 +43,13 @@ class Service(StandardService):
             request.error = ControlExecutionConstants.Error.IMAGE_INVALID
             request.error_description = "Failed to decode test image"
 
-            self.set_status(ServiceStatusEnum.IDLE.value)
+            self.set_status(SystemServiceStatus.IDLE)
             return response
 
         self.logger.info("Test image decoded")
 
         try:
-            template_image = decode_image(request.template_image)
+            template_image = msg_to_image(request.template_image)
         except Exception as e:
             self.logger.error(str(e))
             self.logger.info("Failed to decode template image")
@@ -57,7 +57,7 @@ class Service(StandardService):
             response.error = ControlExecutionConstants.Error.IMAGE_INVALID
             response.error_description = "Failed to decode template image"
 
-            self.set_status(ServiceStatusEnum.IDLE.value)
+            self.set_status(SystemServiceStatus.IDLE)
             return response
 
         self.logger.info("Template image decoded")
@@ -76,7 +76,7 @@ class Service(StandardService):
                 "Failed to import control handler specification from source"
             )
 
-            self.set_status(ServiceStatusEnum.IDLE.value)
+            self.set_status(SystemServiceStatus.IDLE)
             return response
 
         self.logger.info("Controller is valid")
@@ -91,7 +91,7 @@ class Service(StandardService):
             response.error = ControlExecutionConstants.Error.ENVIRONMENT_INVALID
             response.error_description = f"Failed to load environment"
 
-            self.set_status(ServiceStatusEnum.IDLE.value)
+            self.set_status(SystemServiceStatus.IDLE)
             return response
 
         self.logger.info("Environment is valid")
@@ -124,7 +124,7 @@ class Service(StandardService):
             response.error = ControlExecutionConstants.Error.GENERAL
             response.error_description = f"Failed to execute control handler: {str(e)}"
 
-            self.set_status(ServiceStatusEnum.IDLE.value)
+            self.set_status(SystemServiceStatus.IDLE)
             return response
 
         control_log_list_msg = []
@@ -135,7 +135,7 @@ class Service(StandardService):
         response.control_log_list = control_log_list_msg
         response.error = ControlExecutionConstants.Error.NONE
 
-        self.set_status(ServiceStatusEnum.IDLE.value)
+        self.set_status(SystemServiceStatus.IDLE)
         self.logger.info("Log constructed and returned")
         return response
 

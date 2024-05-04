@@ -25,13 +25,13 @@ from open_aoi_interfaces.srv import (
     ControlExecutionTrigger,
     GPIOPropagation,
 )
-from open_aoi_core.exceptions import ROSServiceError
+from open_aoi_core.exceptions import SystemServiceException
 from open_aoi_core.constants import (
     ImageAcquisitionConstants,
     GPIOInterfaceConstants,
     ProductIdentificationConstants,
     MediatorServiceConstants,
-    ServiceStatusEnum,
+    SystemServiceStatus,
     ControlExecutionConstants,
 )
 
@@ -76,7 +76,7 @@ class ImageAcquisitionClient(BaseClient):
     ):
         """
         Dispatch parameters update request to image acquisition service
-        - raise: ROSServiceError if any exception occur
+        - raise: SystemServiceException if any exception occur
         """
 
         try:
@@ -105,7 +105,7 @@ class ImageAcquisitionClient(BaseClient):
             return self.image_acquisition_set_parameters_cli.call_async(req)
         except Exception as e:
             self.logger.error(str(e))
-            raise ROSServiceError("Failed to set image acquisition parameters.") from e
+            raise SystemServiceException("Failed to set image acquisition parameters.") from e
 
     def image_acquisition_capture_image(
         self,
@@ -114,7 +114,7 @@ class ImageAcquisitionClient(BaseClient):
     ):
         """
         Dispatch image capturing request.
-        - raise: ROSServiceError if any exception occur
+        - raise: SystemServiceException if any exception occur
         """
         try:
             self.image_acquisition_set_parameters(
@@ -127,7 +127,7 @@ class ImageAcquisitionClient(BaseClient):
             return self.image_acquisition_capture_cli.call_async(req)
         except Exception as e:
             self.logger.error(str(e))
-            raise ROSServiceError("Failed to capture image.") from e
+            raise SystemServiceException("Failed to capture image.") from e
 
 
 class ProductIdentificationClient(BaseClient):
@@ -138,7 +138,7 @@ class ProductIdentificationClient(BaseClient):
         """
         Dispatch product identification request. Require image as message as it is meant to work on
         image acquisition service results (prevent unnecessary conversion from message  to image and back)
-        - raise: ROSServiceError if any exception occur
+        - raise: SystemServiceException if any exception occur
         """
         try:
             req = IdentificationTrigger.Request()
@@ -148,7 +148,7 @@ class ProductIdentificationClient(BaseClient):
             return self.product_identification_get_barcode_cli.call_async(req)
         except Exception as e:
             self.logger.error(str(e))
-            raise ROSServiceError("Failed to identify product.")
+            raise SystemServiceException("Failed to identify product.")
 
 
 class ControlExecutionClient(BaseClient):
@@ -166,7 +166,7 @@ class ControlExecutionClient(BaseClient):
         """
         Dispatch control execution request. Require image as message as it is meant to work on
         image acquisition service results (prevent unnecessary conversion from message  to image and back)
-        - raise: ROSServiceError if any exception occur
+        - raise: SystemServiceException if any exception occur
         """
         try:
             req = ControlExecutionTrigger.Request()
@@ -182,7 +182,7 @@ class ControlExecutionClient(BaseClient):
             return self.control_execution_execute_control_cli.call_async(req)
         except Exception as e:
             self.logger.error(str(e))
-            raise ROSServiceError("Failed to execute control.")
+            raise SystemServiceException("Failed to execute control.")
 
 
 class GPIOInterfaceClient(BaseClient):
@@ -196,7 +196,7 @@ class GPIOInterfaceClient(BaseClient):
     ):
         """
         Dispatch parameters update request on GPIO service.
-        - raise: ROSServiceError if any exception occur
+        - raise: SystemServiceException if any exception occur
         """
         try:
             req = SetParameters.Request()
@@ -217,7 +217,7 @@ class GPIOInterfaceClient(BaseClient):
             return self.gpio_interface_set_parameters_cli.call_async(req)
         except Exception as e:
             self.logger.error(str(e))
-            raise ROSServiceError("Failed to set GPIO interface parameters.") from e
+            raise SystemServiceException("Failed to set GPIO interface parameters.") from e
 
     def gpio_interface_propagate_results(
         self,
@@ -227,7 +227,7 @@ class GPIOInterfaceClient(BaseClient):
         """
         Dispatch GPIO result propagation request. Request will reset trigger pin and make it
         active again allowing inspection requests.
-        - raise: ROSServiceError if any exception occur
+        - raise: SystemServiceException if any exception occur
         """
         try:
             req = GPIOPropagation.Request()
@@ -239,7 +239,7 @@ class GPIOInterfaceClient(BaseClient):
             return self.gpio_interface_propagate_results_cli.call_async(req)
         except Exception as e:
             self.logger.error(str(e))
-            raise ROSServiceError("Failed to propagate GPIO results.") from e
+            raise SystemServiceException("Failed to propagate GPIO results.") from e
 
 
 class MediatorClient(BaseClient):
@@ -254,7 +254,7 @@ class MediatorClient(BaseClient):
         """
         Dispatch inspection request. Inspection may be triggered directly for camera of indirectly for pin,
         which should be assigned to camera in database. Provide ONE of two identifications (camera id or pin number)
-        - raise: ROSServiceError if any exception occur.
+        - raise: SystemServiceException if any exception occur.
         """
         assert camera_id is not None or io_pin is not None
         try:
@@ -270,7 +270,7 @@ class MediatorClient(BaseClient):
             return self.mediator_execute_inspection_cli.call_async(req)
         except Exception as e:
             self.logger.error(str(e))
-            raise ROSServiceError("Failed to inspect product.") from e
+            raise SystemServiceException("Failed to inspect product.") from e
 
 
 class StandardClient(
@@ -296,7 +296,7 @@ class StandardClient(
         self._acquire_service(
             f"{ProductIdentificationConstants.NODE_NAME}/get_status",
             "product_identification_get_status_cli",
-            ServiceStatus,
+            SystemServiceStatus,
         )
 
         # Image acquisition
@@ -308,7 +308,7 @@ class StandardClient(
         self._acquire_service(
             f"{ImageAcquisitionConstants.NODE_NAME}/get_status",
             "image_acquisition_get_status_cli",
-            ServiceStatus,
+            SystemServiceStatus,
         )
         self._acquire_service(
             f"{ImageAcquisitionConstants.NODE_NAME}/set_parameters",
@@ -325,7 +325,7 @@ class StandardClient(
         self._acquire_service(
             f"{ControlExecutionConstants.NODE_NAME}/get_status",
             "control_execution_get_status_cli",
-            ServiceStatus,
+            SystemServiceStatus,
         )
 
         # GPIO interface
@@ -337,7 +337,7 @@ class StandardClient(
         self._acquire_service(
             f"{GPIOInterfaceConstants.NODE_NAME}/get_status",
             "gpio_interface_get_status_cli",
-            ServiceStatus,
+            SystemServiceStatus,
         )
 
         # Mediator
@@ -349,7 +349,7 @@ class StandardClient(
         self._acquire_service(
             f"{MediatorServiceConstants.NODE_NAME}/get_status",
             "mediator_get_status_cli",
-            ServiceStatus,
+            SystemServiceStatus,
         )
 
     def _acquire_service(self, name: str, property_name: str, msg):
@@ -370,7 +370,7 @@ class StandardClient(
 
 
 class StandardService(StandardClient):
-    service_status: ServiceStatusEnum = ServiceStatusEnum.IDLE
+    service_status: SystemServiceStatus = SystemServiceStatus.IDLE
     service_status_reason: str = ""
 
     def __init__(self):
@@ -378,14 +378,14 @@ class StandardService(StandardClient):
         self.logger = self.get_logger()
 
         self._status_service_instance = self.create_service(
-            ServiceStatus,
+            SystemServiceStatus,
             f"{self.NODE_NAME}/get_status",
             self._get_status,
             callback_group=self._group,
         )
         self.logger.info("Service started")
 
-    def set_status(self, status: ServiceStatusEnum, reason: str = ""):
+    def set_status(self, status: SystemServiceStatus, reason: str = ""):
         self.service_status = status
         self.service_status_reason = reason
 

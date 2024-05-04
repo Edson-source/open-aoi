@@ -1,11 +1,12 @@
 from typing import List
-import numpy as np
+
 import cv2 as cv
+import numpy as np
 from PIL import Image
 from sensor_msgs.msg import Image as ImageMsg
 
 
-def encode_image(im: np.ndarray):
+def image_to_msg(im: np.ndarray):
     # Convert image for to ROS image message format
     msg = ImageMsg()
     msg.encoding = "bgr8"
@@ -15,7 +16,7 @@ def encode_image(im: np.ndarray):
     return msg
 
 
-def decode_image(msg: ImageMsg) -> np.ndarray:
+def msg_to_image(msg: ImageMsg) -> np.ndarray:
     # Convert image from ROS image format
     data = np.array(msg.data)
     return data.reshape((msg.height, msg.width, 3))

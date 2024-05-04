@@ -6,8 +6,8 @@ import rclpy
 from pypylon import pylon
 from rcl_interfaces.msg import ParameterDescriptor, SetParametersResult
 
-from open_aoi_core.utils import encode_image
-from open_aoi_core.constants import ImageAcquisitionConstants, ServiceStatusEnum
+from open_aoi_core.utils import image_to_msg
+from open_aoi_core.constants import ImageAcquisitionConstants, SystemServiceStatus
 from open_aoi_interfaces.srv import ImageAcquisition
 from open_aoi_core.services import StandardService
 
@@ -114,12 +114,12 @@ class Service(StandardService):
                 self.camera.Height = 2048
                 self.camera.Width = 2592
                 self.set_status(
-                    ServiceStatusEnum.IDLE, "Connected to camera: EMULATION"
+                    SystemServiceStatus.IDLE, "Connected to camera: EMULATION"
                 )
                 return
             except Exception as e:
                 self.logger.error(str(e))
-                self.set_status(ServiceStatusEnum.ERROR, "Failed to setup emulator")
+                self.set_status(SystemServiceStatus.ERROR, "Failed to setup emulator")
                 return
         # Real camera
         else:
@@ -135,24 +135,24 @@ class Service(StandardService):
                         break
                 else:
                     self.set_status(
-                        ServiceStatusEnum.ERROR,
+                        SystemServiceStatus.ERROR,
                         f"Failed to acquire camera with IP: {self.camera_ip_address}",
                     )
                     return
                 self.camera.Open()
                 self.set_status(
-                    ServiceStatusEnum.IDLE,
+                    SystemServiceStatus.IDLE,
                     f"Connected to camera: {self.CAMERA_IP_ADDRESS}",
                 )
                 return
             except Exception as e:
                 self.logger.error(str(e))
-                self.set_status(ServiceStatusEnum.ERROR, "Failed to setup camera")
+                self.set_status(SystemServiceStatus.ERROR, "Failed to setup camera")
                 return
 
     def acquire_image(self, request, response):
         self.logger.info("Image requested")
-        self.set_status(ServiceStatusEnum.BUSY)
+        self.set_status(SystemServiceStatus.BUSY)
 
         if self.camera is None:
             self.logger.error("Camera not initialized")
@@ -160,7 +160,7 @@ class Service(StandardService):
             response.error_description = (
                 "Capture image called before camera initialization"
             )
-            self.set_status(ServiceStatusEnum.IDLE)
+            self.set_status(SystemServiceStatus.IDLE)
             self.logger.info("Response returned")
             return response
         try:
@@ -170,11 +170,11 @@ class Service(StandardService):
                 image = grab_result.Array
                 self.logger.info(f"Grabbed successfully: {image.shape}")
                 grab_result.Release()
-                response.image = encode_image(image)
+                response.image = image_to_msg(image)
                 response.error = ImageAcquisitionConstants.Error.NONE
                 response.error_description = ""
                 self.logger.info("Image returned")
-                self.set_status(ServiceStatusEnum.IDLE)
+                self.set_status(SystemServiceStatus.IDLE)
                 return response
             else:
                 self.logger.error("Grabbed unsuccessfully")
@@ -185,13 +185,13 @@ class Service(StandardService):
                 response.error = ImageAcquisitionConstants.Error.GENERAL
                 response.error_description = "Capture image failed"
                 self.logger.info("Response returned")
-                self.set_status(ServiceStatusEnum.IDLE)
+                self.set_status(SystemServiceStatus.IDLE)
                 return response
         except Exception as e:
             self.logger.error(str(e))
             response.error = ImageAcquisitionConstants.Error.GENERAL
             response.error_description = "Capture image failed"
-            self.set_status(ServiceStatusEnum.IDLE)
+            self.set_status(SystemServiceStatus.IDLE)
             self.logger.info("Response returned")
             return response
 

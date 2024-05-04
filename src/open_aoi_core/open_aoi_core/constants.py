@@ -1,24 +1,36 @@
-from enum import Enum
+"""
+    Module provide constant values across code base: errors, names, etc.
+    class Error is used for service response field `error`. Class Parameter is used for 
+    stateful services parameter names.
+"""
 
 
-class RoleEnum(Enum):
+class SystemLimit:
+    TITLE_LENGTH = 200
+    DESCRIPTION_LENGTH = 500
+    IDENTIFICATION_CODE_LENGTH = 100
+    BLOB_UID_LENGTH = 100
+
+
+class SystemRole:
     """Supported role types (reflected in DB)"""
 
     OPERATOR = 1
     ADMINISTRATOR = 2
 
 
-class AccessorEnum(Enum):
-    """Supported accessors (reflected in DB)"""
+class SystemServiceStatus:
+    """Statuses of services"""
 
-    OPERATOR = 1
-    ADMINISTRATOR = 2
+    BUSY = "BUSY"  # Service is processing request
+    IDLE = "IDLE"  # Service is ready to process another request
+    ERROR = "ERROR"  # Valid for stateful services: error occurred after last update
 
 
-class ServiceStatusEnum(Enum):
-    BUSY = "BUSY"
-    IDLE = "IDLE"
-    ERROR = "ERROR"
+class SystemBuckets:
+    INSPECTION_IMAGES = "inspection_images"
+    TEMPLATE_IMAGES = "template_images"
+    MODULE_SOURCES = "modules"
 
 
 class ControlExecutionConstants:
