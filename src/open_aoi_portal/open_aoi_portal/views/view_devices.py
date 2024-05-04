@@ -6,12 +6,18 @@ from nicegui import ui, app
 from fastapi.responses import RedirectResponse
 from PIL import Image
 
-from open_aoi_portal.settings import ACCESS_PAGE
-from open_aoi_core.constants import ImageAcquisitionConstants
-from open_aoi_core.exceptions import AuthenticationException, SystemServiceException
+from open_aoi_portal.settings import ACCESS_PAGE, HOME_PAGE
+from open_aoi_core.utils import msg_to_image
+from open_aoi_core.constants import ImageAcquisitionConstants, SystemLimit
+from open_aoi_core.services import StandardClient
+from open_aoi_core.exceptions import (
+    AuthenticationException,
+    SystemServiceException,
+    SystemIntegrityException,
+)
 from open_aoi_core.controllers.camera import CameraController
 from open_aoi_core.controllers.accessor import AccessorController
-from open_aoi_core.models import TITLE_LIMIT, DESCRIPTION_LIMIT, CameraModel
+from open_aoi_core.models import CameraModel
 from open_aoi_portal.common import (
     scale,
     inject_header,
@@ -24,13 +30,19 @@ from open_aoi_portal.common import (
 logger = logging.getLogger("ui.devices")
 
 
-def get_view(node: Node):
+def get_view(node: StandardClient):
     async def view() -> Optional[RedirectResponse]:
         session = get_session()
-        access_controller = AccessorController(session)
+
+        accessor_controller = AccessorController(session)
         camera_controller = CameraController(session)
+
+        # Assert access and rights
         try:
-            accessor = access_controller.identify_session_accessor(app.storage.user)
+            accessor = accessor_controller.identify_session_accessor(app.storage.user)
+            assert accessor.role.allow_device_operations
+        except AssertionError:
+            return RedirectResponse(HOME_PAGE)
         except AuthenticationException:
             return RedirectResponse(ACCESS_PAGE)
 
@@ -38,11 +50,16 @@ def get_view(node: Node):
         # Handlers
 
         def _handle_create_camera():
+            """Handles camera creation"""
+
+            # Validate inputs
             try:
                 assert camera_title.validate()
                 assert camera_description.validate()
                 assert camera_ip_address.validate()
-                assert camera_io_pin.validate()
+                assert camera_io_pin_trigger.validate()
+                assert camera_io_pin_accept.validate()
+                assert camera_io_pin_reject.validate()
             except AssertionError:
                 ui.notify("Required values are missing", type="negative")
                 return
@@ -52,62 +69,79 @@ def get_view(node: Node):
                     title=camera_title.value.strip(),
                     description=camera_description.value.strip(),
                     ip_address=camera_ip_address.value.strip(),
-                    io_pin=camera_io_pin.value,
+                    io_pin_trigger=camera_io_pin_trigger.value,
+                    io_pin_accept=camera_io_pin_accept.value,
+                    io_pin_reject=camera_io_pin_reject.value,
                     accessor=accessor,
                 )
                 camera_controller.commit()
-            except Exception as e:
+            except SystemIntegrityException as e:
                 logger.exception(e)
-                ui.notify("Failed to create camera")
+                ui.notify(
+                    "Failed to create camera due to internal integrity violation. Please contact support.",
+                    type="warning",
+                )
                 return
 
-            ui.notify(f"Camera {camera_title.value.strip()} created!", type="positive")
+            ui.notify(f"Camera {camera_title.value.strip()} created.", type="positive")
 
             _inject_camera_list()
 
         def _handle_delete_camera(camera: CameraModel):
+            """Handle camera delete operation"""
+
             try:
                 camera_controller.delete(camera)
                 camera_controller.commit()
-            except Exception as e:
+            except SystemIntegrityException as e:
                 logger.exception(e)
-                ui.notify("Failed to delete camera!", type="negative")
+                ui.notify(f"Failed to delete camera! {str(e)}", type="negative")
                 return
-            ui.notify("Camera was deleted!", type="positive")
+
+            ui.notify("Camera was deleted.", type="positive")
             _inject_camera_list()
 
         async def _handle_capture_image():
+            """
+            Handle image acquisition. Send direct request to related service to obtain image from camera.
+            Image capturing is long operation and may break NiceGUI event loop (timeout), service
+            response should be awaited in separate thread.
+            """
             try:
                 assert camera_ip_address.validate()
             except AssertionError:
                 ui.notify("IP is missing", type="negative")
                 return
+
             capture_image.disable()
             try:
-                im, error, error_description = await to_thread(
-                    node.image_acquisition_capture_image,
-                    camera_ip_address=camera_ip_address.value.strip(),
-                    camera_emulation_mode=True,
+                response = await to_thread(
+                    node.await_future,
+                    node.image_acquisition_capture_image(
+                        camera_ip_address=camera_ip_address.value.strip(),
+                        camera_emulation_mode=True,
+                    ),
                 )
             except SystemServiceException as e:
                 ui.notify(str(e), type="warning")
                 capture_image.enable()
                 return
 
-            if error != ImageAcquisitionConstants.Error.NONE:
-                ui.notify(error_description, type="negative")
+            if response.error != ImageAcquisitionConstants.Error.NONE:
+                ui.notify(response.error_description, type="negative")
                 capture_image.enable()
                 return
 
-            if im is None:
-                ui.notify("Failed to capture image", type="warning")
+            if response.image is None:
+                ui.notify("Failed to capture image.", type="warning")
                 return
 
-            im = Image.fromarray(im)
+            image = msg_to_image(response.image)
+            image = Image.fromarray(image)
 
             # Reduce size to speed up network image transfer
             image_dialog.open()
-            image_element.set_source(scale(im, 600))
+            image_element.set_source(scale(image, 600))
 
             capture_image.enable()
 
@@ -118,7 +152,7 @@ def get_view(node: Node):
             try:
                 camera_list = camera_controller.list()
             except:
-                ui.notify("Failed to list cameras!", type="negative")
+                ui.notify("Failed to list cameras.", type="negative")
                 return
 
             if len(camera_list):
@@ -145,16 +179,18 @@ def get_view(node: Node):
 
         # ------------------------------------
 
-        inject_header()
+        inject_header(accessor)
 
         ui.markdown("#### **Devices**")
         with ui.column().classes("w-full"):
             ui.markdown("##### **Create new device**")
             camera_title = inject_text_field(
-                "Camera title", "Enter any value...", TITLE_LIMIT
+                "Camera title", "Enter any value...", SystemLimit.TITLE_LENGTH
             )
             camera_description = inject_text_field(
-                "Camera description", "Enter any value...", DESCRIPTION_LIMIT
+                "Camera description",
+                "Enter any value...",
+                SystemLimit.DESCRIPTION_LENGTH,
             )
             camera_ip_address = inject_text_field(
                 "Camera IPV4 address",
@@ -165,8 +201,19 @@ def get_view(node: Node):
                 },
             )
             camera_ip_address.set_value("000.000.000.000")
-            camera_io_pin = inject_numeric_field(
-                "I/O pin (empty to ignore)", step=1, precision=0
+            camera_io_pin_trigger = inject_numeric_field(
+                "Trigger I/O pin (leave empty to ignore)", step=1, precision=0
+            )
+
+            camera_io_pin_accept = inject_numeric_field(
+                "Acceptance I/O pin (should be defined if trigger pin is defined)",
+                step=1,
+                precision=0,
+            )
+            camera_io_pin_reject = inject_numeric_field(
+                "Rejection I/O pin (should be defined if trigger pin is defined)",
+                step=1,
+                precision=0,
             )
 
             with ui.row().classes("w-full"):

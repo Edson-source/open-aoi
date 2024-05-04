@@ -16,15 +16,20 @@ logger = logging.getLogger("ui.access")
 def get_view(node: Node):
     def view() -> Optional[RedirectResponse]:
         session = get_session()
-        access_controller = AccessorController(session)
+        accessor_controller = AccessorController(session)
 
-        def _handle_access_request(username_input: ui.input, password_input: ui.input):
-            accessor = access_controller.retrieve_by_username(username_input.value)
+        def _handle_access_request():
+            """Handles credential test and grant access if test successes"""
+            username = username_input.value.strip()
+            password = password_input.value
+
             try:
-                accessor.test_credentials(password=password_input.value)
-            except AuthenticationException:
+                accessor = accessor_controller.retrieve_by_username(username)
+                assert accessor is not None
+                accessor.test_credentials(password=password)
+            except (AuthenticationException, AssertionError) as e:
                 logger.info("Failed to test credentials")
-                ui.notify("Invalid credentials", type="negative")
+                ui.notify("Credentials are invalid.", type="negative")
             else:
                 # Allow access
                 accessor.grant_session_access(app.storage.user)
@@ -32,17 +37,24 @@ def get_view(node: Node):
 
         with ui.card().classes("absolute-center w-80"):
             with ui.row().classes("w-full justify-between items-center"):
-                ui.markdown("**Enter credentials**")
+                ui.markdown("**Please, enter credentials**")
                 info = ui.button(icon="question_mark").props("flat round size=xs")
                 info.tooltip("To access system please enter your credentials")
-            username_input = ui.input(placeholder="Username").classes("w-full")
-            password_input = ui.input(placeholder="Password", password=True).classes(
-                "w-full"
+
+            username_input = (
+                ui.input(placeholder="Username")
+                .on("keydown.enter", _handle_access_request)
+                .classes("w-full")
+            )
+            password_input = (
+                ui.input(placeholder="Password", password=True)
+                .on("keydown.enter", _handle_access_request)
+                .classes("w-full")
             )
             ui.button(
                 "Continue",
                 color="primary",
-                on_click=lambda: _handle_access_request(username_input, password_input),
+                on_click=_handle_access_request,
             ).classes("w-full")
 
         with ui.header(fixed=True).classes("py-1"):

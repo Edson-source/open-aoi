@@ -36,7 +36,7 @@ def _handle_store_connection_test():
         try:
             InspectionHandlerController.test_minio_connection()
             if not IS_STORE_CONNECTED:
-                ui.notify("Store connected!", type="positive")
+                ui.notify("Store connected.", type="positive")
                 IS_STORE_CONNECTED = True
                 verbose = True
         except ConnectionFailedException as e:
@@ -51,7 +51,7 @@ def _handle_store_connection_test():
 def get_view(node: Node):
     def view() -> Optional[RedirectResponse]:
         session = get_session()
-        access_controller = AccessorController(session)
+        accessor_controller = AccessorController(session)
         defect_type_controller = DefectTypeController(session)
         inspection_handler_controller = InspectionHandlerController(session)
 
@@ -73,7 +73,7 @@ def get_view(node: Node):
                 )
                 defect_type_controller.commit()
             except:
-                ui.notify("Failed to create defect type!", type="negative")
+                ui.notify("Failed to create defect type.", type="negative")
                 return
 
             ui.notify("New defect type created", type="positive")
@@ -90,7 +90,7 @@ def get_view(node: Node):
                     ui.notify(str(e), type="negative")
                     return
 
-                ui.notify("Deleted!", type="positive")
+                ui.notify("Deleted.", type="positive")
 
                 _inject_defect_list()
                 _update_module_type_defect_selection()
@@ -128,7 +128,7 @@ def get_view(node: Node):
                 inspection_handler_controller.commit()
             except Exception as e:
                 node.logger.error(str(e))
-                ui.notify("Failed to upload module source!")
+                ui.notify("Failed to upload module source.")
                 return
 
             ui.notify(f"Uploaded {e.name}", type="positive")
@@ -142,7 +142,7 @@ def get_view(node: Node):
                 )
                 module = inspection_handler.materialize_source()
             except:
-                ui.notify("Failed to obtain module source!")
+                ui.notify("Failed to obtain module source.")
                 return
 
             ui.download(module._source, "module.py")
@@ -167,7 +167,7 @@ def get_view(node: Node):
                 )
                 inspection_handler_controller.commit()
             except:
-                ui.notify("Failed to create module!", type="negative")
+                ui.notify("Failed to create module.", type="negative")
                 return
 
             ui.notify("New module created", type="positive")
@@ -182,7 +182,7 @@ def get_view(node: Node):
                 except SystemIntegrityException as e:
                     ui.notify(str(e), type="negative")
                     return
-                ui.notify("Deleted!", type="positive")
+                ui.notify("Deleted.", type="positive")
 
                 _inject_module_list()
 
@@ -231,7 +231,7 @@ def get_view(node: Node):
             try:
                 inspection_handlers = inspection_handler_controller.list_nested()
             except:
-                ui.notify("Failed to get modules!", type="negative")
+                ui.notify("Failed to get modules.", type="negative")
                 return
 
             with modules_container:
@@ -291,7 +291,7 @@ def get_view(node: Node):
             try:
                 defect_types = defect_type_controller.list()
             except:
-                ui.notify("Failed to get defect types!", type="negative")
+                ui.notify("Failed to get defect types.", type="negative")
                 return
 
             options = dict([(dt.id, dt.title) for dt in defect_types])
@@ -299,11 +299,11 @@ def get_view(node: Node):
 
         # -------------------------------------------------------------------------
         try:
-            accessor = access_controller.identify_session_accessor(app.storage.user)
+            accessor = accessor_controller.identify_session_accessor(app.storage.user)
         except AuthenticationException:
             return RedirectResponse(ACCESS_PAGE)
         
-        inject_header()
+        inject_header(accessor)
         with ui.column().classes("w-full"):
             ui.markdown("#### **Modules and Defects**")
             ui.markdown("##### **Defects**")

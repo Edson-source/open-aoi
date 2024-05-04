@@ -13,6 +13,9 @@ from open_aoi_core.controllers import Controller
 class InspectionController(Controller):
     _model = InspectionModel
 
+    # Aliases
+    test_minio_connection = InspectionModel.test_minio_connection
+
     def create(
         self,
         inspection_profile: InspectionProfileModel,
@@ -37,5 +40,3 @@ class InspectionController(Controller):
             .options(joinedload(InspectionModel.inspection_profile))
             .all()
         )
-
-    test_minio_connection = _model.test_minio_connection

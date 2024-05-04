@@ -27,7 +27,7 @@ logger = logging.getLogger("ui.inspection_profile")
 def get_view(node: Node):
     def view(profile_id: Optional[int] = None) -> Optional[RedirectResponse]:
         session = get_session()
-        access_controller = AccessorController(session)
+        accessor_controller = AccessorController(session)
         template_controller = TemplateController(session)
         inspection_profile_controller = InspectionProfileController(session)
 
@@ -49,7 +49,7 @@ def get_view(node: Node):
                 template = template_controller.retrieve(template_select.value)
             except Exception as e:
                 logger.exception(e)
-                ui.notify("Failed to retrieve data from database!", type="negative")
+                ui.notify("Failed to retrieve data from database.", type="negative")
                 return
 
             if inspection_profile is None:
@@ -65,7 +65,7 @@ def get_view(node: Node):
                     inspection_profile_controller.commit()
                 except Exception as e:
                     logger.exception(e)
-                    ui.notify("Failed to create profile!", type="negative")
+                    ui.notify("Failed to create profile.", type="negative")
                     return
                 ui.notify("New profile created", type="positive")
             else:
@@ -74,7 +74,7 @@ def get_view(node: Node):
                     inspection_profile_controller.commit()
                 except Exception as e:
                     logger.exception(e)
-                    ui.notify("Failed to update profile!", type="negative")
+                    ui.notify("Failed to update profile.", type="negative")
                     return
                 ui.notify("Updated", type="positive")
             _inject_profile_list()
@@ -89,7 +89,7 @@ def get_view(node: Node):
                 return
             except Exception as e:
                 logger.exception(e)
-                ui.notify("Failed to push changes to database!", type="negative")
+                ui.notify("Failed to push changes to database.", type="negative")
                 return
 
             ui.notify("Profile deleted", type="positive")
@@ -111,7 +111,7 @@ def get_view(node: Node):
                 return
             except Exception as e:
                 logger.exception(e)
-                ui.notify("Failed to push changes to database!", type="negative")
+                ui.notify("Failed to push changes to database.", type="negative")
                 return
             _inject_profile_list()
 
@@ -125,7 +125,7 @@ def get_view(node: Node):
                 return
             except Exception as e:
                 logger.exception(e)
-                ui.notify("Failed to push changes to database!", type="negative")
+                ui.notify("Failed to push changes to database.", type="negative")
                 return
             _inject_profile_list()
 
@@ -176,11 +176,11 @@ def get_view(node: Node):
         # -------------------
 
         try:
-            accessor = access_controller.identify_session_accessor(app.storage.user)
+            accessor = accessor_controller.identify_session_accessor(app.storage.user)
         except AuthenticationException:
             return RedirectResponse(ACCESS_PAGE)
 
-        inject_header()
+        inject_header(accessor)
 
         try:
             if profile_id is None:

@@ -238,7 +238,7 @@ class Manager:
 def get_view(node: Node):
     async def view(template_id: int) -> Optional[RedirectResponse]:
         session = get_session()
-        access_controller = AccessorController(session)
+        accessor_controller = AccessorController(session)
         template_controller = TemplateController(session)
         inspection_zone_controller = InspectionZoneController(session)
         connected_component_controller = ConnectedComponentController(session)
@@ -246,11 +246,11 @@ def get_view(node: Node):
         inspection_target_controller = InspectionTargetController(session)
 
         try:
-            accessor = access_controller.identify_session_accessor(app.storage.user)
+            accessor = accessor_controller.identify_session_accessor(app.storage.user)
         except AuthenticationException:
             return RedirectResponse(ACCESS_PAGE)
 
-        inject_header()
+        inject_header(accessor)
 
         # -----------------------------------
         # Handlers
@@ -284,7 +284,7 @@ def get_view(node: Node):
                 inspection_zone_controller.commit()
             except Exception as e:
                 logger.exception(e)
-                ui.notify("Failed to create inspection zone!", type="negative")
+                ui.notify("Failed to create inspection zone.", type="negative")
                 return
 
             ui.notify("Inspection zone created.", type="positive")
@@ -301,11 +301,11 @@ def get_view(node: Node):
                 except Exception as e:
                     logger.exception(e)
                     ui.notify(
-                        "Failed to delete inspection zone as it is a dependency!",
+                        "Failed to delete inspection zone as it is a dependency.",
                         type="negative",
                     )
                     return
-                ui.notify("Inspection zone deleted!", type="positive")
+                ui.notify("Inspection zone deleted.", type="positive")
                 _inject_inspection_zone_list()
 
             confirm("Are you sure?", execute)
@@ -337,7 +337,7 @@ def get_view(node: Node):
                     if cz.template_id == template.id
                 ]
             except:
-                ui.notify("Failed to list inspectionzones!", type="negative")
+                ui.notify("Failed to list inspectionzones.", type="negative")
                 return
 
             if len(inspection_zone_list):
@@ -377,7 +377,7 @@ def get_view(node: Node):
             inspection_handler_list = inspection_handler_controller.list()
         except Exception as e:
             logger.exception(e)
-            ui.notify("Failed to get data fro database!", type="negative")
+            ui.notify("Failed to get data fro database.", type="negative")
             return
 
         with ui.column().classes("w-full"):
@@ -394,7 +394,7 @@ def get_view(node: Node):
                 im = template.materialize_image()
             except Exception as e:
                 logger.exception(e)
-                ui.notify("Failed to get image!", type="negative")
+                ui.notify("Failed to get image.", type="negative")
                 return
 
             manager = Manager(im, [100, im.size[0]])

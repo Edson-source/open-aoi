@@ -17,11 +17,11 @@ from open_aoi_portal.common import inject_header, get_session, to_thread, scale
 def get_view(node: Node):
     async def view() -> Optional[RedirectResponse]:
         session = get_session()
-        access_controller = AccessorController(session)
+        accessor_controller = AccessorController(session)
         camera_controller = CameraController(session)
 
         try:
-            accessor = access_controller.identify_session_accessor(app.storage.user)
+            accessor = accessor_controller.identify_session_accessor(app.storage.user)
         except AuthenticationException:
             return RedirectResponse(ACCESS_PAGE)
 
@@ -76,7 +76,7 @@ def get_view(node: Node):
         except Exception as e:
             return RedirectResponse(HOME_PAGE)
 
-        inject_header()
+        inject_header(accessor)
 
         with ui.grid(columns=3).classes("w-full"):
             with ui.column().classes("col-span-1"):

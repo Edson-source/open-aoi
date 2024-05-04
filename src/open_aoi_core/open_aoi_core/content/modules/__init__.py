@@ -54,11 +54,11 @@ def dynamic_import(source: bytes) -> IModule:
         raise AssetIntegrityException(f"Failed to execute module: {str(e)}") from e
 
     try:
-        assert ctx.get("DOCUMENTATION") is not None, "Documentation is missing!"
-        assert ctx.get("module") is not None, "Module instance function is missing!"
+        assert ctx.get("DOCUMENTATION") is not None, "Documentation is missing."
+        assert ctx.get("module") is not None, "Module instance function is missing."
         assert isinstance(
             ctx.get("module"), IModule
-        ), "Module does not provide IModule interface!"
+        ), "Module does not provide IModule interface."
     except AssertionError as e:
         raise AssetIntegrityException(f"Failed to validate module: {str(e)}") from e
     

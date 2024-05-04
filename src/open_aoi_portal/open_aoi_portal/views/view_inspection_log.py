@@ -33,13 +33,13 @@ def _handle_update_image():
 
 def view() -> Optional[RedirectResponse]:
     session = get_session()
-    access_controller = AccessorController(session)
+    accessor_controller = AccessorController(session)
     try:
-        access_controller.identify_session_accessor(app.storage.user)
+        accessor_controller.identify_session_accessor(app.storage.user)
     except AuthenticationException:
         return RedirectResponse(ACCESS_PAGE)
 
-    inject_header()
+    inject_header(accessor)
 
     with ui.grid(columns=2).classes("w-full"):
         with ui.column():

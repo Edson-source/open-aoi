@@ -50,7 +50,7 @@ def get_view(node: Node):
                 ui.notify("Failed to create template")
                 return
 
-            ui.notify(f"Template {template.title} created!", type="positive")
+            ui.notify(f"Template {template.title} created.", type="positive")
             _inject_template_list()
 
         def _handle_delete_template(template: TemplateController._model):
@@ -60,10 +60,10 @@ def get_view(node: Node):
                     template_controller.commit()
                 except Exception as e:
                     logger.exception(e)
-                    ui.notify("Failed to delete template!", type="negative")
+                    ui.notify("Failed to delete template.", type="negative")
                     return
 
-                ui.notify("Template was deleted!", type="positive")
+                ui.notify("Template was deleted.", type="positive")
                 _inject_template_list()
 
             confirm("Are you sure?", execute)
@@ -73,7 +73,7 @@ def get_view(node: Node):
                 im = template.materialize_image()
             except Exception as e:
                 logger.exception(e)
-                ui.notify("Failed to open template!", type="negative")
+                ui.notify("Failed to open template.", type="negative")
                 return
 
             with ui.dialog() as dialog, ui.card():
@@ -97,7 +97,7 @@ def get_view(node: Node):
                 camera = camera_controller.retrieve(camera_selection.value)
             except Exception as e:
                 logger.exception(e)
-                ui.notify("Failed to get camera!", type="negative")
+                ui.notify("Failed to get camera.", type="negative")
                 return
             try:
                 im, error, error_description = await to_thread(
@@ -167,21 +167,21 @@ def get_view(node: Node):
         # -----------------------------------------------
 
         session = get_session()
-        access_controller = AccessorController(session)
+        accessor_controller = AccessorController(session)
         template_controller = TemplateController(session)
         camera_controller = CameraController(session)
         try:
-            accessor = access_controller.identify_session_accessor(app.storage.user)
+            accessor = accessor_controller.identify_session_accessor(app.storage.user)
         except AuthenticationException:
             return RedirectResponse(ACCESS_PAGE)
 
-        inject_header()
+        inject_header(accessor)
 
         try:
             camera_list = camera_controller.list()
         except Exception as e:
             logger.exception(e)
-            ui.notify("Failed to get camera list!", type="negative")
+            ui.notify("Failed to get camera list.", type="negative")
             return
 
         with ui.column().classes("w-full"):

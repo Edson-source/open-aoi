@@ -24,5 +24,5 @@ source install/setup.bash
 # Copy default content to database
 # ! This drop database content !
 cd src/open_aoi_core/open_aoi_core/
-python3 -m content.database
+python3 -m content.populate_content
 cd ../../../

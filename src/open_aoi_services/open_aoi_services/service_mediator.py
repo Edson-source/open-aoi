@@ -56,7 +56,7 @@ class Service(StandardService):
         self.inspection_trigger_service = self.create_service(
             InspectionTrigger,
             f"{self.NODE_NAME}/inspection",
-            self.execute_inspection,
+            self.inspection,
         )
         # Wait for dependencies: image acquisition, product identification and inspection execution nodes
         self.await_dependencies(
@@ -67,7 +67,7 @@ class Service(StandardService):
             ]
         )
 
-    def execute_inspection(self, request, response):
+    def inspection(self, request, response):
         self.logger.info("Inspection requested")
         response.overall_passed = False
 
@@ -94,7 +94,9 @@ class Service(StandardService):
                 # Particular pin was triggered (request comes from GPIO interface)
                 # Get camera with provided pin.
                 try:
-                    camera = camera_controller.retrieve_by_io_pin_trigger(request.io_pin)
+                    camera = camera_controller.retrieve_by_io_pin_trigger(
+                        request.io_pin
+                    )
                 except Exception as e:
                     self.logger.error(str(e))
                     sub_response.error = MediatorServiceConstants.Error.GENERAL
@@ -137,9 +139,7 @@ class Service(StandardService):
                     and sub_response.identification_code.strip()
                 )
             except AssertionError:
-                response.error = (
-                    MediatorServiceConstants.Error.IDENTIFICATION_FAILED
-                )
+                response.error = MediatorServiceConstants.Error.IDENTIFICATION_FAILED
                 response.error_description = f"Failed to identify product."
                 return response
 
@@ -187,16 +187,18 @@ class Service(StandardService):
 
                 for cz in inspection_zone_list:
                     inspection_target_list = cz.inspection_target_list
-                    assert len(inspection_target_list), "Inspection target list is empty"
+                    assert len(
+                        inspection_target_list
+                    ), "Inspection target list is empty"
 
                     for ct in inspection_target_list:
                         ch = ct.inspection_handler
                         self.logger.info(
                             f"Registering inspection target [{ct.id}]: inspection zone: {cz.title}, inspection handler: {ch.title}"
                         )
-                        inspection_handler_related_inspection_target_msg_map[ch.id].append(
-                            _inspection_target_to_msg(ct)
-                        )
+                        inspection_handler_related_inspection_target_msg_map[
+                            ch.id
+                        ].append(_inspection_target_to_msg(ct))
 
                         if ch.id in inspection_handler_list:
                             continue
@@ -213,7 +215,9 @@ class Service(StandardService):
                 )
                 return response
 
-            self.logger.info(f"Inspection handler retrieved and inspection targets are ready")
+            self.logger.info(
+                f"Inspection handler retrieved and inspection targets are ready"
+            )
 
             # Template image materialization
 
@@ -253,9 +257,7 @@ class Service(StandardService):
                         self.logger.error(
                             f"Failed to apply inspection execution. {response.error}: {response.error_description}"
                         )
-                        response.error = (
-                            MediatorServiceConstants.Error.CONTROL_FAILED
-                        )
+                        response.error = MediatorServiceConstants.Error.CONTROL_FAILED
                         response.error_description = f"Failed to apply inspection handler {inspection_handler_id}. {error_description}"
                         return response
                     for inspection_target, inspection_log in zip(
@@ -286,7 +288,10 @@ class Service(StandardService):
                     inspection_target_list_full_msg, inspection_log_list_full_msg
                 ):
                     inspection_log_controller.create(
-                        inspection_target, inspection, inspection_log.log, inspection_log.passed
+                        inspection_target,
+                        inspection,
+                        inspection_log.log,
+                        inspection_log.passed,
                     )
                 inspection_controller.commit()
             except Exception as e:
@@ -305,6 +310,9 @@ class Service(StandardService):
 
             self.logger.info(f"Response constructed and returned")
             return response
+
+    def update_watch_pins(self, request, response):
+        pass
 
 
 def main(args=None):

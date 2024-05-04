@@ -46,15 +46,16 @@ def _handle_logout_request():
     confirm("You are about to logout. Are you sure?", logout)
 
 
-def inject_header():
+def inject_header(accessor: AccessorModel):
     ui.right_drawer().props("bordered")
     with ui.left_drawer(top_corner=False, bottom_corner=True).props("bordered"):
         ui.button("Overview", on_click=lambda: ui.open(HOME_PAGE)).props(
             "flat align=left icon=home"
         ).tailwind.width("full")
-        ui.button("Devices", on_click=lambda: ui.open(DEVICES_PAGE)).props(
-            "flat align=left icon=photo_camera"
-        ).tailwind.width("full")
+        if accessor.role.allow_device_operations:
+            ui.button("Devices", on_click=lambda: ui.open(DEVICES_PAGE)).props(
+                "flat align=left icon=photo_camera"
+            ).tailwind.width("full")
         ui.button("Modules", on_click=lambda: ui.open(MODULES_PAGE)).props(
             "flat align=left icon=widgets"
         ).tailwind.width("full")

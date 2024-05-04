@@ -22,14 +22,13 @@ class DatabaseAuthenticationMixin(Mixin):
         """Override stored hash with new one"""
         self.hash = self._hash_password(password)
 
-    def test_credentials(self, username: str, password: str) -> None:
+    def test_credentials(self, password: str) -> None:
         """
         Test provided credential against stored
         - raise: AuthenticationException if credentials fails the test
         """
 
         try:
-            assert username == self.username
             assert bcrypt.checkpw(password.encode(), self.hash.encode())
         except AssertionError as e:
             raise AuthenticationException("Credential test failed") from e
@@ -66,8 +65,14 @@ class SessionAuthenticationMixin(Mixin):
     @staticmethod
     def revoke_session_access(storage: dict):
         """Remove access flags and metadata from session"""
-        del storage["access_allowed"]
-        del storage["accessor_id"]
+        try:
+            del storage["access_allowed"]
+        except KeyError:
+            pass
+        try:
+            del storage["accessor_id"]
+        except KeyError:
+            pass
 
     @staticmethod
     def identify_session_accessor_id(storage: dict) -> int:

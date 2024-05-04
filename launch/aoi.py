@@ -37,7 +37,7 @@ def aoi_launch_description():
             aoi_gpio,
             # Dependent
             aoi_mediator,
-            # aoi_portal,
+            aoi_portal,
         ]
     )
 

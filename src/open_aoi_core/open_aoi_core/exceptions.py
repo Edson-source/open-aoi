@@ -5,7 +5,7 @@ class OpenAOIGeneralException(Exception, ABC):
     pass
 
 
-class AuthenticationException:
+class AuthenticationException(OpenAOIGeneralException):
     """Authentication attempt failed"""
 
 
