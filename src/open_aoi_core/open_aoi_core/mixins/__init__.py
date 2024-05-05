@@ -85,7 +85,9 @@ class MinioBasedMixin(Mixin):
             # Upload
             client.put_object(self._bucket_name, blob_name, blob_content, length)
         except Exception as e:
-            raise SystemIntegrityException("Failed to upload asset to storage.") from e
+            raise SystemIntegrityException(
+                f"Failed to upload asset to storage."
+            ) from e
 
         self.blob = blob_name
 

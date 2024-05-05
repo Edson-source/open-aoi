@@ -27,6 +27,8 @@ class ModuleSourceMixin(MinioBasedMixin):
         blob_content = io.BytesIO()
         blob_content.write(source)
         self.publish(blob_content)
+        doc = self.get_source_documentation(source)
+        self.description = doc
         self.source = source
 
     def materialize_source(self) -> bytes:
@@ -57,3 +59,12 @@ class ModuleSourceMixin(MinioBasedMixin):
         except AssetIntegrityException as e:
             return False, str(e)
         return True, "Module is valid."
+
+    @classmethod
+    def get_source_documentation(cls, source: bytes) -> str:
+        """Return documentation from module source."""
+        try:
+            _, doc = dynamic_import(source)
+            return doc
+        except AssetIntegrityException as e:
+            return "No documentation available"

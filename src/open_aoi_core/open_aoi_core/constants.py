@@ -28,8 +28,10 @@ class SystemServiceStatus:
 
 
 class SystemBuckets:
-    INSPECTION_IMAGES = "inspection_images"
-    TEMPLATE_IMAGES = "template_images"
+    """Should be lower case, no special symbols"""
+
+    INSPECTION_IMAGES = "inspections"
+    TEMPLATE_IMAGES = "templates"
     MODULE_SOURCES = "modules"
 
 

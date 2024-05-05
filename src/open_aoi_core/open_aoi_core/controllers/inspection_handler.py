@@ -18,14 +18,16 @@ class InspectionHandlerController(Controller):
     test_minio_connection = InspectionHandlerModel.test_minio_connection
 
     def create(
-        self, title: str, description: str, defect_type: DefectTypeModel
+        self, title: str, defect_type: DefectTypeModel
     ) -> InspectionHandlerModel:
         """
         Create blank controller representation, should be
         populated with content separately (due to UI file upload util)
         """
         entity = InspectionHandlerModel(
-            title=title, description=description, defect_type=defect_type
+            title=title,
+            description="No documentation available. Upload source to populate documentation.",
+            defect_type=defect_type,
         )
         self.session.add(entity)
         return entity

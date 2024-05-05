@@ -154,6 +154,7 @@ def get_view(node: StandardClient):
                     ),
                 )
             except SystemServiceException as e:
+                logger.exception(e)
                 ui.notify(str(e), type="warning")
                 capture_image.enable()
                 return
@@ -274,9 +275,9 @@ def get_view(node: StandardClient):
             with ui.row().classes("w-full"):
                 ui.space()
                 capture_image = ui.button(
-                    "Capture image", on_click=_handle_capture_image, icon="photo_camera"
+                    "Capture image", on_click=_handle_capture_image, icon="photo_camera", color="white"
                 )
-                ui.button("Save", on_click=_handle_create_camera)
+                ui.button("Save", on_click=_handle_create_camera, color="positive")
 
         with ui.dialog() as image_dialog, ui.card():
             image_element = ui.interactive_image()

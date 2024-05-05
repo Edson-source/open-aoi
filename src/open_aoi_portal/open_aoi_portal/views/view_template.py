@@ -1,63 +1,103 @@
+"""
+    This view allow to create a template by capturing image from selected camera. List of templates is also available.
+"""
+
 import logging
 from functools import partial
 from typing import Optional
 
-from rclpy.node import Node
+from PIL import Image
 from nicegui import ui, app
 from fastapi.responses import RedirectResponse
-from PIL import Image
 
-from open_aoi_core.constants import ImageAcquisitionConstants
-from open_aoi_core.utils import scale
-from open_aoi_core.exceptions import AuthenticationException, SystemServiceException
+from open_aoi_core.constants import ImageAcquisitionConstants, SystemLimit
+from open_aoi_core.utils import msg_to_image, scale
+from open_aoi_core.services import StandardClient
 from open_aoi_core.controllers.template import TemplateController
 from open_aoi_core.controllers.accessor import AccessorController
 from open_aoi_core.controllers.camera import CameraController
-from open_aoi_core.models import TITLE_LIMIT
 from open_aoi_portal.common import (
     confirm,
     inject_header,
     inject_text_field,
     to_thread,
     get_session,
+    HOME_PAGE,
     ACCESS_PAGE,
     CONTROL_ZONE_PAGE,
 )
+from open_aoi_core.exceptions import (
+    AuthenticationException,
+    SystemServiceException,
+    SystemIntegrityException,
+)
 
-logger = logging.getLogger("ui.devices")
+logger = logging.getLogger("ui.template")
 
 
-def get_view(node: Node):
+def get_view(node: StandardClient):
     def view() -> Optional[RedirectResponse]:
+        session = get_session()
+
+        accessor_controller = AccessorController(session)
+        template_controller = TemplateController(session)
+        camera_controller = CameraController(session)
+
+        try:
+            accessor = accessor_controller.identify_session_accessor(app.storage.user)
+            assert accessor.role.allow_system_operations
+        except AuthenticationException:
+            return RedirectResponse(ACCESS_PAGE)
+        except AssertionError:
+            return RedirectResponse(HOME_PAGE)
+        except Exception as e:
+            logger.exception(e)
+            ui.notify(
+                "Unexpected exception.",
+                type="negative",
+            )
+            return
+
         # -----------------------------------------------
         # Handlers
         def _handle_create_template():
+            """Handles template creation"""
             try:
                 assert template_title.validate()
                 assert template_image is not None
             except AssertionError:
-                ui.notify("Required values are missing", type="negative")
+                ui.notify("Required values are missing.", type="negative")
                 return
 
+            title = template_title.value.strip()
+
             try:
-                template = template_controller.create(
-                    template_title.value.strip(), accessor
-                )
+                template = template_controller.create(title, accessor)
                 template.publish_image(template_image)
                 template_controller.commit()
+            except SystemIntegrityException as e:
+                logger.exception(e)
+                ui.notify(str(e), type="negative")
+                return
             except Exception as e:
                 logger.exception(e)
-                ui.notify("Failed to create template", type='negative')
+                ui.notify("Failed to create template.", type="negative")
                 return
 
             ui.notify(f"Template {template.title} created.", type="positive")
             _inject_template_list()
 
         def _handle_delete_template(template: TemplateController._model):
-            def execute():
+            """Handles template deletion with confirmation"""
+
+            def _delete():
                 try:
                     template_controller.delete(template)
                     template_controller.commit()
+                except SystemIntegrityException as e:
+                    logger.exception(e)
+                    ui.notify(str(e), type="negative")
+                    return
                 except Exception as e:
                     logger.exception(e)
                     ui.notify("Failed to delete template.", type="negative")
@@ -66,91 +106,108 @@ def get_view(node: Node):
                 ui.notify("Template was deleted.", type="positive")
                 _inject_template_list()
 
-            confirm("Are you sure?", execute)
+            confirm(
+                f"You are about to delete template {template.title}. Are you sure?",
+                _delete,
+            )
 
         async def _handle_preview_template(template: TemplateController._model):
+            """Handle template preview. Materialization operation takes some time so should be async."""
             try:
-                im = template.materialize_image()
+                image = template.materialize_image()
             except Exception as e:
                 logger.exception(e)
-                ui.notify("Failed to open template.", type="negative")
+                ui.notify("Failed to load template.", type="negative")
                 return
 
             with ui.dialog() as dialog, ui.card():
-                ui.interactive_image(im)
+                ui.interactive_image(image)
                 with ui.row().classes("w-full justify-end"):
                     ui.button("Close", on_click=dialog.close, color="white")
 
             dialog.open()
 
         async def _handle_capture_image():
+            """Capture image for template"""
             nonlocal template_image
 
             try:
                 assert camera_selection.validate()
             except AssertionError:
-                ui.notify("Camera is required", type="negative")
+                ui.notify("Camera is required.", type="negative")
                 return
 
             capture_image.disable()
             try:
                 camera = camera_controller.retrieve(camera_selection.value)
+                assert camera is not None
             except Exception as e:
                 logger.exception(e)
                 ui.notify("Failed to get camera.", type="negative")
                 return
+
             try:
-                im, error, error_description = await to_thread(
-                    node.image_acquisition_capture_image,
-                    camera_ip_address=camera.ip_address,
+                response = await to_thread(
+                    node.await_future,
+                    node.image_acquisition_capture_image(
+                        camera_ip_address=camera.ip_address,
+                    ),
                 )
             except SystemServiceException as e:
+                logger.exception(e)
                 ui.notify(str(e), type="warning")
                 capture_image.enable()
                 return
+            except Exception as e:
+                logger.exception(e)
+                ui.notify("Failed to capture image.", type="negative")
+                return
 
-            if error != ImageAcquisitionConstants.Error.NONE:
-                ui.notify(error_description, type="negative")
+            if response.error != ImageAcquisitionConstants.Error.NONE:
+                ui.notify(response.error_description, type="negative")
                 capture_image.enable()
                 return
 
-            if im is None:
-                ui.notify("Failed to capture image", type="warning")
+            if response.image is None:
+                ui.notify("Failed to capture image.", type="warning")
                 return
 
-            im = Image.fromarray(im)
-            template_image = im
-            template_image_element.set_source(scale(im, 600))
+            template_image = msg_to_image(response.image)
+            template_image = Image.fromarray(template_image)
+            template_image_element.set_source(template_image)
 
             capture_image.enable()
 
         # Local injections
         def _inject_template_list():
+            """Generate list of available templates"""
             template_list_container.clear()
-            template_list = template_controller.list()
+            template_list = template_controller.list_nested()
 
             with template_list_container:
                 if len(template_list):
                     for template in template_list:
+                        # Define available actions for each template
                         partial_preview = partial(_handle_preview_template, template)
                         partial_delete = partial(_handle_delete_template, template)
+                        partial_edit = partial(
+                            ui.open, CONTROL_ZONE_PAGE.format(template_id=template.id)
+                        )
                         with ui.item().props("clickable"):
                             with ui.item_section():
                                 with ui.row():
-                                    ui.label(template.title)
+                                    ui.label(
+                                        f"{template.title} (inspection zones: {len(template.inspection_zone_list)})"
+                                    )
                                     ui.space()
                                     ui.button(
                                         icon="edit",
-                                        on_click=(
-                                            lambda t: lambda: ui.open(
-                                                CONTROL_ZONE_PAGE.format(
-                                                    template_id=t.id
-                                                )
-                                            )
-                                        )(template),
+                                        color="white",
+                                        on_click=partial_edit,
                                     ).props("size=sm")
                                     ui.button(
                                         icon="preview",
+                                        color="white",
                                         on_click=partial_preview,
                                     ).props("size=sm")
                                     ui.button(
@@ -161,18 +218,9 @@ def get_view(node: Node):
                 else:
                     with template_list_container:
                         with ui.card().classes("w-full bg-primary text-white"):
-                            ui.markdown("**No templates to show**")
+                            ui.markdown("**No templates to show.**")
 
         # -----------------------------------------------
-
-        session = get_session()
-        accessor_controller = AccessorController(session)
-        template_controller = TemplateController(session)
-        camera_controller = CameraController(session)
-        try:
-            accessor = accessor_controller.identify_session_accessor(app.storage.user)
-        except AuthenticationException:
-            return RedirectResponse(ACCESS_PAGE)
 
         inject_header(accessor)
 
@@ -185,14 +233,20 @@ def get_view(node: Node):
 
         with ui.column().classes("w-full"):
             ui.markdown("### **Templates**")
+            ui.markdown(
+                (
+                    "Template is a golden image of a product. Template image may not be uploaded externally and should be captured with registered camera. "
+                    "After capturing template image inspection zone editor will be available. "
+                )
+            )
             ui.markdown("#### **Template configuration**")
             template_title = inject_text_field(
-                "Template title", "Enter any value...", TITLE_LIMIT
+                "Template title", "Enter title value...", SystemLimit.TITLE_LENGTH
             )
             camera_selection = ui.select(
                 dict([(c.id, c.title) for c in camera_list]),
                 label="Camera",
-                validation={"Value is required": lambda value: value is not None},
+                validation={"Camera is required": lambda value: value is not None},
             ).classes("w-full")
 
             template_image = None
@@ -201,14 +255,13 @@ def get_view(node: Node):
 
             with ui.row().classes("w-full"):
                 ui.space()
-
                 capture_image = ui.button(
-                    "Take picture", on_click=_handle_capture_image, icon="photo_camera"
+                    "Capture image",
+                    on_click=_handle_capture_image,
+                    icon="photo_camera",
+                    color="white",
                 )
-                ui.button(
-                    "Save",
-                    on_click=_handle_create_template,
-                )
+                ui.button("Save", on_click=_handle_create_template, color="positive")
 
         ui.markdown("#### **Registered templates**")
         template_list_container = ui.list().classes("w-full").props("dense")

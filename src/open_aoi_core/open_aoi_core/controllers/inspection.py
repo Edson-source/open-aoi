@@ -19,12 +19,12 @@ class InspectionController(Controller):
     def create(
         self,
         inspection_profile: InspectionProfileModel,
-        image_blob: Optional[str] = None,
+        blob: Optional[str] = None,
     ) -> InspectionModel:
         """Create inspection"""
         entity = InspectionModel(
             inspection_profile=inspection_profile,
-            image_blob=image_blob,
+            blob=blob,
         )
         self.session.add(entity)
         return entity

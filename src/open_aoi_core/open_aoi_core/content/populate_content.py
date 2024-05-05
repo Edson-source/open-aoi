@@ -80,7 +80,7 @@ if __name__ == "__main__":
             with open(key, "rb") as f:
                 source = f.read()
                 inspection_handler = inspection_handler_controller.create(
-                    value["title"], value["description"], defect_types[value["type"]]
+                    value["title"], defect_types[value["type"]]
                 )
                 inspection_handler.publish_source(source)
             session.add(inspection_handler)

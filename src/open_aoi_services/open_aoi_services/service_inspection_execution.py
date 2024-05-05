@@ -64,7 +64,7 @@ class Service(StandardService):
 
         source = request.inspection_handler
         try:
-            module = dynamic_import(source.encode())
+            module, _ = dynamic_import(source.encode())
         except Exception as e:
             self.logger.error(str(e))
             self.logger.info(

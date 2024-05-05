@@ -18,15 +18,15 @@ class TemplateController(Controller):
     _model = TemplateModel
 
     def create(
-        self, title: str, accessor: AccessorModel, image_blob: Optional[str] = None
-    ) -> CameraModel:
-        obj = TemplateModel(
+        self, title: str, accessor: AccessorModel, blob: Optional[str] = None
+    ) -> TemplateModel:
+        entity = TemplateModel(
             title=title,
-            image_blob=image_blob,
+            blob=blob,
             created_by=accessor,
         )
-        self.session.add(obj)
-        return obj
+        self.session.add(entity)
+        return entity
 
     def allow_delete_hook(self, id: int) -> bool:
         any_inspection_profile = self.session.query(

@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 from dataclasses import dataclass
 
 import numpy as np
@@ -30,7 +30,9 @@ class IModule:
     ) -> List[InspectionLog]:
         raise NotImplementedError()
 
-    def apply_inspection_zone(im: np.ndarray, inspection_zone: InspectionZone) -> np.ndarray:
+    def apply_inspection_zone(
+        im: np.ndarray, inspection_zone: InspectionZone
+    ) -> np.ndarray:
         stat = [
             inspection_zone.stat_left,
             inspection_zone.stat_top,
@@ -42,7 +44,7 @@ class IModule:
         return chunk
 
 
-def dynamic_import(source: bytes) -> IModule:
+def dynamic_import(source: bytes) -> Tuple[IModule, str]:
     """
     Import dynamically generated code as a module.
     """
@@ -61,5 +63,5 @@ def dynamic_import(source: bytes) -> IModule:
         ), "Module does not provide IModule interface."
     except AssertionError as e:
         raise AssetIntegrityException(f"Failed to validate module: {str(e)}") from e
-    
-    return ctx.get("module")
+
+    return ctx.get("module"), ctx.get("DOCUMENTATION")

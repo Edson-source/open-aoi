@@ -31,6 +31,7 @@ def get_view(node: Node):
                 assert accessor is not None
                 accessor.test_credentials(password=password)
             except (AuthenticationException, AssertionError) as e:
+                logger.exception(e)
                 logger.info("Failed to test credentials")
                 ui.notify("Credentials are invalid.", type="negative")
             else:
@@ -43,7 +44,7 @@ def get_view(node: Node):
         with ui.card().classes("absolute-center w-80"):
             with ui.row().classes("w-full justify-between items-center"):
                 ui.markdown("**Please, enter credentials**")
-                info = ui.button(icon="question_mark").props("flat round size=xs")
+                info = ui.button(icon="question_mark", color="white").props("flat round size=xs")
                 info.tooltip(
                     "To access the system please enter your credentials in form of username and password."
                 )

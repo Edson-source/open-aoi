@@ -36,7 +36,8 @@ def get_view(node: StandardClient):
             try:
                 inspection_list = inspection_controller.list_nested()
                 inspection_list_container.clear()
-            except:
+            except Exception as e:
+                logger.exception(e)
                 ui.notify("Failed to list recent inspections.", type="negative")
                 return
 

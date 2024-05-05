@@ -1,7 +1,7 @@
 """
     This view define module upload page. User is permitted to upload custom code which will be executed to perform 
     product inspection. Modules (a.k.a inspection handlers) are stored in blob storage and are related to exactly one
-    defect type.
+    defect type. Inspection handler description is filled from documentation string.
 """
 
 import logging
@@ -13,14 +13,15 @@ from nicegui import ui, app
 from fastapi.responses import RedirectResponse
 
 from open_aoi_core.constants import SystemLimit
+from open_aoi_core.models import InspectionHandlerModel, DefectTypeModel
+from open_aoi_core.controllers.inspection_handler import InspectionHandlerController
+from open_aoi_core.controllers.accessor import AccessorController
+from open_aoi_core.controllers.defect_type import DefectTypeController
 from open_aoi_core.exceptions import (
     AuthenticationException,
     SystemIntegrityException,
     AssetIntegrityException,
 )
-from open_aoi_core.controllers.inspection_handler import InspectionHandlerController
-from open_aoi_core.controllers.accessor import AccessorController
-from open_aoi_core.controllers.defect_type import DefectTypeController
 from open_aoi_portal.common import (
     confirm,
     inject_header,
@@ -88,7 +89,7 @@ def get_view(node: Node):
 
             _inject_defect_list()
 
-        def _handle_defect_type_delete(defect_type):
+        def _handle_defect_type_delete(defect_type: DefectTypeModel):
             """Handles defect type deletion after confirmation"""
 
             def _delete():
@@ -96,6 +97,7 @@ def get_view(node: Node):
                     defect_type_controller.delete(defect_type)
                     defect_type_controller.commit()
                 except SystemIntegrityException as e:
+                    logger.exception(e)
                     ui.notify(str(e), type="negative")
                     return
                 except Exception as e:
@@ -116,7 +118,9 @@ def get_view(node: Node):
             )
 
         # Handlers: module
-        def _handle_module_upload_request(inspection_handler):
+        def _handle_module_upload_request(
+            inspection_handler: InspectionHandlerModel,
+        ):
             """Create dialog to upload files and setup upload process handler"""
 
             with ui.dialog() as dialog, ui.card().classes("w-[600px]"):
@@ -132,7 +136,9 @@ def get_view(node: Node):
 
             dialog.open()
 
-        def _handle_module_upload_process(e, inspection_handler):
+        def _handle_module_upload_process(
+            e, inspection_handler: InspectionHandlerModel
+        ):
             """Handles module upload process with source validation"""
 
             content = e.content.read()
@@ -159,7 +165,9 @@ def get_view(node: Node):
 
             _inject_module_list()
 
-        def _handle_module_download_request(inspection_handler):
+        def _handle_module_download_request(
+            inspection_handler: InspectionHandlerModel,
+        ):
             """Materialize module and initiate download"""
             try:
                 content = inspection_handler.materialize_source()
@@ -174,14 +182,12 @@ def get_view(node: Node):
             """Handles module database record creation"""
             try:
                 assert module_title_input.validate()
-                assert module_description_input.validate()
                 assert module_defect_type_selection.validate()
             except AssertionError:
                 ui.notify("Some required parameters are missing", type="warning")
                 return
 
             title = module_title_input.value.strip()
-            description = module_description_input.value.strip()
 
             try:
                 defect_type = defect_type_controller.retrieve(
@@ -189,7 +195,6 @@ def get_view(node: Node):
                 )
                 inspection_handler_controller.create(
                     title=title,
-                    description=description,
                     defect_type=defect_type,
                 )
                 inspection_handler_controller.commit()
@@ -202,7 +207,9 @@ def get_view(node: Node):
 
             _inject_module_list()
 
-        def _handle_module_delete(inspection_handler):
+        def _handle_module_delete(
+            inspection_handler: InspectionHandlerModel,
+        ):
             """Handles module deletion with confirmation"""
 
             def _delete():
@@ -210,6 +217,7 @@ def get_view(node: Node):
                     inspection_handler_controller.delete(inspection_handler)
                     inspection_handler_controller.commit()
                 except SystemIntegrityException as e:
+                    logger.exception(e)
                     ui.notify(str(e), type="negative")
                     return
                 except Exception as e:
@@ -286,6 +294,7 @@ def get_view(node: Node):
                         with ui.list().classes("w-full"):
                             for inspection_handler in inspection_handlers:
                                 with ui.item().props("clickable").classes("w-full"):
+                                    ui.tooltip(inspection_handler.description)
                                     with ui.item_section():
                                         ui.item_label(
                                             f"{ICON_INVALID_MODULE if inspection_handler.blob is None else ICON_VALID_MODULE} {inspection_handler.defect_type.title} | {inspection_handler.title}"
@@ -300,6 +309,7 @@ def get_view(node: Node):
                                                     _handle_module_upload_request,
                                                     inspection_handler,
                                                 ),
+                                                color="white",
                                                 icon="upload",
                                             ).props(
                                                 "size=sm",
@@ -309,6 +319,7 @@ def get_view(node: Node):
                                                     _handle_module_download_request,
                                                     inspection_handler,
                                                 ),
+                                                color="white",
                                                 icon="download",
                                             ).props(
                                                 "size=sm",
@@ -363,17 +374,12 @@ def get_view(node: Node):
 
             ui.markdown("##### **Modules**")
             ui.markdown(
-                "Upload custom inspection code here! For more information please refer project documentation."
+                "Upload custom inspection code here! For more information please refer project documentation. Each module may provide own documentation, which will be visible after upload."
             )
             with ui.grid(columns=2).classes("w-full"):
                 with ui.column():
                     module_title_input = inject_text_field(
                         "Module title", "Enter module title", SystemLimit.TITLE_LENGTH
-                    )
-                    module_description_input = inject_text_field(
-                        "Module description",
-                        "Enter module description",
-                        SystemLimit.DESCRIPTION_LENGTH,
                     )
                     module_defect_type_selection = ui.select(
                         {},

@@ -62,7 +62,10 @@ def get_view(node: Node):
                 execute_inspection.enable()
                 return
             else:
-                ui.notify(f"Inspection succeeded with overall result: {overall_passed}", type='info')
+                ui.notify(
+                    f"Inspection succeeded with overall result: {overall_passed}",
+                    type="info",
+                )
 
             im = Image.fromarray(im)
             im = scale(im, 600)
@@ -92,6 +95,7 @@ def get_view(node: Node):
                         execute_inspection = ui.button(
                             "Inspect",
                             on_click=_handle_inspection,
+                            color="white",
                         ).classes("w-full")
 
             with ui.column().classes("col-span-2"):
