@@ -24,7 +24,8 @@ class ModuleSourceMixin(MinioBasedMixin):
         - raise: SystemIntegrityException if upload fails
         - raise: AssetIntegrityException if asset already exist
         """
-        blob_content = io.BytesIO(source)
+        blob_content = io.BytesIO()
+        blob_content.write(source)
         self.publish(blob_content)
         self.source = source
 

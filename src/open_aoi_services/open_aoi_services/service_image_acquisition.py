@@ -6,6 +6,7 @@ import rclpy
 from pypylon import pylon
 from rcl_interfaces.msg import ParameterDescriptor, SetParametersResult
 
+from open_aoi_core.settings import SIMULATION
 from open_aoi_core.utils import image_to_msg
 from open_aoi_core.constants import ImageAcquisitionConstants, SystemServiceStatus
 from open_aoi_interfaces.srv import ImageAcquisitionTrigger
@@ -19,11 +20,10 @@ class Service(StandardService):
 
     CAMERA_IP_ADDRESS: str = ""
     CAMERA_ENABLED: bool = False
-    CAMERA_EMULATION_MODE: bool = False
 
     camera: Optional[pylon.InstantCamera] = None
 
-    emulation_images = [f for f in os.listdir(EMULATION_DIR) if '.png' in f]
+    emulation_images = [f for f in os.listdir(EMULATION_DIR) if ".png" in f]
 
     def __init__(self):
         super().__init__()
@@ -43,15 +43,6 @@ class Service(StandardService):
                 name="Camera enabled",
                 type=rclpy.Parameter.Type.BOOL.value,
                 description="If True, connection to camera will be opened. False by default.",
-            ),
-        )
-        self.declare_parameter(
-            ImageAcquisitionConstants.Parameter.CAMERA_EMULATION_MODE,
-            value=self.CAMERA_EMULATION_MODE,
-            descriptor=ParameterDescriptor(
-                name="Camera emulation mode",
-                type=rclpy.Parameter.Type.BOOL.value,
-                description="If True, camera emulation is used. False by default.",
             ),
         )
         self.declare_parameter(
@@ -98,7 +89,7 @@ class Service(StandardService):
             self.camera.Close()
 
         # Emulation
-        if self.CAMERA_EMULATION_MODE:
+        if SIMULATION:
             self.logger.info("Running emulation mode")
             try:
                 os.environ["PYLON_CAMEMU"] = "1"

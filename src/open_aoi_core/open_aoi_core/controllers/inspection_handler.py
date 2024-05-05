@@ -46,7 +46,7 @@ class InspectionHandlerController(Controller):
             .exists()
         ).scalar()
 
-    def post_delete_hook(self, obj: InspectionHandlerModel):
+    def post_delete_hook(self, entity: InspectionHandlerModel):
         """Delete inspection handler source"""
-        if obj.is_valid:
-            obj.destroy_source()
+        if entity.has_source_blob:
+            entity.destroy_source()

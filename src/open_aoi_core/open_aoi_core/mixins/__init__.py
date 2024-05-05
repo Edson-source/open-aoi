@@ -101,7 +101,7 @@ class MinioBasedMixin(Mixin):
             raise AssetIntegrityException("Asset does not have source.") from e
 
         # Check bucket
-        client = self._client
+        client = self._minio_client
         if not client.bucket_exists(self._bucket_name):
             raise SystemIntegrityException(
                 f"Bucket {self._bucket_name} does not exist, but asset blob is defined ({self.blob})."
@@ -111,7 +111,9 @@ class MinioBasedMixin(Mixin):
         try:
             blob_content = io.BytesIO()
             content = client.get_object(self._bucket_name, self.blob)
+            print(content)
             blob_content.write(content.read())
+            blob_content.seek(0)
             content.close()
         except Exception as e:
             raise SystemIntegrityException(
@@ -132,7 +134,7 @@ class MinioBasedMixin(Mixin):
             raise AssetIntegrityException("Asset does not have source.") from e
 
         # Check bucket
-        client = self._client
+        client = self._minio_client
         if not client.bucket_exists(self._bucket_name):
             raise SystemIntegrityException(
                 f"Bucket {self._bucket_name} does not exist, but asset blob is defined ({self.blob})."

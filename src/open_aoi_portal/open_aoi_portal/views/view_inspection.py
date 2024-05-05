@@ -62,7 +62,7 @@ def get_view(node: Node):
                 execute_inspection.enable()
                 return
             else:
-                ui.notify(f"Inspection succeeded with overall result: {overall_passed}")
+                ui.notify(f"Inspection succeeded with overall result: {overall_passed}", type='info')
 
             im = Image.fromarray(im)
             im = scale(im, 600)

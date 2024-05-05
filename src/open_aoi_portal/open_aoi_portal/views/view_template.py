@@ -47,7 +47,7 @@ def get_view(node: Node):
                 template_controller.commit()
             except Exception as e:
                 logger.exception(e)
-                ui.notify("Failed to create template")
+                ui.notify("Failed to create template", type='negative')
                 return
 
             ui.notify(f"Template {template.title} created.", type="positive")
@@ -103,7 +103,6 @@ def get_view(node: Node):
                 im, error, error_description = await to_thread(
                     node.image_acquisition_capture_image,
                     camera_ip_address=camera.ip_address,
-                    camera_emulation_mode=True,
                 )
             except SystemServiceException as e:
                 ui.notify(str(e), type="warning")

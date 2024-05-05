@@ -15,7 +15,6 @@ from rclpy.callback_groups import ReentrantCallbackGroup
 from rcl_interfaces.srv._set_parameters import SetParameters
 from rcl_interfaces.msg import Parameter, ParameterType, ParameterValue
 from sensor_msgs.msg import Image as ImageMsg
-from std_srvs.srv import Empty
 
 from open_aoi_interfaces.msg import InspectionTarget as InspectionTargetMSg
 from open_aoi_interfaces.srv import (
@@ -49,7 +48,6 @@ class ImageAcquisitionClient(BaseClient):
     def image_acquisition_set_parameters(
         self,
         camera_ip_address: Optional[str] = None,
-        camera_emulation_mode: Optional[bool] = False,
     ):
         """
         Dispatch parameters update request to image acquisition service
@@ -59,13 +57,6 @@ class ImageAcquisitionClient(BaseClient):
         try:
             req = SetParameters.Request()
             req.parameters = [
-                Parameter(
-                    name=ImageAcquisitionConstants.Parameter.CAMERA_EMULATION_MODE,
-                    value=ParameterValue(
-                        bool_value=camera_emulation_mode,
-                        type=ParameterType.PARAMETER_BOOL,
-                    ),
-                ),
                 Parameter(
                     name=ImageAcquisitionConstants.Parameter.CAMERA_IP_ADDRESS,
                     value=ParameterValue(
@@ -94,16 +85,13 @@ class ImageAcquisitionClient(BaseClient):
     def image_acquisition_capture_image(
         self,
         camera_ip_address: Optional[str] = None,
-        camera_emulation_mode: bool = False,
     ):
         """
         Dispatch image capturing request.
         - raise: SystemServiceException if any exception occur
         """
         try:
-            self.image_acquisition_set_parameters(
-                camera_ip_address, camera_emulation_mode
-            )
+            self.image_acquisition_set_parameters(camera_ip_address)
 
             req = ImageAcquisitionTrigger.Request()
 

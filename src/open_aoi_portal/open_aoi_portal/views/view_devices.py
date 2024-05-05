@@ -1,3 +1,7 @@
+"""
+    This view is responsible for camera creation. View also provide camera image preview.
+"""
+
 import logging
 import ipaddress
 from typing import Optional
@@ -24,6 +28,7 @@ from open_aoi_portal.common import (
     inject_numeric_field,
     get_session,
     to_thread,
+    confirm,
 )
 
 logger = logging.getLogger("ui.devices")
@@ -44,7 +49,13 @@ def get_view(node: StandardClient):
             return RedirectResponse(HOME_PAGE)
         except AuthenticationException:
             return RedirectResponse(ACCESS_PAGE)
-
+        except Exception as e:
+            logger.exception(e)
+            ui.notify(
+                "Unexpected exception.",
+                type="negative",
+            )
+            return
         # ------------------------------------
         # Handlers
 
@@ -92,24 +103,6 @@ def get_view(node: StandardClient):
                 )
                 return
 
-            try:
-                future = node.mediator_update_watch_pin_list()
-                await to_thread(node.await_future, future)
-            except SystemServiceException as e:
-                logger.exception(e)
-                ui.notify(
-                    f"Failed to update pin watch list. {str(e)}. Please recreate camera.",
-                    type="negative",
-                )
-                return
-            except Exception as e:
-                logger.exception(e)
-                ui.notify(
-                    "Unexpected exception.",
-                    type="negative",
-                )
-                return
-
             ui.notify(f"Camera {camera_title.value.strip()} created.", type="positive")
 
             _inject_camera_list()
@@ -117,41 +110,28 @@ def get_view(node: StandardClient):
         async def _handle_delete_camera(camera: CameraModel):
             """Handle camera delete operation"""
 
-            try:
-                camera_controller.delete(camera)
-                camera_controller.commit()
-            except SystemIntegrityException as e:
-                logger.exception(e)
-                ui.notify(f"Failed to delete camera! {str(e)}", type="negative")
-                return
-            except Exception as e:
-                logger.exception(e)
-                ui.notify(
-                    "Unexpected exception.",
-                    type="error",
-                )
-                return
+            def _delete():
+                try:
+                    camera_controller.delete(camera)
+                    camera_controller.commit()
+                except SystemIntegrityException as e:
+                    logger.exception(e)
+                    ui.notify(f"Failed to delete camera! {str(e)}", type="negative")
+                    return
+                except Exception as e:
+                    logger.exception(e)
+                    ui.notify(
+                        "Unexpected exception.",
+                        type="negative",
+                    )
+                    return
 
-            try:
-                future = node.mediator_update_watch_pin_list()
-                await to_thread(node.await_future, future)
-            except SystemServiceException as e:
-                logger.exception(e)
-                ui.notify(
-                    f"Failed to update pin watch list. {str(e)}. Please recreate camera.",
-                    type="negative",
-                )
-                return
-            except Exception as e:
-                logger.exception(e)
-                ui.notify(
-                    "Unexpected exception.",
-                    type="negative",
-                )
-                return
+                ui.notify("Camera was deleted.", type="positive")
+                _inject_camera_list()
 
-            ui.notify("Camera was deleted.", type="positive")
-            _inject_camera_list()
+            confirm(
+                f"You are about to delete device {camera.title}. Are you sure?", _delete
+            )
 
         async def _handle_capture_image():
             """
@@ -171,7 +151,6 @@ def get_view(node: StandardClient):
                     node.await_future,
                     node.image_acquisition_capture_image(
                         camera_ip_address=camera_ip_address.value.strip(),
-                        camera_emulation_mode=True,
                     ),
                 )
             except SystemServiceException as e:
@@ -182,7 +161,7 @@ def get_view(node: StandardClient):
                 logger.exception(e)
                 ui.notify(
                     "Unexpected exception.",
-                    type="error",
+                    type="negative",
                 )
                 return
 
@@ -222,7 +201,7 @@ def get_view(node: StandardClient):
                             with ui.item_section():
                                 with ui.row():
                                     ui.label(
-                                        f"{camera.title} ({camera.ip_address}). {camera.description}"
+                                        f"{camera.title}. IP: {camera.ip_address}. Trigger: {camera.io_pin_trigger or '-'}. Accept pin: {camera.io_pin_accept or '-'}. Reject: {camera.io_pin_reject or '-'}. {camera.description}"
                                     )
                                     ui.space()
                                     ui.button(
@@ -242,6 +221,13 @@ def get_view(node: StandardClient):
         inject_header(accessor)
 
         ui.markdown("#### **Devices**")
+        ui.markdown(
+            (
+                "Create new camera device here to be used for inspection image acquisition. Camera should be connected via Ethernet (should have valid IP address). "
+                "If you want to trigger inspection automatically define trigger, accept and reject pins. When trigger pin is set to HIGH, it will trigger the inspection. Otherwise leave pins empty. "
+                "To test camera connection use capture image button. "
+            )
+        )
         with ui.column().classes("w-full"):
             ui.markdown("##### **Create new device**")
             camera_title = inject_text_field(
@@ -298,6 +284,9 @@ def get_view(node: StandardClient):
                 ui.button("Close", on_click=image_dialog.close, color="white")
 
         ui.markdown("##### **Registered devices**")
+        ui.markdown(
+            "Here is the list of existing devices. Device may be deleted here if no inspections reference this device. "
+        )
 
         camera_list_container = ui.list().classes("w-full").props("dense")
         _inject_camera_list()

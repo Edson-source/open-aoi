@@ -61,6 +61,9 @@ DEFAULT_MODULES = {
 }
 
 
+SIMULATION = int(os.environ["SIMULATION"])
+assert SIMULATION
+
 MYSQL_DATABASE = os.environ["MYSQL_DATABASE"]
 assert MYSQL_DATABASE
 

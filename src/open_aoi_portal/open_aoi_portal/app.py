@@ -10,7 +10,7 @@ from open_aoi_core.services import StandardService
 from open_aoi_portal.views.view_home import get_view as get_view_home
 from open_aoi_portal.views.view_access import get_view as get_view_access
 from open_aoi_portal.views.view_devices import get_view as get_view_devices
-# from open_aoi_portal.views.view_inspection_handler import get_view as get_view_modules
+from open_aoi_portal.views.view_inspection_handler import get_view as get_view_modules
 # from open_aoi_portal.views.view_template import get_view as get_view_template
 # from open_aoi_portal.views.view_inspection_zone_editor import (
 #     get_view as get_inspection_zone_editor_view,
@@ -46,9 +46,9 @@ class Service(StandardService):
             ui.page(DEVICES_PAGE, title=f"Devices | {APP_TITLE}")(
                 get_view_devices(self)
             )
-            # ui.page(MODULES_PAGE, title=f"Modules | {APP_TITLE}")(
-            #     get_view_modules(self)
-            # )
+            ui.page(MODULES_PAGE, title=f"Modules | {APP_TITLE}")(
+                get_view_modules(self)
+            )
             # ui.page(TEMPLATES_PAGE, title=f"Templates | {APP_TITLE}")(
             #     get_view_template(self)
             # )
@@ -91,7 +91,7 @@ app.on_startup(lambda: threading.Thread(target=ros_main).start())
 ui_run.APP_IMPORT_STRING = f"{__name__}:app"  # ROS2 uses a non-standard module name, so we need to specify it here
 ui.run(
     show=False,
-    favicon="🚀",
+    favicon="🕵🏾‍♀️",
     title=APP_TITLE,
     storage_secret=STORAGE_SECRET,
     uvicorn_logging_level="info",

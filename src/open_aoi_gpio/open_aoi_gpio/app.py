@@ -14,16 +14,18 @@ from typing import List
 import rclpy
 from rcl_interfaces.msg import ParameterDescriptor, SetParametersResult
 
+from open_aoi_core.settings import SIMULATION
 from open_aoi_core.services import StandardService, SystemServiceStatus
 from open_aoi_core.constants import GPIOInterfaceConstants
 from open_aoi_interfaces.srv import GPIOTrigger
 
-try:
-    simulation = False
-    import RPi.GPIO as GPIO  # Should be available in production (in case of deployment to Raspberry Pi)
-except ImportError:
-    simulation = True
+if SIMULATION:
     import SimulRPi.GPIO as GPIO
+else:
+    try:
+        import RPi.GPIO as GPIO  # Should be available in production (in case of deployment to Raspberry Pi)
+    except ImportError:
+        exit(-1)
 
 
 class Service(StandardService):
