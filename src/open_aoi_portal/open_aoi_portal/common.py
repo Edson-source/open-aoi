@@ -2,9 +2,9 @@ import asyncio
 import functools
 import concurrent.futures
 from typing import Optional
+
 from nicegui import ui, app
 from sqlalchemy.orm import Session
-from PIL import Image
 
 from open_aoi_core.controllers.accessor import AccessorController
 from open_aoi_core.models import AccessorModel, engine
@@ -12,6 +12,8 @@ from open_aoi_portal.settings import *
 
 
 async def to_thread(func, /, *args, **kwargs):
+    """Function implements `asyncio.to_thread` function"""
+
     loop = asyncio.get_running_loop()
     func_call = functools.partial(func, *args, **kwargs)
 
@@ -20,6 +22,8 @@ async def to_thread(func, /, *args, **kwargs):
 
 
 def confirm(msg: str, callback: callable):
+    """Function open confirmation dialog"""
+
     with ui.dialog() as dialog, ui.card():
         ui.label(msg)
         with ui.row().classes("w-full justify-end"):
@@ -27,15 +31,6 @@ def confirm(msg: str, callback: callable):
             ui.button("Confirm action", on_click=callback, color="primary")
 
     dialog.open()
-
-
-def scale(im: Image, to_width: int):
-    width, height = im.size
-    ratio = height / width
-    width = to_width
-    height = int(width * ratio)
-    im = im.resize((width, height))
-    return im
 
 
 def _handle_logout_request():
@@ -47,29 +42,35 @@ def _handle_logout_request():
 
 
 def inject_header(accessor: AccessorModel):
+    """Function injects common header, that should be present on every page"""
+    
     ui.right_drawer().props("bordered")
     with ui.left_drawer(top_corner=False, bottom_corner=True).props("bordered"):
         ui.button("Overview", on_click=lambda: ui.open(HOME_PAGE)).props(
             "flat align=left icon=home"
         ).tailwind.width("full")
-        if accessor.role.allow_device_operations:
+        if accessor.role.allow_system_operations:
             ui.button("Devices", on_click=lambda: ui.open(DEVICES_PAGE)).props(
                 "flat align=left icon=photo_camera"
             ).tailwind.width("full")
-        ui.button("Modules", on_click=lambda: ui.open(MODULES_PAGE)).props(
-            "flat align=left icon=widgets"
-        ).tailwind.width("full")
-        ui.button(
-            "Inspection profiles",
-            on_click=lambda: ui.open(INSPECTION_PROFILE_CREATE_PAGE),
-        ).props("flat align=left icon=cameraswitch").tailwind.width("full")
-        ui.button(
-            "Inspection templates", on_click=lambda: ui.open(TEMPLATES_PAGE)
-        ).props("flat align=left icon=tune").tailwind.width("full")
-        ui.button(
-            "Inspection (live)",
-            on_click=lambda: ui.open(INSPECTION_PAGE),
-        ).props("flat align=left icon=online_prediction").tailwind.width("full")
+        if accessor.role.allow_system_operations:
+            ui.button("Modules", on_click=lambda: ui.open(MODULES_PAGE)).props(
+                "flat align=left icon=widgets"
+            ).tailwind.width("full")
+        if accessor.role.allow_system_operations:
+            ui.button(
+                "Inspection profiles",
+                on_click=lambda: ui.open(INSPECTION_PROFILE_CREATE_PAGE),
+            ).props("flat align=left icon=cameraswitch").tailwind.width("full")
+        if accessor.role.allow_system_operations:
+            ui.button(
+                "Inspection templates", on_click=lambda: ui.open(TEMPLATES_PAGE)
+            ).props("flat align=left icon=tune").tailwind.width("full")
+        if accessor.role.allow_inspection_view:
+            ui.button(
+                "Inspection (live)",
+                on_click=lambda: ui.open(INSPECTION_PAGE),
+            ).props("flat align=left icon=online_prediction").tailwind.width("full")
         ui.separator()
         ui.button("Logout", on_click=_handle_logout_request).props(
             "flat color=negative align=left icon=logout"
@@ -86,6 +87,7 @@ def inject_text_field(
     limit: int,
     validation: Optional[dict] = dict(),
 ):
+    """Inject text field with dynamic value display. Default validations check text length."""
     field = ui.input(
         label=label,
         placeholder=f"{placeholder} [{limit}]",
@@ -108,11 +110,13 @@ def inject_numeric_field(
     precision: int = 0,
     validation: Optional[dict] = dict(),
 ):
+    """Inject numeric field"""
     field = ui.number(
         label=label, validation=validation, step=step, precision=precision
     ).classes("w-full")
     return field
 
 
-def get_session() -> AccessorModel:
+def get_session() -> Session:
+    """Shorthand for DB session generation"""
     return Session(engine)

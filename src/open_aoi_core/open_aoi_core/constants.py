@@ -82,4 +82,4 @@ class GPIOInterfaceConstants:
     NODE_NAME = "gpio_interface"
 
     class Parameter:
-        WATCH_PINS = "WATCH_PINS"
+        WATCH_PIN_LIST = "WATCH_PIN_LIST"

@@ -7,9 +7,9 @@ from open_aoi_core.exceptions import SystemIntegrityException
 from open_aoi_core.models import (
     CameraModel,
     AccessorModel,
-    InspectionProfileModel,
     InspectionModel,
 )
+
 
 class CameraController(Controller):
     _model = CameraModel
@@ -27,25 +27,54 @@ class CameraController(Controller):
         """
         Create camera entity. If trigger pin is defined, accept and reject pins must also be defined.
         - raise: SystemIntegrityException if pin definition logic is violated.
+        - raise: AssetIntegrityException if validation fails upon creation of record
         """
         try:
             assert (io_pin_trigger is None) or (
-                io_pin_accept is not None and io_pin_reject is not None
+                io_pin_accept is not None
+                and io_pin_reject is not None
+                and io_pin_accept != io_pin_reject != io_pin_trigger
             )
         except AssertionError as e:
             raise SystemIntegrityException(
                 "Trigger pin is defined. Accept and reject pins must also be defined."
             ) from e
 
-        entity = CameraModel(
-            title=title,
-            description=description,
-            ip_address=ip_address,
-            created_by=accessor,
-            io_pin_trigger=io_pin_trigger,
-            io_pin_accept=io_pin_accept,
-            io_pin_reject=io_pin_reject,
-        )
+        # Make sure that pins are not used by any other device to prevent logic violations
+        if io_pin_trigger is not None:
+            try:
+                assert not self.session.query(
+                    select(self._model)
+                    .where(self._model.io_pin_trigger == io_pin_trigger)
+                    .exists()
+                ).scalar()
+                assert not self.session.query(
+                    select(self._model)
+                    .where(self._model.io_pin_accept == io_pin_accept)
+                    .exists()
+                ).scalar()
+                assert not self.session.query(
+                    select(self._model)
+                    .where(self._model.io_pin_accept == io_pin_accept)
+                    .exists()
+                ).scalar()
+            except AssertionError as e:
+                raise SystemIntegrityException(
+                    "One or more pins are already registered by another device."
+                ) from e
+
+        try:
+            entity = CameraModel(
+                title=title,
+                description=description,
+                ip_address=ip_address,
+                created_by=accessor,
+                io_pin_trigger=io_pin_trigger,
+                io_pin_accept=io_pin_accept,
+                io_pin_reject=io_pin_reject,
+            )
+        except Exception as e:
+            raise SystemIntegrityException("Camera validation failed") from e
         self.session.add(entity)
         return entity
 
@@ -63,11 +92,6 @@ class CameraController(Controller):
         """Ensure no inspection profiles or inspection records are related to this camera"""
         return not (
             self.session.query(
-                select(InspectionProfileModel)
-                .where(InspectionProfileModel.camera_id == id)
-                .exists()
-            ).scalar()
-            or self.session.query(
                 select(InspectionModel).where(InspectionModel.camera_id == id).exists()
             ).scalar()
         )

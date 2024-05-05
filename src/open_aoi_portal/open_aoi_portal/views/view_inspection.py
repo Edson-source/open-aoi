@@ -7,11 +7,12 @@ from nicegui import ui, app
 from fastapi.responses import RedirectResponse
 
 from open_aoi_portal.settings import ACCESS_PAGE, HOME_PAGE
+from open_aoi_core.utils import scale
 from open_aoi_core.exceptions import AuthenticationException
 from open_aoi_core.controllers.camera import CameraController
 from open_aoi_core.controllers.accessor import AccessorController
 from open_aoi_core.constants import MediatorServiceConstants
-from open_aoi_portal.common import inject_header, get_session, to_thread, scale
+from open_aoi_portal.common import inject_header, get_session, to_thread
 
 
 def get_view(node: Node):

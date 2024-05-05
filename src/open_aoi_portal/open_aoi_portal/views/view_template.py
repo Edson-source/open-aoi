@@ -8,13 +8,13 @@ from fastapi.responses import RedirectResponse
 from PIL import Image
 
 from open_aoi_core.constants import ImageAcquisitionConstants
+from open_aoi_core.utils import scale
 from open_aoi_core.exceptions import AuthenticationException, SystemServiceException
 from open_aoi_core.controllers.template import TemplateController
 from open_aoi_core.controllers.accessor import AccessorController
 from open_aoi_core.controllers.camera import CameraController
 from open_aoi_core.models import TITLE_LIMIT
 from open_aoi_portal.common import (
-    scale,
     confirm,
     inject_header,
     inject_text_field,

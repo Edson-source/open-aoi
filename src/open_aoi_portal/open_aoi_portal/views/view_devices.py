@@ -1,13 +1,13 @@
 import logging
+import ipaddress
 from typing import Optional
 
-from rclpy.node import Node
 from nicegui import ui, app
 from fastapi.responses import RedirectResponse
 from PIL import Image
 
 from open_aoi_portal.settings import ACCESS_PAGE, HOME_PAGE
-from open_aoi_core.utils import msg_to_image
+from open_aoi_core.utils import msg_to_image, scale
 from open_aoi_core.constants import ImageAcquisitionConstants, SystemLimit
 from open_aoi_core.services import StandardClient
 from open_aoi_core.exceptions import (
@@ -19,7 +19,6 @@ from open_aoi_core.controllers.camera import CameraController
 from open_aoi_core.controllers.accessor import AccessorController
 from open_aoi_core.models import CameraModel
 from open_aoi_portal.common import (
-    scale,
     inject_header,
     inject_text_field,
     inject_numeric_field,
@@ -40,7 +39,7 @@ def get_view(node: StandardClient):
         # Assert access and rights
         try:
             accessor = accessor_controller.identify_session_accessor(app.storage.user)
-            assert accessor.role.allow_device_operations
+            assert accessor.role.allow_system_operations
         except AssertionError:
             return RedirectResponse(HOME_PAGE)
         except AuthenticationException:
@@ -49,7 +48,7 @@ def get_view(node: StandardClient):
         # ------------------------------------
         # Handlers
 
-        def _handle_create_camera():
+        async def _handle_create_camera():
             """Handles camera creation"""
 
             # Validate inputs
@@ -61,7 +60,10 @@ def get_view(node: StandardClient):
                 assert camera_io_pin_accept.validate()
                 assert camera_io_pin_reject.validate()
             except AssertionError:
-                ui.notify("Required values are missing", type="negative")
+                ui.notify(
+                    "Required values are missing or invalid.",
+                    type="negative",
+                )
                 return
 
             try:
@@ -78,8 +80,33 @@ def get_view(node: StandardClient):
             except SystemIntegrityException as e:
                 logger.exception(e)
                 ui.notify(
-                    "Failed to create camera due to internal integrity violation. Please contact support.",
-                    type="warning",
+                    f"Failed to create camera. {str(e)}",
+                    type="negative",
+                )
+                return
+            except Exception as e:
+                logger.exception(e)
+                ui.notify(
+                    "Unexpected exception.",
+                    type="negative",
+                )
+                return
+
+            try:
+                future = node.mediator_update_watch_pin_list()
+                await to_thread(node.await_future, future)
+            except SystemServiceException as e:
+                logger.exception(e)
+                ui.notify(
+                    f"Failed to update pin watch list. {str(e)}. Please recreate camera.",
+                    type="negative",
+                )
+                return
+            except Exception as e:
+                logger.exception(e)
+                ui.notify(
+                    "Unexpected exception.",
+                    type="negative",
                 )
                 return
 
@@ -87,7 +114,7 @@ def get_view(node: StandardClient):
 
             _inject_camera_list()
 
-        def _handle_delete_camera(camera: CameraModel):
+        async def _handle_delete_camera(camera: CameraModel):
             """Handle camera delete operation"""
 
             try:
@@ -96,6 +123,31 @@ def get_view(node: StandardClient):
             except SystemIntegrityException as e:
                 logger.exception(e)
                 ui.notify(f"Failed to delete camera! {str(e)}", type="negative")
+                return
+            except Exception as e:
+                logger.exception(e)
+                ui.notify(
+                    "Unexpected exception.",
+                    type="error",
+                )
+                return
+
+            try:
+                future = node.mediator_update_watch_pin_list()
+                await to_thread(node.await_future, future)
+            except SystemServiceException as e:
+                logger.exception(e)
+                ui.notify(
+                    f"Failed to update pin watch list. {str(e)}. Please recreate camera.",
+                    type="negative",
+                )
+                return
+            except Exception as e:
+                logger.exception(e)
+                ui.notify(
+                    "Unexpected exception.",
+                    type="negative",
+                )
                 return
 
             ui.notify("Camera was deleted.", type="positive")
@@ -126,6 +178,13 @@ def get_view(node: StandardClient):
                 ui.notify(str(e), type="warning")
                 capture_image.enable()
                 return
+            except Exception as e:
+                logger.exception(e)
+                ui.notify(
+                    "Unexpected exception.",
+                    type="error",
+                )
+                return
 
             if response.error != ImageAcquisitionConstants.Error.NONE:
                 ui.notify(response.error_description, type="negative")
@@ -151,7 +210,8 @@ def get_view(node: StandardClient):
 
             try:
                 camera_list = camera_controller.list()
-            except:
+            except Exception as e:
+                logger.exception(e)
                 ui.notify("Failed to list cameras.", type="negative")
                 return
 
@@ -192,15 +252,24 @@ def get_view(node: StandardClient):
                 "Enter any value...",
                 SystemLimit.DESCRIPTION_LENGTH,
             )
+
+            def _is_ip_address(value: str) -> bool:
+                try:
+                    ipaddress.ip_address(value)
+                except ValueError:
+                    return False
+                return True
+
             camera_ip_address = inject_text_field(
                 "Camera IPV4 address",
-                "000.000.000.000",
+                "0.0.0.0",
                 15,
                 validation={
                     "Value is too short": lambda value: len(value) >= 7,
+                    "Value is not valid IP address": _is_ip_address,
                 },
             )
-            camera_ip_address.set_value("000.000.000.000")
+            camera_ip_address.set_value("0.0.0.0")
             camera_io_pin_trigger = inject_numeric_field(
                 "Trigger I/O pin (leave empty to ignore)", step=1, precision=0
             )

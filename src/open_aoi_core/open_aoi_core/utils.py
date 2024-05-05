@@ -7,7 +7,7 @@ from sensor_msgs.msg import Image as ImageMsg
 
 
 def image_to_msg(im: np.ndarray):
-    # Convert image for to ROS image message format
+    """Convert image for to ROS image message format"""
     msg = ImageMsg()
     msg.encoding = "bgr8"
     msg.height, msg.width = im.shape[:2]
@@ -17,14 +17,25 @@ def image_to_msg(im: np.ndarray):
 
 
 def msg_to_image(msg: ImageMsg) -> np.ndarray:
-    # Convert image from ROS image format
+    """Convert image from ROS image format"""
     data = np.array(msg.data)
     return data.reshape((msg.height, msg.width, 3))
 
 
+def scale(image: Image, width: int) -> Image:
+    """Perform scale operation to desired width"""
+    image_width, image_height = image.size
+    ratio = image_height / image_width
+
+    height = int(width * ratio)
+    return image.resize((width, height))
+
+
 def crop_stat_cv(im: np.ndarray, cv_stat_value: List[int]) -> np.ndarray:
-    # Function parse CV connected component detection statics (values)
-    # to cut out component from provided image
+    """
+    Function parse CV connected component detection statics (values)
+    to cut out component from provided image
+    """
     t = cv_stat_value[cv.CC_STAT_TOP]
     l = cv_stat_value[cv.CC_STAT_LEFT]
 
@@ -34,16 +45,16 @@ def crop_stat_cv(im: np.ndarray, cv_stat_value: List[int]) -> np.ndarray:
     return im[t : t + h, l : l + w, :]
 
 
-def crop_stat_image(im: Image.Image, cv_stat_value: List[int]) -> Image.Image:
-    # Wrapper for cropping PIL images
-    im = np.array(im)
-    im = crop_stat_cv(im, cv_stat_value)
-    return Image.fromarray(im)
+def crop_stat_image(image: Image.Image, cv_stat_value: List[int]) -> Image.Image:
+    """Wrapper for cropping PIL images"""
+    image = np.array(image)
+    image = crop_stat_cv(image, cv_stat_value)
+    return Image.fromarray(image)
 
 
-def isolate_product(im: np.ndarray, kernel_size: int = 31, threshold: int = 30):
+def isolate_product(image: np.ndarray, kernel_size: int = 31, threshold: int = 30):
     # Blur to vanish texture defects
-    tmp = cv.cvtColor(im, cv.COLOR_BGR2GRAY)
+    tmp = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
     tmp = cv.medianBlur(tmp, kernel_size)
 
     # Arbitrary selected global threshold to separate background
@@ -61,17 +72,17 @@ def isolate_product(im: np.ndarray, kernel_size: int = 31, threshold: int = 30):
             mxi = i
 
     value = values[mxi]
-    return crop_stat_cv(im, value)
+    return crop_stat_cv(image, value)
 
 
-def align(im: np.ndarray, template: np.ndarray, feature_point_amount: int = 1000):
-    # Function perform alingment of two images using ORB algorithm (open source alternative for SURF)
+def align(image: np.ndarray, template: np.ndarray, feature_point_amount: int = 1000):
+    """Function perform alingment of two images using ORB algorithm (open source alternative for SURF)"""
 
     # Use ORB to detect keypoints and extract (binary) local
     # invariant features
     orb = cv.ORB_create(feature_point_amount)
 
-    (kpsA, descsA) = orb.detectAndCompute(im, None)
+    (kpsA, descsA) = orb.detectAndCompute(image, None)
     (kpsB, descsB) = orb.detectAndCompute(template, None)
 
     # Match the features
@@ -87,7 +98,7 @@ def align(im: np.ndarray, template: np.ndarray, feature_point_amount: int = 1000
     matches = matches[:keep]
 
     # Check to see if we should visualize the matched keypoints
-    # matchedVis = cv.drawMatches(im, kpsA, template, kpsB, matches, None)
+    # matchedVis = cv.drawMatches(image, kpsA, template, kpsB, matches, None)
     # matchedVis = imutils.resize(matchedVis, width=1000)
     # imshow(matchedVis)
 
@@ -108,6 +119,6 @@ def align(im: np.ndarray, template: np.ndarray, feature_point_amount: int = 1000
     (H, mask) = cv.findHomography(pts_a, pts_b, method=cv.RANSAC)
     # Use the homography matrix to align the images
     (h, w) = template.shape[:2]
-    im = cv.warpPerspective(im, H, (w, h))
+    image = cv.warpPerspective(image, H, (w, h))
     # Return the aligned image
-    return im
+    return image

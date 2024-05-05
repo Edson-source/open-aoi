@@ -15,15 +15,16 @@ from rclpy.callback_groups import ReentrantCallbackGroup
 from rcl_interfaces.srv._set_parameters import SetParameters
 from rcl_interfaces.msg import Parameter, ParameterType, ParameterValue
 from sensor_msgs.msg import Image as ImageMsg
+from std_srvs.srv import Empty
 
 from open_aoi_interfaces.msg import InspectionTarget as InspectionTargetMSg
 from open_aoi_interfaces.srv import (
-    ImageAcquisition,
+    ImageAcquisitionTrigger,
     IdentificationTrigger,
     InspectionTrigger,
     InspectionExecutionTrigger,
     ServiceStatus,
-    GPIOPropagation,
+    GPIOTrigger,
 )
 from open_aoi_core.exceptions import SystemServiceException
 from open_aoi_core.constants import (
@@ -38,30 +39,6 @@ from open_aoi_core.constants import (
 
 class BaseClient:
     NODE_NAME: str
-
-    @staticmethod
-    def _resolve_param_type(param_value):
-        if isinstance(param_value, float):
-            val = ParameterValue(
-                double_value=param_value, type=ParameterType.PARAMETER_DOUBLE
-            )
-        elif isinstance(param_value, int):
-            val = ParameterValue(
-                integer_value=param_value, type=ParameterType.PARAMETER_INTEGER
-            )
-        elif isinstance(param_value, str):
-            val = ParameterValue(
-                string_value=param_value, type=ParameterType.PARAMETER_STRING
-            )
-        elif isinstance(param_value, bool):
-            val = ParameterValue(
-                bool_value=param_value, type=ParameterType.PARAMETER_BOOL
-            )
-        elif isinstance(param_value, list) and isinstance(param_value[0], int):
-            val = ParameterValue(
-                bool_value=param_value, type=ParameterType.PARAMETER_INTEGER_ARRAY
-            )
-        return val
 
 
 class ImageAcquisitionClient(BaseClient):
@@ -81,23 +58,28 @@ class ImageAcquisitionClient(BaseClient):
 
         try:
             req = SetParameters.Request()
-
-            parameters = []
-            for param_name, param_value in [
-                [
-                    ImageAcquisitionConstants.Parameter.CAMERA_EMULATION_MODE,
-                    camera_emulation_mode,
-                ],
-                [
-                    ImageAcquisitionConstants.Parameter.CAMERA_IP_ADDRESS,
-                    camera_ip_address,
-                ],
-                [ImageAcquisitionConstants.Parameter.CAMERA_ENABLED, True],
-            ]:
-                val = self._resolve_param_type(param_value)
-                parameters.append(Parameter(name=param_name, value=val))
-
-            req.parameters = parameters
+            req.parameters = [
+                Parameter(
+                    name=ImageAcquisitionConstants.Parameter.CAMERA_EMULATION_MODE,
+                    value=ParameterValue(
+                        bool_value=camera_emulation_mode,
+                        type=ParameterType.PARAMETER_BOOL,
+                    ),
+                ),
+                Parameter(
+                    name=ImageAcquisitionConstants.Parameter.CAMERA_IP_ADDRESS,
+                    value=ParameterValue(
+                        string_value=camera_ip_address,
+                        type=ParameterType.PARAMETER_STRING,
+                    ),
+                ),
+                Parameter(
+                    name=ImageAcquisitionConstants.Parameter.CAMERA_ENABLED,
+                    value=ParameterValue(
+                        bool_value=True, type=ParameterType.PARAMETER_BOOL
+                    ),
+                ),
+            ]
 
             self.logger.info(
                 "Parameter update request on image acquisition service dispatched"
@@ -123,7 +105,7 @@ class ImageAcquisitionClient(BaseClient):
                 camera_ip_address, camera_emulation_mode
             )
 
-            req = ImageAcquisition.Request()
+            req = ImageAcquisitionTrigger.Request()
 
             self.logger.info("Image acquisition request dispatched")
             return self.image_acquisition_capture_cli.call_async(req)
@@ -194,7 +176,7 @@ class GPIOInterfaceClient(BaseClient):
 
     def gpio_interface_set_parameters(
         self,
-        watch_pins: List[int],
+        watch_pin_list: List[int],
     ):
         """
         Dispatch parameters update request on GPIO service.
@@ -202,20 +184,16 @@ class GPIOInterfaceClient(BaseClient):
         """
         try:
             req = SetParameters.Request()
+            req.parameters = [
+                Parameter(
+                    name=GPIOInterfaceConstants.Parameter.WATCH_PIN_LIST,
+                    value=ParameterValue(
+                        integer_array_value=watch_pin_list,
+                        type=ParameterType.PARAMETER_INTEGER_ARRAY,
+                    ),
+                ),
+            ]
 
-            parameters = []
-            for param_name, param_value in [
-                [
-                    GPIOInterfaceConstants.Parameter.WATCH_PINS,
-                    watch_pins,
-                ],
-            ]:
-                val = self._resolve_param_type(param_value)
-                parameters.append(Parameter(name=param_name, value=val))
-
-            req.parameters = parameters
-
-            self.logger.info("GPIO parameter update request dispatched")
             return self.gpio_interface_set_parameters_cli.call_async(req)
         except Exception as e:
             self.logger.error(str(e))
@@ -234,7 +212,7 @@ class GPIOInterfaceClient(BaseClient):
         - raise: SystemServiceException if any exception occur
         """
         try:
-            req = GPIOPropagation.Request()
+            req = GPIOTrigger.Request()
 
             req.propagate_pin = propagate_pin
             req.release_pin = release_pin
@@ -280,6 +258,7 @@ class MediatorClient(BaseClient):
 class StandardClient(
     Node,
     MediatorClient,
+    GPIOInterfaceClient,
     InspectionExecutionClient,
     ProductIdentificationClient,
     ImageAcquisitionClient,
@@ -307,7 +286,7 @@ class StandardClient(
         self._acquire_service(
             f"{ImageAcquisitionConstants.NODE_NAME}/capture",
             "image_acquisition_capture_cli",
-            ImageAcquisition,
+            ImageAcquisitionTrigger,
         )
         self._acquire_service(
             f"{ImageAcquisitionConstants.NODE_NAME}/get_status",
@@ -335,13 +314,19 @@ class StandardClient(
         # GPIO interface
         self._acquire_service(
             f"{GPIOInterfaceConstants.NODE_NAME}/propagate_result",
-            f"gpio_interface_propagate_result_cli",
-            GPIOPropagation,
+            f"gpio_interface_propagate_results_cli",
+            GPIOTrigger,
         )
         self._acquire_service(
             f"{GPIOInterfaceConstants.NODE_NAME}/get_status",
             "gpio_interface_get_status_cli",
             ServiceStatus,
+        )
+
+        self._acquire_service(
+            f"{GPIOInterfaceConstants.NODE_NAME}/set_parameters",
+            "gpio_interface_set_parameters_cli",
+            SetParameters,
         )
 
         # Mediator

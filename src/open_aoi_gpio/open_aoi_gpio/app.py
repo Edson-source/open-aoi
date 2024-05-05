@@ -16,34 +16,35 @@ from rcl_interfaces.msg import ParameterDescriptor, SetParametersResult
 
 from open_aoi_core.services import StandardService, SystemServiceStatus
 from open_aoi_core.constants import GPIOInterfaceConstants
-from open_aoi_interfaces.srv import GPIOPropagation
+from open_aoi_interfaces.srv import GPIOTrigger
 
 try:
+    simulation = False
     import RPi.GPIO as GPIO  # Should be available in production (in case of deployment to Raspberry Pi)
 except ImportError:
+    simulation = True
     import SimulRPi.GPIO as GPIO
 
 
 class Service(StandardService):
     NODE_NAME = GPIOInterfaceConstants.NODE_NAME
-    WATCH_PINS = []
+    WATCH_PIN_LIST = []
     WIP_PINS = []
 
     def __init__(self):
         super().__init__()
-        GPIO.setmode(GPIO.BCM)
 
         # Services
         # Propagation: propagate result of inspection to GPIO pins
         self.propagate_result = self.create_service(
-            GPIOPropagation,
+            GPIOTrigger,
             f"{self.NODE_NAME}/propagate_result",
             self.propagate_result,
         )
         # Parameters
         self.declare_parameter(
-            GPIOInterfaceConstants.Parameter.WATCH_PINS,
-            value=self.WATCH_PINS,
+            GPIOInterfaceConstants.Parameter.WATCH_PIN_LIST,
+            value=self.WATCH_PIN_LIST,
             descriptor=ParameterDescriptor(
                 name="Pins watch list",
                 type=rclpy.Parameter.Type.INTEGER_ARRAY.value,
@@ -58,29 +59,43 @@ class Service(StandardService):
         self.await_dependencies([self.mediator_inspection_cli])
 
     def _update_parameters(self, parameters: List[rclpy.Parameter]):
-        self.logger.info("Parameters update triggered")
+        # self.logger.info("Parameters update triggered")
+        old_watch_list = self.WATCH_PIN_LIST
         for p in parameters:
-            self.logger.info(
-                f"Parameter {p.name}: {getattr(self, p.name)} -> {p.value}"
-            )
+            # self.logger.info(
+            #     f"Parameter {p.name}: {getattr(self, p.name)} -> {p.value}"
+            # )
             setattr(self, p.name, p.value)
-        for pin in self.WATCH_PINS:
-            GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+        if len(set(old_watch_list).difference(self.WATCH_PIN_LIST)) > 0:
+            GPIO.cleanup()
+            GPIO.setmode(GPIO.BCM)
+            for pin in self.WATCH_PIN_LIST:
+                if simulation:
+                    GPIO.setup(pin, GPIO.IN, GPIO.PUD_UP)
+                else:
+                    GPIO.setup(pin, GPIO.IN, GPIO.PUD_DOWN)
 
-        self.logger.info("Parameters update done")
+        # self.logger.info("Parameters update done")
         return SetParametersResult(successful=True, reason="")
 
     def _watch_dog(self):
-        for pin in self.WATCH_PINS:
-            if pin not in self.WIP_PINS and GPIO.input(pin):
-                # Request inspection and stop watching changes on pin
-                self.mediator_inspection(io_pin=pin)
-                self.WIP_PINS.append(pin)
+        for pin in self.WATCH_PIN_LIST:
+            if pin not in self.WIP_PINS:
+                if GPIO.input(pin) is not None and (
+                    (simulation and not GPIO.input(pin))
+                    or (not simulation and GPIO.input(pin))
+                ):
+                    self.logger.info(
+                        f"Triggering inspection: sim: {simulation}, pin {pin}: {GPIO.input(pin)}"
+                    )
+                    # Request inspection and stop watching changes on pin
+                    self.mediator_inspection(io_pin=pin)
+                    self.WIP_PINS.append(pin)
 
     def propagate_result(
         self,
-        request: GPIOPropagation.Request,
-        response: GPIOPropagation.Response,
+        request: GPIOTrigger.Request,
+        response: GPIOTrigger.Response,
     ):
         self.logger.info("Propagation request received")
         self.set_status(SystemServiceStatus.BUSY)

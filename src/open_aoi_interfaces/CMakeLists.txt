@@ -23,9 +23,9 @@ find_package(rosidl_default_generators REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/InspectionLog.msg"
   "msg/InspectionTarget.msg"
-  "srv/ImageAcquisition.srv"
+  "srv/ImageAcquisitionTrigger.srv"
   "srv/ServiceStatus.srv"
-  "srv/GPIOPropagation.srv"
+  "srv/GPIOTrigger.srv"
   "srv/InspectionTrigger.srv"
   "srv/IdentificationTrigger.srv"
   "srv/InspectionExecutionTrigger.srv"

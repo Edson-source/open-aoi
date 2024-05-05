@@ -71,14 +71,6 @@ class RoleModel(Base):
     allow_inspection_control: Mapped[bool] = mapped_column(
         Boolean(), default=False, nullable=False
     )
-    # Allow operations of accessors (create, modify, etc)
-    allow_accessor_operations: Mapped[bool] = mapped_column(
-        Boolean(), default=False, nullable=False
-    )
-    # Allow operations on devices
-    allow_device_operations: Mapped[bool] = mapped_column(
-        Boolean(), default=False, nullable=False
-    )
     # Allow system operations
     allow_system_operations: Mapped[bool] = mapped_column(
         Boolean(), default=False, nullable=False

@@ -6,7 +6,7 @@ from rclpy.node import Node
 from nicegui import events, ui, app
 from fastapi.responses import RedirectResponse
 
-from open_aoi_core.utils import crop_stat_image
+from open_aoi_core.utils import crop_stat_image, scale
 from open_aoi_core.models import TITLE_LIMIT
 from open_aoi_core.exceptions import AuthenticationException
 from open_aoi_core.controllers.accessor import AccessorController
@@ -21,7 +21,6 @@ from open_aoi_portal.common import (
     inject_text_field,
     get_session,
     confirm,
-    scale,
 )
 
 from PIL import Image

@@ -8,7 +8,7 @@ from rcl_interfaces.msg import ParameterDescriptor, SetParametersResult
 
 from open_aoi_core.utils import image_to_msg
 from open_aoi_core.constants import ImageAcquisitionConstants, SystemServiceStatus
-from open_aoi_interfaces.srv import ImageAcquisition
+from open_aoi_interfaces.srv import ImageAcquisitionTrigger
 from open_aoi_core.services import StandardService
 
 EMULATION_DIR = "./emulation"
@@ -30,7 +30,7 @@ class Service(StandardService):
 
         # --- Services ---
         self.acquire_image_service = self.create_service(
-            ImageAcquisition,
+            ImageAcquisitionTrigger,
             f"{self.NODE_NAME}/capture",
             self.acquire_image,
         )

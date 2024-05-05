@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="nD0P_IIocxPqM4aldKBq" name="High level overrview">
-        <mxGraphModel dx="573" dy="762" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+        <mxGraphModel dx="367" dy="514" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -132,7 +132,7 @@
         </mxGraphModel>
     </diagram>
     <diagram id="yDLCLKDNR_7XaFpHkL00" name="Class diagrams (web app)">
-        <mxGraphModel dx="2173" dy="-38" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+        <mxGraphModel dx="2059" dy="-157" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>

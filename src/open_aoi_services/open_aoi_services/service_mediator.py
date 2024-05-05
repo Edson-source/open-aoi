@@ -16,6 +16,8 @@ from PIL import Image
 from sqlalchemy.orm import Session
 from collections import defaultdict
 
+from std_srvs.srv import Empty
+
 from open_aoi_interfaces.srv import InspectionTrigger
 from open_aoi_interfaces.msg import InspectionTarget
 from open_aoi_core.services import StandardService
@@ -64,10 +66,19 @@ class Service(StandardService):
                 self.image_acquisition_capture_cli,
                 self.product_identification_get_barcode_cli,
                 self.inspection_execution_execute_inspection_cli,
+                self.gpio_interface_propagate_results_cli,
+                self.gpio_interface_set_parameters_cli,
             ]
         )
 
+        self.watch_pin_list_update_service = self.create_timer(
+            1,
+            self.update_watch_pin_list,
+        )
+
     def inspection(self, request, response):
+        """Service curate inspection logic bringing all required resources together"""
+
         self.logger.info("Inspection requested")
         response.overall_passed = False
 
@@ -311,8 +322,20 @@ class Service(StandardService):
             self.logger.info(f"Response constructed and returned")
             return response
 
-    def update_watch_pins(self, request, response):
-        pass
+    def update_watch_pin_list(self):
+        """Callback to update GPIO interface with new pins to watch"""
+
+        with Session(engine) as session:
+            camera_controller = CameraController(session)
+            camera_list = camera_controller.list()
+
+            watch_pin_list = []
+            for camera in camera_list:
+                if camera.io_pin_trigger is not None:
+                    watch_pin_list.append(camera.io_pin_trigger)
+
+            future = self.gpio_interface_set_parameters(watch_pin_list)
+            self.await_future(future)
 
 
 def main(args=None):

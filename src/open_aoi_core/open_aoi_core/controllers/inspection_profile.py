@@ -78,6 +78,6 @@ class InspectionProfileController(Controller):
         """Deactivates profile"""
         profile.is_active = False
 
-    def list_active(self):
+    def list_active(self) -> List[InspectionProfileModel]:
         """List active profiles"""
-        self.session.query(self._model).filter(self._model.is_active == True).one()
+        return self.session.query(self._model).filter(self._model.is_active == True).all()
