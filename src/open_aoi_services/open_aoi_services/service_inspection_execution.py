@@ -63,6 +63,7 @@ class Service(StandardService):
         self.logger.info("Template image decoded")
 
         source = request.inspection_handler
+        self.logger.info(source)
         try:
             module, _ = dynamic_import(source.encode())
         except Exception as e:
@@ -128,10 +129,12 @@ class Service(StandardService):
             return response
 
         inspection_log_list_msg = []
-        for i, log in enumerate(inspection_log_list):
+        for log, target in zip(inspection_log_list, request.inspection_target_list):
             ros_log = InspectionLog()
+            ros_log.id = target.id
             ros_log.log = log.log
             ros_log.passed = log.passed
+            inspection_log_list_msg.append(ros_log)
         response.inspection_log_list = inspection_log_list_msg
         response.error = InspectionExecutionConstants.Error.NONE
 

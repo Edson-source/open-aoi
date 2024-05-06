@@ -12,6 +12,7 @@ from fastapi.responses import RedirectResponse
 
 from open_aoi_core.constants import SystemLimit
 from open_aoi_core.models import InspectionProfileModel
+from open_aoi_core.services import StandardClient
 from open_aoi_core.exceptions import AuthenticationException, SystemIntegrityException
 from open_aoi_core.controllers.accessor import AccessorController
 from open_aoi_core.controllers.template import TemplateController
@@ -25,13 +26,15 @@ from open_aoi_portal.common import (
     inject_header,
     get_session,
     confirm,
+    safe_view,
 )
 
 logger = logging.getLogger("ui.inspection_profile")
 
 
-def get_view(node: Node):
-    def view(profile_id: Optional[int] = None) -> Optional[RedirectResponse]:
+def get_view(node: StandardClient):
+    @safe_view
+    async def view(profile_id: Optional[int] = None) -> Optional[RedirectResponse]:
         session = get_session()
         accessor_controller = AccessorController(session)
         template_controller = TemplateController(session)
@@ -39,18 +42,12 @@ def get_view(node: Node):
 
         try:
             accessor = accessor_controller.identify_session_accessor(app.storage.user)
+            assert accessor.role.allow_system_view
             assert accessor.role.allow_system_operations
         except AuthenticationException:
             return RedirectResponse(ACCESS_PAGE)
         except AssertionError:
             return RedirectResponse(HOME_PAGE)
-        except Exception as e:
-            logger.exception(e)
-            ui.notify(
-                "Unexpected exception.",
-                type="negative",
-            )
-            return
 
         # -------------------
         # Handlers

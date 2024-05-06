@@ -1,3 +1,4 @@
+import logging
 import asyncio
 import functools
 import concurrent.futures
@@ -7,10 +8,14 @@ from PIL import Image
 from nicegui import events, ui, app
 from sqlalchemy.orm import Session
 
-from open_aoi_core.controllers.accessor import AccessorController
-from open_aoi_core.models import AccessorModel, engine
+
 from open_aoi_portal.settings import *
 from open_aoi_core.utils import scale
+from open_aoi_core.models import AccessorModel, engine
+from open_aoi_core.controllers.accessor import AccessorController
+
+
+logger = logging.getLogger("ui.common")
 
 
 async def to_thread(func, /, *args, **kwargs):
@@ -21,6 +26,47 @@ async def to_thread(func, /, *args, **kwargs):
 
     with concurrent.futures.ThreadPoolExecutor() as pool:
         return await loop.run_in_executor(pool, func_call)
+
+
+def get_session() -> Session:
+    """Shorthand for DB session generation"""
+    return Session(engine)
+
+
+def safe_view(view):
+    """Handler to prevent unexpected exceptions in views. Should wrap all views"""
+
+    @functools.wraps(view)
+    async def wrapper(*args, **kwargs):
+        try:
+            return await view(*args, **kwargs)
+        except Exception as e:
+            logger.exception(e)
+            ui.notify(
+                "Unexpected exception on the page.",
+                type="negative",
+            )
+            return
+
+    return wrapper
+
+
+def safe_operation(operation):
+    """Handler to prevent unexpected exceptions. Should wrap all handlers inside view"""
+
+    @functools.wraps(operation)
+    async def wrapper(*args, **kwargs):
+        try:
+            return await operation(*args, **kwargs)
+        except Exception as e:
+            logger.exception(e)
+            ui.notify(
+                "Failed to perform action due to unexpected exception.",
+                type="negative",
+            )
+            return
+
+    return wrapper
 
 
 def confirm(msg: str, callback: callable):
@@ -35,16 +81,15 @@ def confirm(msg: str, callback: callable):
     dialog.open()
 
 
-def _handle_logout_request():
-    def logout():
-        AccessorController.revoke_session_access(app.storage.user)
-        ui.open(ACCESS_PAGE)
-
-    confirm("You are about to logout. Are you sure?", logout)
-
-
 def inject_header(accessor: AccessorModel):
     """Function injects common header, that should be present on every page"""
+
+    def _handle_logout_request():
+        def logout():
+            AccessorController.revoke_session_access(app.storage.user)
+            ui.open(ACCESS_PAGE)
+
+        confirm("You are about to logout. Are you sure?", logout)
 
     ui.right_drawer().props("bordered")
     with ui.left_drawer(top_corner=False, bottom_corner=True).props("bordered"):
@@ -115,11 +160,6 @@ def inject_numeric_field(
         label=label, validation=validation, step=step, precision=precision
     ).classes("w-full")
     return field
-
-
-def get_session() -> Session:
-    """Shorthand for DB session generation"""
-    return Session(engine)
 
 
 class InspectionZoneManager:

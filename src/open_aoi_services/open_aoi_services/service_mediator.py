@@ -16,8 +16,6 @@ from PIL import Image
 from sqlalchemy.orm import Session
 from collections import defaultdict
 
-from std_srvs.srv import Empty
-
 from open_aoi_interfaces.srv import InspectionTrigger
 from open_aoi_interfaces.msg import InspectionTarget
 from open_aoi_core.services import StandardService
@@ -34,18 +32,18 @@ from open_aoi_core.controllers.camera import CameraController
 from open_aoi_core.utils import image_to_msg, msg_to_image
 
 
-def _inspection_target_to_msg(ct: InspectionTargetModel) -> InspectionTarget:
-    ct_msg = InspectionTarget()
-    ct_msg.id = ct.id
+def _inspection_target_to_msg(target: InspectionTargetModel) -> InspectionTarget:
+    msg = InspectionTarget()
+    msg.id = target.id
 
-    ct_msg.rotation = float(ct.inspection_zone.rotation)
+    msg.rotation = float(target.inspection_zone.rotation)
 
-    ct_msg.stat_left = ct.inspection_zone.cc.stat_left
-    ct_msg.stat_top = ct.inspection_zone.cc.stat_top
-    ct_msg.stat_width = ct.inspection_zone.cc.stat_width
-    ct_msg.stat_height = ct.inspection_zone.cc.stat_height
+    msg.stat_left = target.inspection_zone.cc.stat_left
+    msg.stat_top = target.inspection_zone.cc.stat_top
+    msg.stat_width = target.inspection_zone.cc.stat_width
+    msg.stat_height = target.inspection_zone.cc.stat_height
 
-    return ct_msg
+    return msg
 
 
 class Service(StandardService):
@@ -125,7 +123,7 @@ class Service(StandardService):
             self.logger.info(f"Camera retrieved [{camera.id}]: {camera.title}")
 
             # Capture test image
-            future = self.image_acquisition_capture_image(camera.ip_address, True)
+            future = self.image_acquisition_capture_image(camera.ip_address)
             sub_response = self.await_future(future)
             if sub_response.error != ImageAcquisitionConstants.Error.NONE:
                 response.error = MediatorServiceConstants.Error.CAPTURE_FAILED
@@ -192,31 +190,35 @@ class Service(StandardService):
             inspection_handler_list = []
             inspection_handler_source_list = []
             inspection_handler_related_inspection_target_msg_map = defaultdict(list)
+            inspection_handler_related_inspection_target_map = defaultdict(list)
             try:
                 inspection_zone_list = template.inspection_zone_list
                 assert len(inspection_zone_list), "Inspection zone list is empty"
 
-                for cz in inspection_zone_list:
-                    inspection_target_list = cz.inspection_target_list
+                for zone in inspection_zone_list:
+                    inspection_target_list = zone.inspection_target_list
                     assert len(
                         inspection_target_list
                     ), "Inspection target list is empty"
 
-                    for ct in inspection_target_list:
-                        ch = ct.inspection_handler
+                    for target in inspection_target_list:
+                        handler = target.inspection_handler
                         self.logger.info(
-                            f"Registering inspection target [{ct.id}]: inspection zone: {cz.title}, inspection handler: {ch.title}"
+                            f"Registering inspection target [{target.id}]: inspection zone: {zone.title}, inspection handler: {handler.title}"
                         )
+                        inspection_handler_related_inspection_target_map[
+                            handler.id
+                        ].append(target)
                         inspection_handler_related_inspection_target_msg_map[
-                            ch.id
-                        ].append(_inspection_target_to_msg(ct))
+                            handler.id
+                        ].append(_inspection_target_to_msg(target))
 
-                        if ch.id in inspection_handler_list:
+                        if handler.id in inspection_handler_list:
                             continue
 
-                        inspection_handler_list.append(ch.id)
+                        inspection_handler_list.append(handler.id)
                         # Materialize inspection handler source
-                        source = ch.materialize_source().decode()
+                        source = handler.materialize_source().decode()
                         inspection_handler_source_list.append(source)
             except Exception as e:
                 self.logger.error(str(e))
@@ -245,6 +247,7 @@ class Service(StandardService):
             self.logger.info(f"Template image retrieved: {template_image.shape}")
 
             inspection_target_list_full_msg = []
+            inspection_target_list_full = []
             inspection_log_list_full_msg = []
             for inspection_handler_id, inspection_handler_source in zip(
                 inspection_handler_list, inspection_handler_source_list
@@ -252,35 +255,43 @@ class Service(StandardService):
                 self.logger.info(f"Executing: {inspection_handler_id}")
                 try:
                     inspection_target_list = (
+                        inspection_handler_related_inspection_target_map[
+                            inspection_handler_id
+                        ]
+                    )
+                    inspection_target_msg_list = (
                         inspection_handler_related_inspection_target_msg_map[
                             inspection_handler_id
                         ]
                     )
                     future = self.inspection_execution_execute_inspection(
-                        template_image_msg,
-                        test_image_msg,
-                        inspection_handler_source,
-                        inspection_profile.environment,
-                        inspection_target_list,
+                        template_image_msg=template_image_msg,
+                        test_image_msg=test_image_msg,
+                        inspection_handler_source=inspection_handler_source,
+                        environment=inspection_profile.environment,
+                        inspection_target_list=inspection_target_msg_list,
                     )
                     sub_response = self.await_future(future)
                     if sub_response.error != InspectionExecutionConstants.Error.NONE:
                         self.logger.error(
-                            f"Failed to apply inspection execution. {response.error}: {response.error_description}"
+                            f"Failed to apply inspection execution. {sub_response.error}: {sub_response.error_description}"
                         )
                         response.error = MediatorServiceConstants.Error.CONTROL_FAILED
-                        response.error_description = f"Failed to apply inspection handler {inspection_handler_id}. {error_description}"
+                        response.error_description = f"Failed to apply inspection handler {inspection_handler_id}. {sub_response.error_description}"
                         return response
-                    for inspection_target, inspection_log in zip(
-                        inspection_target_list, sub_response.inspection_log_list
+                    for inspection_target_msg, inspection_log_msg in zip(
+                        inspection_target_msg_list, sub_response.inspection_log_list
                     ):
                         assert (
-                            inspection_target.id == inspection_log.id
+                            inspection_target_msg.id == inspection_log_msg.id
                         ), "Inspection log disorder detected."
 
                     # Collect all logs before creating inspection record
-                    inspection_target_list_full_msg.extend(inspection_target_list)
-                    inspection_log_list_full_msg.extend(response.inspection_log_list)
+                    inspection_target_list_full_msg.extend(inspection_target_msg_list)
+                    inspection_target_list_full.extend(inspection_target_list)
+                    inspection_log_list_full_msg.extend(
+                        sub_response.inspection_log_list
+                    )
                 except Exception as e:
                     self.logger.error(str(e))
                     response.error = MediatorServiceConstants.Error.CONTROL_FAILED
@@ -295,14 +306,14 @@ class Service(StandardService):
             try:
                 inspection = inspection_controller.create(inspection_profile)
                 inspection.publish_image(Image.fromarray(test_image))
-                for inspection_target, inspection_log in zip(
-                    inspection_target_list_full_msg, inspection_log_list_full_msg
+                for inspection_target, inspection_log_msg in zip(
+                    inspection_target_list_full, inspection_log_list_full_msg
                 ):
                     inspection_log_controller.create(
                         inspection_target,
                         inspection,
-                        inspection_log.log,
-                        inspection_log.passed,
+                        inspection_log_msg.log,
+                        inspection_log_msg.passed,
                     )
                 inspection_controller.commit()
             except Exception as e:
@@ -312,7 +323,7 @@ class Service(StandardService):
                 return response
 
             response.overall_passed = all(
-                [cl.passed for cl in inspection_log_list_full_msg]
+                [record.passed for record in inspection_log_list_full_msg]
             )
             response.image = test_image_msg
             response.inspection_log_list = inspection_log_list_full_msg

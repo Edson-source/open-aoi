@@ -1,3 +1,9 @@
+"""
+    The view is used to authenticate user. User is prompted for credentials (username and password) after that
+    credentials are tested against database and in case of success access is permitted. After that permission is stored in server 
+    session for user to allow seamless access without need of authentication (cookies need to be allowed).
+"""
+
 import logging
 from typing import Optional
 
@@ -44,7 +50,9 @@ def get_view(node: Node):
         with ui.card().classes("absolute-center w-80"):
             with ui.row().classes("w-full justify-between items-center"):
                 ui.markdown("**Please, enter credentials**")
-                info = ui.button(icon="question_mark", color="white").props("flat round size=xs")
+                info = ui.button(icon="question_mark", color="white").props(
+                    "flat round size=xs"
+                )
                 info.tooltip(
                     "To access the system please enter your credentials in form of username and password."
                 )

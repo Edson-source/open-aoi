@@ -11,7 +11,7 @@ from nicegui import ui, app
 from fastapi.responses import RedirectResponse
 
 from open_aoi_core.constants import ImageAcquisitionConstants, SystemLimit
-from open_aoi_core.utils import msg_to_image, scale
+from open_aoi_core.utils import msg_to_image
 from open_aoi_core.services import StandardClient
 from open_aoi_core.controllers.template import TemplateController
 from open_aoi_core.controllers.accessor import AccessorController
@@ -45,6 +45,7 @@ def get_view(node: StandardClient):
 
         try:
             accessor = accessor_controller.identify_session_accessor(app.storage.user)
+            assert accessor.role.allow_system_view
             assert accessor.role.allow_system_operations
         except AuthenticationException:
             return RedirectResponse(ACCESS_PAGE)

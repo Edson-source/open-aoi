@@ -44,6 +44,7 @@ def get_view(node: StandardClient):
         # Assert access and rights
         try:
             accessor = accessor_controller.identify_session_accessor(app.storage.user)
+            assert accessor.role.allow_system_view
             assert accessor.role.allow_system_operations
         except AssertionError:
             return RedirectResponse(HOME_PAGE)
