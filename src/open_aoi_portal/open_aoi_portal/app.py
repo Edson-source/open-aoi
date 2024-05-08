@@ -22,9 +22,9 @@ from open_aoi_portal.views.view_inspection import (
     get_view as get_view_inspection,
 )
 
-# from views.view_inspection_log import (
-#     view as view_inspection_log,
-# )
+from open_aoi_portal.views.view_inspection_detail import (
+    get_view as get_view_inspection_detail,
+)
 
 
 class Service(StandardService):
@@ -63,14 +63,13 @@ class Service(StandardService):
             ui.page(
                 INSPECTION_PROFILE_EDIT_PAGE, title=f"Inspection profiles | {APP_TITLE}"
             )(get_view_inspection_profile(self))
-            ui.page(INSPECTION_PAGE, title="Inspection | AOI Portal")(
+            ui.page(INSPECTION_PAGE, title=f"Inspection | {APP_TITLE}")(
                 get_view_inspection(self)
             )
-
-            # ui.page(
-            #     "/profile/{profile_id}/inspection/{inspection_id}",
-            #     title="Inspection log | AOI Portal",
-            # )(view_inspection_log)
+            ui.page(
+                INSPECTION_DETAIL_PAGE,
+                title=f"Inspection detail | {APP_TITLE}",
+            )(get_view_inspection_detail(self))
 
 
 def main() -> None:

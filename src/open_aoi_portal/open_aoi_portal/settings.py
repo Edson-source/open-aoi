@@ -1,6 +1,4 @@
-APP_TITLE = "Open AOI Portal"
-
-INSPECTION_LIVE_LOG_DEPTH = 100
+APP_TITLE = "Open AOI"
 
 HOME_PAGE = "/"
 ACCESS_PAGE = "/access"
@@ -12,5 +10,6 @@ INSPECTION_PROFILE_CREATE_PAGE = "/inspection/profile"
 INSPECTION_PROFILE_EDIT_PAGE = "/inspection/profile/{profile_id}"
 
 INSPECTION_PAGE = "/inspection"
+INSPECTION_DETAIL_PAGE = "/inspection/{inspection_id}"
 
 DEVICES_PAGE = "/devices"

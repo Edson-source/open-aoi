@@ -8,12 +8,12 @@ import logging
 from typing import Optional
 from functools import partial
 
-from rclpy.node import Node
 from nicegui import ui, app
 from fastapi.responses import RedirectResponse
 
 from open_aoi_core.constants import SystemLimit
 from open_aoi_core.models import InspectionHandlerModel, DefectTypeModel
+from open_aoi_core.services import StandardClient
 from open_aoi_core.controllers.inspection_handler import InspectionHandlerController
 from open_aoi_core.controllers.accessor import AccessorController
 from open_aoi_core.controllers.defect_type import DefectTypeController
@@ -22,13 +22,14 @@ from open_aoi_core.exceptions import (
     SystemIntegrityException,
     AssetIntegrityException,
 )
+from open_aoi_portal.settings import ACCESS_PAGE, HOME_PAGE
 from open_aoi_portal.common import (
+    safe_operation,
+    safe_view,
     confirm,
     inject_header,
     inject_text_field,
     get_session,
-    ACCESS_PAGE,
-    HOME_PAGE,
 )
 
 logger = logging.getLogger("ui.modules")
@@ -39,8 +40,9 @@ ICON_INVALID_MODULE = "🟡"
 IS_STORE_CONNECTED = True
 
 
-def get_view(node: Node):
-    def view() -> Optional[RedirectResponse]:
+def get_view(node: StandardClient):
+    @safe_view
+    async def view() -> Optional[RedirectResponse]:
         session = get_session()
 
         accessor_controller = AccessorController(session)
@@ -55,18 +57,13 @@ def get_view(node: Node):
             return RedirectResponse(HOME_PAGE)
         except AuthenticationException:
             return RedirectResponse(ACCESS_PAGE)
-        except Exception as e:
-            logger.exception(e)
-            ui.notify(
-                "Unexpected exception.",
-                type="negative",
-            )
-            return
 
         # Define functions here to access ui elements directly
         # -------------------------------------------------------------------------
         # Handlers: defect type
-        def _handle_defect_type_create():
+
+        @safe_operation
+        async def _handle_defect_type_create():
             """Handles defect creation logic"""
             try:
                 assert defect_type_title_input.validate()
@@ -88,12 +85,14 @@ def get_view(node: Node):
 
             ui.notify("New defect type created.", type="positive")
 
-            _inject_defect_list()
+            await _inject_defect_list()
 
-        def _handle_defect_type_delete(defect_type: DefectTypeModel):
+        @safe_operation
+        async def _handle_defect_type_delete(defect_type: DefectTypeModel):
             """Handles defect type deletion after confirmation"""
 
-            def _delete():
+            @safe_operation
+            async def _delete():
                 try:
                     defect_type_controller.delete(defect_type)
                     defect_type_controller.commit()
@@ -101,17 +100,10 @@ def get_view(node: Node):
                     logger.exception(e)
                     ui.notify(str(e), type="negative")
                     return
-                except Exception as e:
-                    logger.exception(e)
-                    ui.notify(
-                        "Unexpected exception.",
-                        type="negative",
-                    )
-                    return
 
                 ui.notify("Defect type was deleted.", type="positive")
 
-                _inject_defect_list()
+                await _inject_defect_list()
 
             confirm(
                 f"You are about to delete defect type {defect_type.title}. Are you sure?",
@@ -119,16 +111,16 @@ def get_view(node: Node):
             )
 
         # Handlers: module
-        def _handle_module_upload_request(
+        @safe_operation
+        async def _handle_module_upload_request(
             inspection_handler: InspectionHandlerModel,
         ):
             """Create dialog to upload files and setup upload process handler"""
-
             with ui.dialog() as dialog, ui.card().classes("w-[600px]"):
                 ui.markdown("#### **Upload source**")
                 ui.upload(
                     on_upload=partial(
-                        lambda e: _handle_module_upload_process(e, inspection_handler)
+                        _handle_module_upload_process, inspection_handler
                     ),
                     max_files=1,
                 ).classes("w-full")
@@ -137,12 +129,13 @@ def get_view(node: Node):
 
             dialog.open()
 
-        def _handle_module_upload_process(
-            e, inspection_handler: InspectionHandlerModel
+        @safe_operation
+        async def _handle_module_upload_process(  # Order of args is important due to partials
+            inspection_handler: InspectionHandlerModel, event
         ):
             """Handles module upload process with source validation"""
 
-            content = e.content.read()
+            content = event.content.read()
             try:
                 valid, error = inspection_handler.validate_source(content)
                 if not valid:
@@ -154,19 +147,13 @@ def get_view(node: Node):
                 logger.exception(e)
                 ui.notify(str(e), type="negative")
                 return
-            except Exception as e:
-                logger.exception(e)
-                ui.notify(
-                    "Unexpected exception.",
-                    type="negative",
-                )
-                return
 
-            ui.notify(f"Uploaded {e.name}.", type="positive")
+            ui.notify(f"Uploaded {event.name}.", type="positive")
 
-            _inject_module_list()
+            await _inject_module_list()
 
-        def _handle_module_download_request(
+        @safe_operation
+        async def _handle_module_download_request(
             inspection_handler: InspectionHandlerModel,
         ):
             """Materialize module and initiate download"""
@@ -179,7 +166,8 @@ def get_view(node: Node):
 
             ui.download(content, f"{inspection_handler.title}.py")
 
-        def _handle_module_create():
+        @safe_operation
+        async def _handle_module_create():
             """Handles module database record creation"""
             try:
                 assert module_title_input.validate()
@@ -206,14 +194,16 @@ def get_view(node: Node):
 
             ui.notify("New module created", type="positive")
 
-            _inject_module_list()
+            await _inject_module_list()
 
-        def _handle_module_delete(
+        @safe_operation
+        async def _handle_module_delete(
             inspection_handler: InspectionHandlerModel,
         ):
             """Handles module deletion with confirmation"""
 
-            def _delete():
+            @safe_operation
+            async def _delete():
                 try:
                     inspection_handler_controller.delete(inspection_handler)
                     inspection_handler_controller.commit()
@@ -221,17 +211,10 @@ def get_view(node: Node):
                     logger.exception(e)
                     ui.notify(str(e), type="negative")
                     return
-                except Exception as e:
-                    logger.exception(e)
-                    ui.notify(
-                        "Unexpected exception.",
-                        type="negative",
-                    )
-                    return
 
                 ui.notify("Module was deleted.", type="positive")
 
-                _inject_module_list()
+                await _inject_module_list()
 
             confirm(
                 f"You are about to delete module {inspection_handler.title}. Are you sure?",
@@ -239,7 +222,8 @@ def get_view(node: Node):
             )
 
         # Local injections
-        def _inject_defect_list():
+        @safe_operation
+        async def _inject_defect_list():
             """Generate list of defect types"""
 
             defect_types_container.clear()
@@ -278,7 +262,8 @@ def get_view(node: Node):
             options = dict([(dt.id, dt.title) for dt in defect_types])
             module_defect_type_selection.set_options(options)
 
-        def _inject_module_list():
+        @safe_operation
+        async def _inject_module_list():
             """Generate list of available modules"""
 
             modules_container.clear()
@@ -343,7 +328,7 @@ def get_view(node: Node):
 
         # -------------------------------------------------------------------------
 
-        inject_header(accessor)
+        await inject_header(accessor)
         with ui.column().classes("w-full"):
             ui.markdown("#### **Modules and Defects**")
             ui.markdown(
@@ -356,10 +341,10 @@ def get_view(node: Node):
             ui.markdown("Define defect here to assign them to modules.")
             with ui.grid(columns=2).classes("w-full"):
                 with ui.column():
-                    defect_type_title_input = inject_text_field(
+                    defect_type_title_input = await inject_text_field(
                         "Defect title", "Enter defect title", SystemLimit.TITLE_LENGTH
                     )
-                    defect_type_description_input = inject_text_field(
+                    defect_type_description_input = await inject_text_field(
                         "Defect description",
                         "Enter defect description",
                         SystemLimit.DESCRIPTION_LENGTH,
@@ -379,7 +364,7 @@ def get_view(node: Node):
             )
             with ui.grid(columns=2).classes("w-full"):
                 with ui.column():
-                    module_title_input = inject_text_field(
+                    module_title_input = await inject_text_field(
                         "Module title", "Enter module title", SystemLimit.TITLE_LENGTH
                     )
                     module_defect_type_selection = ui.select(
@@ -397,7 +382,7 @@ def get_view(node: Node):
                         )
                 modules_container = ui.row()
 
-            _inject_module_list()
-            _inject_defect_list()
+            await _inject_module_list()
+            await _inject_defect_list()
 
     return view

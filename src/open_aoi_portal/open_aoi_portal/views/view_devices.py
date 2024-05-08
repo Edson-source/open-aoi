@@ -5,6 +5,7 @@
 import logging
 import ipaddress
 from typing import Optional
+from functools import partial
 
 from nicegui import ui, app
 from fastapi.responses import RedirectResponse
@@ -29,12 +30,16 @@ from open_aoi_portal.common import (
     get_session,
     to_thread,
     confirm,
+    safe_operation,
+    safe_view,
 )
 
 logger = logging.getLogger("ui.devices")
 
 
 def get_view(node: StandardClient):
+
+    @safe_view
     async def view() -> Optional[RedirectResponse]:
         session = get_session()
 
@@ -50,16 +55,11 @@ def get_view(node: StandardClient):
             return RedirectResponse(HOME_PAGE)
         except AuthenticationException:
             return RedirectResponse(ACCESS_PAGE)
-        except Exception as e:
-            logger.exception(e)
-            ui.notify(
-                "Unexpected exception.",
-                type="negative",
-            )
-            return
+
         # ------------------------------------
         # Handlers
 
+        @safe_operation
         async def _handle_create_camera():
             """Handles camera creation"""
 
@@ -96,22 +96,17 @@ def get_view(node: StandardClient):
                     type="negative",
                 )
                 return
-            except Exception as e:
-                logger.exception(e)
-                ui.notify(
-                    "Unexpected exception.",
-                    type="negative",
-                )
-                return
 
             ui.notify(f"Camera {camera_title.value.strip()} created.", type="positive")
 
-            _inject_camera_list()
+            await _inject_camera_list()
 
+        @safe_operation
         async def _handle_delete_camera(camera: CameraModel):
             """Handle camera delete operation"""
 
-            def _delete():
+            @safe_operation
+            async def _delete():
                 try:
                     camera_controller.delete(camera)
                     camera_controller.commit()
@@ -119,21 +114,15 @@ def get_view(node: StandardClient):
                     logger.exception(e)
                     ui.notify(f"Failed to delete camera! {str(e)}", type="negative")
                     return
-                except Exception as e:
-                    logger.exception(e)
-                    ui.notify(
-                        "Unexpected exception.",
-                        type="negative",
-                    )
-                    return
 
                 ui.notify("Camera was deleted.", type="positive")
-                _inject_camera_list()
+                await _inject_camera_list()
 
             confirm(
                 f"You are about to delete device {camera.title}. Are you sure?", _delete
             )
 
+        @safe_operation
         async def _handle_capture_image():
             """
             Handle image acquisition. Send direct request to related service to obtain image from camera.
@@ -159,13 +148,6 @@ def get_view(node: StandardClient):
                 ui.notify(str(e), type="warning")
                 capture_image.enable()
                 return
-            except Exception as e:
-                logger.exception(e)
-                ui.notify(
-                    "Unexpected exception.",
-                    type="negative",
-                )
-                return
 
             if response.error != ImageAcquisitionConstants.Error.NONE:
                 ui.notify(response.error_description, type="negative")
@@ -186,11 +168,12 @@ def get_view(node: StandardClient):
             capture_image.enable()
 
         # Local injections
-        def _inject_camera_list():
+        @safe_operation
+        async def _inject_camera_list():
             camera_list_container.clear()
 
             try:
-                camera_list = camera_controller.list()
+                camera_list = camera_controller.list(camera_controller.Order.desc)
             except Exception as e:
                 logger.exception(e)
                 ui.notify("Failed to list cameras.", type="negative")
@@ -202,16 +185,14 @@ def get_view(node: StandardClient):
                         with ui.item().props("clickable"):
                             with ui.item_section():
                                 with ui.row():
-                                    ui.label(
-                                        f"{camera.title}. IP: {camera.ip_address}. Trigger: {camera.io_pin_trigger or '-'}. Accept pin: {camera.io_pin_accept or '-'}. Reject: {camera.io_pin_reject or '-'}. {camera.description}"
+                                    ui.markdown(
+                                        f"**{camera.title}**. IP: {camera.ip_address}. Trigger: {camera.io_pin_trigger or '-'}. Accept pin: {camera.io_pin_accept or '-'}. Reject: {camera.io_pin_reject or '-'}. {camera.description}"
                                     )
                                     ui.space()
                                     ui.button(
                                         "Remove",
                                         color="negative",
-                                        on_click=(
-                                            lambda c: (lambda: _handle_delete_camera(c))
-                                        )(camera),
+                                        on_click=partial(_handle_delete_camera, camera),
                                     ).props("size=sm")
             else:
                 with camera_list_container:
@@ -220,7 +201,7 @@ def get_view(node: StandardClient):
 
         # ------------------------------------
 
-        inject_header(accessor)
+        await inject_header(accessor)
 
         ui.markdown("#### **Devices**")
         ui.markdown(
@@ -232,10 +213,10 @@ def get_view(node: StandardClient):
         )
         with ui.column().classes("w-full"):
             ui.markdown("##### **Create new device**")
-            camera_title = inject_text_field(
+            camera_title = await inject_text_field(
                 "Camera title", "Enter any value...", SystemLimit.TITLE_LENGTH
             )
-            camera_description = inject_text_field(
+            camera_description = await inject_text_field(
                 "Camera description",
                 "Enter any value...",
                 SystemLimit.DESCRIPTION_LENGTH,
@@ -248,7 +229,7 @@ def get_view(node: StandardClient):
                     return False
                 return True
 
-            camera_ip_address = inject_text_field(
+            camera_ip_address = await inject_text_field(
                 "Camera IPV4 address",
                 "0.0.0.0",
                 15,
@@ -258,16 +239,16 @@ def get_view(node: StandardClient):
                 },
             )
             camera_ip_address.set_value("0.0.0.0")
-            camera_io_pin_trigger = inject_numeric_field(
+            camera_io_pin_trigger = await inject_numeric_field(
                 "Trigger I/O pin (leave empty to ignore)", step=1, precision=0
             )
 
-            camera_io_pin_accept = inject_numeric_field(
+            camera_io_pin_accept = await inject_numeric_field(
                 "Acceptance I/O pin (should be defined if trigger pin is defined)",
                 step=1,
                 precision=0,
             )
-            camera_io_pin_reject = inject_numeric_field(
+            camera_io_pin_reject = await inject_numeric_field(
                 "Rejection I/O pin (should be defined if trigger pin is defined)",
                 step=1,
                 precision=0,
@@ -276,7 +257,10 @@ def get_view(node: StandardClient):
             with ui.row().classes("w-full"):
                 ui.space()
                 capture_image = ui.button(
-                    "Capture image", on_click=_handle_capture_image, icon="photo_camera", color="white"
+                    "Capture image",
+                    on_click=_handle_capture_image,
+                    icon="photo_camera",
+                    color="white",
                 )
                 ui.button("Save", on_click=_handle_create_camera, color="positive")
 
@@ -291,6 +275,6 @@ def get_view(node: StandardClient):
         )
 
         camera_list_container = ui.list().classes("w-full").props("dense")
-        _inject_camera_list()
+        await _inject_camera_list()
 
     return view

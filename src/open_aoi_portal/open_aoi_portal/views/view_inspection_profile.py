@@ -6,7 +6,6 @@ import logging
 from typing import Optional
 from functools import partial
 
-from rclpy.node import Node
 from nicegui import ui, app
 from fastapi.responses import RedirectResponse
 
@@ -17,16 +16,19 @@ from open_aoi_core.exceptions import AuthenticationException, SystemIntegrityExc
 from open_aoi_core.controllers.accessor import AccessorController
 from open_aoi_core.controllers.template import TemplateController
 from open_aoi_core.controllers.inspection_profile import InspectionProfileController
-from open_aoi_portal.common import (
+from open_aoi_portal.settings import (
     ACCESS_PAGE,
     HOME_PAGE,
     INSPECTION_PROFILE_EDIT_PAGE,
     INSPECTION_PROFILE_CREATE_PAGE,
+)
+from open_aoi_portal.common import (
     inject_text_field,
     inject_header,
     get_session,
     confirm,
     safe_view,
+    safe_operation,
 )
 
 logger = logging.getLogger("ui.inspection_profile")
@@ -51,7 +53,8 @@ def get_view(node: StandardClient):
 
         # -------------------
         # Handlers
-        def _handle_create_edit_profile():
+        @safe_operation
+        async def _handle_create_edit_profile():
             """Function is used to create or edit inspection profile"""
             nonlocal inspection_profile  # For editing profile will be initiated externally
             try:
@@ -67,7 +70,7 @@ def get_view(node: StandardClient):
             try:
                 template = template_controller.retrieve(template_select.value)
                 assert template is not None
-            except Exception as e:
+            except AssertionError as e:
                 logger.exception(e)
                 ui.notify("Failed to retrieve data from database.", type="negative")
                 return
@@ -78,46 +81,34 @@ def get_view(node: StandardClient):
             environment_value = environment.value.strip()
 
             if inspection_profile is None:
-                try:
-                    inspection_profile = inspection_profile_controller.create(
-                        title=title_value,
-                        description=description_value,
-                        identification_code=identification_code_value,
-                        environment=environment_value,
-                        template=template,
-                        accessor=accessor,
-                    )
-                    inspection_profile_controller.commit()
-                except Exception as e:
-                    logger.exception(e)
-                    ui.notify("Failed to create profile.", type="negative")
-                    return
+                inspection_profile = inspection_profile_controller.create(
+                    title=title_value,
+                    description=description_value,
+                    identification_code=identification_code_value,
+                    environment=environment_value,
+                    template=template,
+                    accessor=accessor,
+                )
+                inspection_profile_controller.commit()
                 ui.notify("New profile created", type="positive")
             else:
-                try:
-                    inspection_profile.environment = environment_value
-                    inspection_profile_controller.commit()
-                except Exception as e:
-                    logger.exception(e)
-                    ui.notify("Failed to update profile.", type="negative")
-                    return
+                inspection_profile.environment = environment_value
+                inspection_profile_controller.commit()
                 ui.notify("Updated", type="positive")
-            _inject_profile_list()
+            await _inject_profile_list()
 
-        def _handle_delete_profile(profile: InspectionProfileModel):
+        @safe_operation
+        async def _handle_delete_profile(profile: InspectionProfileModel):
             """Handles delete operation with confirmation"""
 
-            def _delete():
+            @safe_operation
+            async def _delete():
                 try:
                     inspection_profile_controller.delete(profile)
                     inspection_profile_controller.commit()
                 except SystemIntegrityException as e:
                     logger.exception(e)
                     ui.notify(str(e), type="warning")
-                    return
-                except Exception as e:
-                    logger.exception(e)
-                    ui.notify("Failed to delete profile.", type="negative")
                     return
 
                 ui.notify("Profile deleted", type="positive")
@@ -127,18 +118,20 @@ def get_view(node: StandardClient):
                 ):
                     ui.open(INSPECTION_PROFILE_CREATE_PAGE)
                     return
-                _inject_profile_list()
+                await _inject_profile_list()
 
             confirm(
                 f"You are about to delete inspection profile {profile.title} ({profile.identification_code}). Are you sure?",
                 _delete,
             )
 
-        def _handle_edit_profile(profile: InspectionProfileModel):
+        @safe_operation
+        async def _handle_edit_profile(profile: InspectionProfileModel):
             """Redirect to profile page for editing"""
             ui.open(INSPECTION_PROFILE_EDIT_PAGE.format(profile_id=profile.id))
 
-        def _handle_activate_profile(profile: InspectionProfileModel):
+        @safe_operation
+        async def _handle_activate_profile(profile: InspectionProfileModel):
             """Mark profile as active"""
             try:
                 inspection_profile_controller.activate(profile)
@@ -147,13 +140,11 @@ def get_view(node: StandardClient):
                 logger.exception(e)
                 ui.notify(str(e), type="negative")
                 return
-            except Exception as e:
-                logger.exception(e)
-                ui.notify("Failed to push changes to database.", type="negative")
-                return
-            _inject_profile_list()
 
-        def _handle_deactivate_profile(profile: InspectionProfileModel):
+            await _inject_profile_list()
+
+        @safe_operation
+        async def _handle_deactivate_profile(profile: InspectionProfileModel):
             """Mark profile as inactive"""
             try:
                 inspection_profile_controller.deactivate(profile)
@@ -162,14 +153,12 @@ def get_view(node: StandardClient):
                 logger.exception(e)
                 ui.notify(str(e), type="negative")
                 return
-            except Exception as e:
-                logger.exception(e)
-                ui.notify("Failed to push changes to database.", type="negative")
-                return
-            _inject_profile_list()
+
+            await _inject_profile_list()
 
         # Local injections
-        def _inject_profile_list():
+        @safe_operation
+        async def _inject_profile_list():
             """Generate list of available profiles"""
             profile_list_container.clear()
             profile_list = inspection_profile_controller.list_nested()
@@ -217,7 +206,7 @@ def get_view(node: StandardClient):
 
         # -------------------
 
-        inject_header(accessor)
+        await inject_header(accessor)
 
         try:
             if profile_id is None:
@@ -245,14 +234,14 @@ def get_view(node: StandardClient):
                 )
             )
             ui.markdown("##### **Create profile**")
-            profile_title = inject_text_field(
+            profile_title = await inject_text_field(
                 "Profile title", "Enter profile title...", SystemLimit.TITLE_LENGTH
             )
             profile_title.set_enabled(inspection_profile is None)
             if inspection_profile is not None:
                 profile_title.set_value(inspection_profile.title)
 
-            profile_description = inject_text_field(
+            profile_description = await inject_text_field(
                 "Profile description",
                 "Enter profile description...",
                 SystemLimit.DESCRIPTION_LENGTH,
@@ -261,7 +250,7 @@ def get_view(node: StandardClient):
             if inspection_profile is not None:
                 profile_description.set_value(inspection_profile.description)
 
-            identification_code = inject_text_field(
+            identification_code = await inject_text_field(
                 "Product identification code (barcode value)",
                 "Enter product code identification...",
                 SystemLimit.IDENTIFICATION_CODE_LENGTH,
@@ -297,6 +286,6 @@ def get_view(node: StandardClient):
 
         ui.markdown("##### **Registered profiles**")
         profile_list_container = ui.list().classes("w-full").props("dense")
-        _inject_profile_list()
+        await _inject_profile_list()
 
     return view

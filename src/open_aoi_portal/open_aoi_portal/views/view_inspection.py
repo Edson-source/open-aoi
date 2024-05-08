@@ -12,8 +12,8 @@ from PIL import Image
 from nicegui import ui, app
 from fastapi.responses import RedirectResponse
 
-from open_aoi_interfaces.msg import InspectionLog, InspectionTarget
-from open_aoi_core.exceptions import AuthenticationException
+from open_aoi_interfaces.msg import InspectionLog
+from open_aoi_core.exceptions import AuthenticationException, SystemServiceException
 from open_aoi_core.controllers.camera import CameraController
 from open_aoi_core.controllers.accessor import AccessorController
 from open_aoi_core.controllers.inspection_target import InspectionTargetController
@@ -25,6 +25,7 @@ from open_aoi_portal.settings import ACCESS_PAGE, HOME_PAGE
 from open_aoi_portal.common import (
     inject_header,
     get_session,
+    get_overlay,
     to_thread,
     safe_view,
     safe_operation,
@@ -76,7 +77,7 @@ def get_view(node: StandardClient):
                         node.mediator_inspection(camera_selection.value),
                     )
                 )
-            except Exception as e:
+            except SystemServiceException as e:
                 ui.notify(str(e), type="warning")
                 inspection_button.enable()
                 return
@@ -104,13 +105,7 @@ def get_view(node: StandardClient):
             for log, target in zip(
                 response.inspection_log_list, response.inspection_target_list
             ):
-                x = target.stat_left
-                y = target.stat_top
-                w = target.stat_width
-                h = target.stat_height
-                color = "green" if log.passed else "red"
-                overlay += f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="{color}" fill-opacity="0.4"/>'
-            
+                overlay += get_overlay(target, log)
             image_element.content = overlay
 
             await _inject_inspection_log(response.inspection_log_list)
@@ -162,7 +157,7 @@ def get_view(node: StandardClient):
         camera_list = camera_controller.list()
 
         # Draw UI
-        inject_header(accessor)
+        await inject_header(accessor)
         with ui.grid(columns=3).classes("w-full"):
             with ui.column().classes("col-span-1"):
                 ui.markdown(f"### **Live inspection**")

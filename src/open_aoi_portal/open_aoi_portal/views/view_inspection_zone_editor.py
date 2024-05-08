@@ -7,12 +7,12 @@ import logging
 from typing import Optional
 from functools import partial
 
-from rclpy.node import Node
 from nicegui import ui, app
 from fastapi.responses import RedirectResponse
 
 from open_aoi_core.utils import crop_stat_image
 from open_aoi_core.constants import SystemLimit
+from open_aoi_core.services import StandardClient
 from open_aoi_core.exceptions import AuthenticationException, SystemIntegrityException
 from open_aoi_core.models import InspectionZoneModel
 from open_aoi_core.controllers.accessor import AccessorController
@@ -21,21 +21,23 @@ from open_aoi_core.controllers.connected_component import ConnectedComponentCont
 from open_aoi_core.controllers.inspection_zone import InspectionZoneController
 from open_aoi_core.controllers.inspection_handler import InspectionHandlerController
 from open_aoi_core.controllers.inspection_target import InspectionTargetController
+from open_aoi_portal.settings import ACCESS_PAGE, HOME_PAGE
 from open_aoi_portal.common import (
-    ACCESS_PAGE,
-    HOME_PAGE,
+    confirm,
+    get_session,
+    InspectionZoneManager,
     inject_header,
     inject_text_field,
-    get_session,
-    confirm,
-    InspectionZoneManager,
+    safe_operation,
+    safe_view,
 )
 
 
 logger = logging.getLogger("ui.inspection_zone_editor")
 
 
-def get_view(node: Node):
+def get_view(node: StandardClient):
+    @safe_view
     async def view(template_id: int) -> Optional[RedirectResponse]:
         session = get_session()
 
@@ -55,11 +57,12 @@ def get_view(node: Node):
         except AuthenticationException:
             return RedirectResponse(ACCESS_PAGE)
 
-        inject_header(accessor)
+        await inject_header(accessor)
 
         # -----------------------------------
         # Handlers
-        def _handle_inspection_zone_create():
+        @safe_operation
+        async def _handle_inspection_zone_create():
             """Create inspection zone with connected component from editor"""
 
             cc = manager.inspection_zone_connected_component()
@@ -79,28 +82,34 @@ def get_view(node: Node):
                 inspection_handler = inspection_handler_controller.retrieve(
                     inspection_handler_selection.value
                 )
-                inspection_zone = inspection_zone_controller.create(
-                    inspection_zone_title.value.strip(), template, accessor
-                )
-                connected_component = connected_component_controller.create(
-                    cc[0], cc[1], cc[2], cc[3], inspection_zone
-                )
-                inspection_target = inspection_target_controller.create(
-                    inspection_handler, inspection_zone
-                )
-                inspection_zone_controller.commit()
-            except Exception as e:
+                assert inspection_handler is not None
+            except AssertionError as e:
                 logger.exception(e)
-                ui.notify("Failed to create inspection zone.", type="negative")
+                ui.notify(
+                    "Failed to retrieve related inspection handler.", type="negative"
+                )
                 return
 
-            ui.notify("Inspection zone created.", type="positive")
-            _inject_inspection_zone_list()
+            inspection_zone = inspection_zone_controller.create(
+                inspection_zone_title.value.strip(), template, accessor
+            )
+            connected_component = connected_component_controller.create(
+                cc[0], cc[1], cc[2], cc[3], inspection_zone
+            )
+            inspection_target = inspection_target_controller.create(
+                inspection_handler, inspection_zone
+            )
+            inspection_zone_controller.commit()
 
-        def _handle_inspection_zone_delete(inspection_zone: InspectionZoneModel):
+            ui.notify("Inspection zone created.", type="positive")
+            await _inject_inspection_zone_list()
+
+        @safe_operation
+        async def _handle_inspection_zone_delete(inspection_zone: InspectionZoneModel):
             """Handles inspection zone deletion with confirmation"""
 
-            def _delete():
+            @safe_operation
+            async def _delete():
                 try:
                     for inspection_target in inspection_zone.inspection_target_list:
                         inspection_target_controller.delete(inspection_target)
@@ -111,22 +120,16 @@ def get_view(node: Node):
                     logger.exception(e)
                     ui.notify(str(e), type="negative")
                     return
-                except Exception as e:
-                    logger.exception(e)
-                    ui.notify(
-                        "Failed to delete inspection zone.",
-                        type="negative",
-                    )
-                    return
                 ui.notify("Inspection zone deleted.", type="positive")
-                _inject_inspection_zone_list()
+                await _inject_inspection_zone_list()
 
             confirm(
                 f"You are about to delete inspection zone {inspection_zone.title}. Are you sure?",
                 _delete,
             )
 
-        def _handle_inspection_zone_preview(inspection_zone):
+        @safe_operation
+        async def _handle_inspection_zone_preview(inspection_zone):
             """Crop template image and show zone preview"""
             cc = [
                 inspection_zone.cc.stat_left,
@@ -143,7 +146,8 @@ def get_view(node: Node):
             dialog.open()
 
         # Local injections
-        def _inject_inspection_zone_list():
+        @safe_operation
+        async def _inject_inspection_zone_list():
             """Generate list of available inspection zones"""
             inspection_zone_container.clear()
             inspection_zone_list = template.inspection_zone_list
@@ -215,13 +219,13 @@ def get_view(node: Node):
             )
             with ui.grid(columns=4).classes("justify-left w-full"):
                 with ui.column().classes("col-span-3"):
-                    manager.initiate_editor()
+                    await manager.inject_editor()
                 with ui.list().classes("col-span-1").props(
                     "dense"
                 ) as inspection_zone_container:
-                    _inject_inspection_zone_list()
+                    await _inject_inspection_zone_list()
 
-            inspection_zone_title = inject_text_field(
+            inspection_zone_title = await inject_text_field(
                 "Title",
                 "Enter short name for this inspection zone",
                 SystemLimit.TITLE_LENGTH,

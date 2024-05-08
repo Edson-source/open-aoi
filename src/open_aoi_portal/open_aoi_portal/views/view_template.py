@@ -13,30 +13,34 @@ from fastapi.responses import RedirectResponse
 from open_aoi_core.constants import ImageAcquisitionConstants, SystemLimit
 from open_aoi_core.utils import msg_to_image
 from open_aoi_core.services import StandardClient
+from open_aoi_core.models import TemplateModel
 from open_aoi_core.controllers.template import TemplateController
 from open_aoi_core.controllers.accessor import AccessorController
 from open_aoi_core.controllers.camera import CameraController
+from open_aoi_portal.settings import HOME_PAGE, ACCESS_PAGE, CONTROL_ZONE_PAGE
 from open_aoi_portal.common import (
     confirm,
     inject_header,
     inject_text_field,
     to_thread,
     get_session,
-    HOME_PAGE,
-    ACCESS_PAGE,
-    CONTROL_ZONE_PAGE,
+    safe_view,
+    safe_operation,
 )
 from open_aoi_core.exceptions import (
     AuthenticationException,
     SystemServiceException,
     SystemIntegrityException,
+    AssetIntegrityException,
 )
 
 logger = logging.getLogger("ui.template")
 
 
 def get_view(node: StandardClient):
-    def view() -> Optional[RedirectResponse]:
+
+    @safe_view
+    async def view() -> Optional[RedirectResponse]:
         session = get_session()
 
         accessor_controller = AccessorController(session)
@@ -51,17 +55,11 @@ def get_view(node: StandardClient):
             return RedirectResponse(ACCESS_PAGE)
         except AssertionError:
             return RedirectResponse(HOME_PAGE)
-        except Exception as e:
-            logger.exception(e)
-            ui.notify(
-                "Unexpected exception.",
-                type="negative",
-            )
-            return
 
         # -----------------------------------------------
         # Handlers
-        def _handle_create_template():
+        @safe_operation
+        async def _handle_create_template():
             """Handles template creation"""
             try:
                 assert template_title.validate()
@@ -80,18 +78,16 @@ def get_view(node: StandardClient):
                 logger.exception(e)
                 ui.notify(str(e), type="negative")
                 return
-            except Exception as e:
-                logger.exception(e)
-                ui.notify("Failed to create template.", type="negative")
-                return
 
             ui.notify(f"Template {template.title} created.", type="positive")
-            _inject_template_list()
+            await _inject_template_list()
 
-        def _handle_delete_template(template: TemplateController._model):
+        @safe_operation
+        async def _handle_delete_template(template: TemplateModel):
             """Handles template deletion with confirmation"""
 
-            def _delete():
+            @safe_operation
+            async def _delete():
                 try:
                     template_controller.delete(template)
                     template_controller.commit()
@@ -99,26 +95,23 @@ def get_view(node: StandardClient):
                     logger.exception(e)
                     ui.notify(str(e), type="negative")
                     return
-                except Exception as e:
-                    logger.exception(e)
-                    ui.notify("Failed to delete template.", type="negative")
-                    return
 
                 ui.notify("Template was deleted.", type="positive")
-                _inject_template_list()
+                await _inject_template_list()
 
             confirm(
                 f"You are about to delete template {template.title}. Are you sure?",
                 _delete,
             )
 
-        async def _handle_preview_template(template: TemplateController._model):
+        @safe_operation
+        async def _handle_preview_template(template: TemplateModel):
             """Handle template preview. Materialization operation takes some time so should be async."""
             try:
                 image = template.materialize_image()
-            except Exception as e:
+            except (AssetIntegrityException, SystemIntegrityException) as e:
                 logger.exception(e)
-                ui.notify("Failed to load template.", type="negative")
+                ui.notify(f"Failed to load template. {str(e)}", type="negative")
                 return
 
             with ui.dialog() as dialog, ui.card():
@@ -128,6 +121,7 @@ def get_view(node: StandardClient):
 
             dialog.open()
 
+        @safe_operation
         async def _handle_capture_image():
             """Capture image for template"""
             nonlocal template_image
@@ -142,7 +136,7 @@ def get_view(node: StandardClient):
             try:
                 camera = camera_controller.retrieve(camera_selection.value)
                 assert camera is not None
-            except Exception as e:
+            except AssertionError as e:
                 logger.exception(e)
                 ui.notify("Failed to get camera.", type="negative")
                 return
@@ -158,10 +152,6 @@ def get_view(node: StandardClient):
                 logger.exception(e)
                 ui.notify(str(e), type="warning")
                 capture_image.enable()
-                return
-            except Exception as e:
-                logger.exception(e)
-                ui.notify("Failed to capture image.", type="negative")
                 return
 
             if response.error != ImageAcquisitionConstants.Error.NONE:
@@ -180,7 +170,8 @@ def get_view(node: StandardClient):
             capture_image.enable()
 
         # Local injections
-        def _inject_template_list():
+        @safe_operation
+        async def _inject_template_list():
             """Generate list of available templates"""
             template_list_container.clear()
             template_list = template_controller.list_nested()
@@ -223,7 +214,7 @@ def get_view(node: StandardClient):
 
         # -----------------------------------------------
 
-        inject_header(accessor)
+        await inject_header(accessor)
 
         try:
             camera_list = camera_controller.list()
@@ -241,7 +232,7 @@ def get_view(node: StandardClient):
                 )
             )
             ui.markdown("#### **Template configuration**")
-            template_title = inject_text_field(
+            template_title = await inject_text_field(
                 "Template title", "Enter title value...", SystemLimit.TITLE_LENGTH
             )
             camera_selection = ui.select(
@@ -266,6 +257,6 @@ def get_view(node: StandardClient):
 
         ui.markdown("#### **Registered templates**")
         template_list_container = ui.list().classes("w-full").props("dense")
-        _inject_template_list()
+        await _inject_template_list()
 
     return view

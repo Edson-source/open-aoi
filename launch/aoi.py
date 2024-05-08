@@ -1,28 +1,38 @@
+"""
+    This is main launch file for ROS framework. Script launches Open AOI services.
+"""
+
 from launch import LaunchDescription
 from launch_ros.actions import Node
 
 
 def aoi_launch_description():
+    # Services - image acquisition
     aoi_image_acquisition = Node(
         package="open_aoi_services",
         executable="open_aoi_image_acquisition",
     )
+    # Services - product identification
     aoi_product_identification = Node(
         package="open_aoi_services",
         executable="open_aoi_product_identification",
     )
+    # Services - inspection execution node
     aoi_inspection_execution = Node(
         package="open_aoi_services",
         executable="open_aoi_inspection_execution",
     )
+    # Services - mediator
     aoi_mediator = Node(
         package="open_aoi_services",
         executable="open_aoi_mediator",
     )
+    # GPIO
     aoi_gpio = Node(
         package="open_aoi_gpio",
         executable="open_aoi_gpio",
     )
+    # Web portal
     aoi_portal = Node(
         package="open_aoi_portal",
         executable="open_aoi_portal",
@@ -36,7 +46,9 @@ def aoi_launch_description():
             aoi_inspection_execution,
             aoi_gpio,
             # Dependent
+            # Depend on ^
             aoi_mediator,
+            # Depend on ^
             aoi_portal,
         ]
     )

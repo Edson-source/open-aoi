@@ -33,6 +33,18 @@ def get_session() -> Session:
     return Session(engine)
 
 
+def get_overlay(cc, log, color: Optional[str] = None):
+    """Create overlay to show inspection result (SVG format for nice gui interactive image)"""
+
+    x = cc.stat_left
+    y = cc.stat_top
+    w = cc.stat_width
+    h = cc.stat_height
+    if color is None:
+        color = "green" if log.passed else "red"
+    return f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="{color}" fill-opacity="0.4"/>'
+
+
 def safe_view(view):
     """Handler to prevent unexpected exceptions in views. Should wrap all views"""
 
@@ -81,15 +93,20 @@ def confirm(msg: str, callback: callable):
     dialog.open()
 
 
-def inject_header(accessor: AccessorModel):
+# Global injections
+@safe_operation
+async def inject_header(accessor: AccessorModel):
     """Function injects common header, that should be present on every page"""
 
-    def _handle_logout_request():
-        def logout():
+    @safe_operation
+    async def _handle_logout_request():
+
+        @safe_operation
+        async def _logout():
             AccessorController.revoke_session_access(app.storage.user)
             ui.open(ACCESS_PAGE)
 
-        confirm("You are about to logout. Are you sure?", logout)
+        confirm("You are about to logout. Are you sure?", _logout)
 
     ui.right_drawer().props("bordered")
     with ui.left_drawer(top_corner=False, bottom_corner=True).props("bordered"):
@@ -126,7 +143,8 @@ def inject_header(accessor: AccessorModel):
         ui.markdown(f"**{APP_TITLE}** | Powered by ROS")
 
 
-def inject_text_field(
+@safe_operation
+async def inject_text_field(
     label: str,
     placeholder: str,
     limit: int,
@@ -149,7 +167,8 @@ def inject_text_field(
     return field
 
 
-def inject_numeric_field(
+@safe_operation
+async def inject_numeric_field(
     label: str,
     step: int = 1,
     precision: int = 0,
@@ -194,7 +213,8 @@ class InspectionZoneManager:
         ]
         self.step = step
 
-    def initiate_editor(self):
+    @safe_operation
+    async def inject_editor(self):
         """Create editor with all required elements"""
 
         with ui.interactive_image(
@@ -292,11 +312,11 @@ class InspectionZoneManager:
 
     def _get_marker(self, x, y):
         """Return SVG marker to mark point in template image"""
-        return f'<circle cx="{x}" cy="{y}" r="2" fill="red" />'
+        return f'<circle cx="{x}" cy="{y}" r="2" fill="yellow" />'
 
     def _get_zone(self, x, y, w, h):
         """Return SVG square to mark whole zone in template image"""
-        return f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="red" fill-opacity="0.4"/>'
+        return f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="yellow" fill-opacity="0.4"/>'
 
     def _local_to_global(self, x: float, y: float) -> Tuple[int, int]:
         """Convert local coordinated back to global with attention to zoom and offsets"""

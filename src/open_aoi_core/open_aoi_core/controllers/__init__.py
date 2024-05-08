@@ -9,10 +9,11 @@
     ```
 """
 
+import enum
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, and_
 
 from open_aoi_core.models import Base
 from open_aoi_core.exceptions import SystemIntegrityException
@@ -23,6 +24,10 @@ class Controller:
 
     _model: Base  # Related model
 
+    class Order(enum.Enum):
+        asc = "asc"
+        desc = "desc"
+
     def __init__(self, session: Session):
         self.session = session
 
@@ -31,6 +36,10 @@ class Controller:
 
         q = select(self._model).where(self._model.id == id)
         return self.session.scalars(q).one_or_none()
+
+    def retrieve_last(self) -> Optional[Base]:
+        q = select(self._model).order_by(self._model.id.desc())
+        return self.session.scalars(q).first()
 
     def delete(self, entity: Base):
         """
@@ -71,9 +80,29 @@ class Controller:
         """Alias to session.commit()"""
         self.session.commit()
 
-    def list(self) -> List[Base]:
+    def list(
+        self,
+        order: Order = Order.asc,
+        by="id",
+        select_from_id: int = None,
+        select_to_id: int = None,
+    ) -> List[Base]:
         """Return list of entities"""
-        return self.session.query(self._model).all()
+
+        q = self.session.query(self._model)
+        if order == self.Order.asc:
+            q = q.order_by(getattr(self._model, by).asc())
+        else:
+            q = q.order_by(getattr(self._model, by).desc())
+        if select_from_id is not None and select_to_id is not None:
+            q = q.filter(
+                and_(
+                    self._model.id >= min([select_from_id, select_to_id]),
+                    self._model.id <= max([select_from_id, select_to_id]),
+                )
+            )
+
+        return q.all()
 
     def list_nested(self) -> List[Base]:
         """Return list of entities with related sub models allowing nested properties access: model.sub_model.property"""
