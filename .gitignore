@@ -13,3 +13,6 @@ build
 
 .env
 .nicegui
+
+dev.*.ipynb
+*.pickle
