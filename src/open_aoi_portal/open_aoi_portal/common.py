@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 
 from open_aoi_portal.settings import *
-from open_aoi_core.utils import scale
+from open_aoi_core.utils_basic import scale
 from open_aoi_core.models import AccessorModel, engine
 from open_aoi_core.controllers.accessor import AccessorController
 

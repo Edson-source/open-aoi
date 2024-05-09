@@ -12,7 +12,8 @@ from fastapi.responses import RedirectResponse
 from PIL import Image
 
 from open_aoi_portal.settings import ACCESS_PAGE, HOME_PAGE
-from open_aoi_core.utils import msg_to_image, scale
+from open_aoi_core.utils_ros import msg_to_image
+from open_aoi_core.utils_basic import scale
 from open_aoi_core.constants import ImageAcquisitionConstants, SystemLimit
 from open_aoi_core.services import StandardClient
 from open_aoi_core.exceptions import (

@@ -10,7 +10,7 @@ from functools import partial
 from nicegui import ui, app
 from fastapi.responses import RedirectResponse
 
-from open_aoi_core.utils import crop_stat_image
+from open_aoi_core.utils_basic import crop_stat_image
 from open_aoi_core.constants import SystemLimit
 from open_aoi_core.services import StandardClient
 from open_aoi_core.exceptions import AuthenticationException, SystemIntegrityException

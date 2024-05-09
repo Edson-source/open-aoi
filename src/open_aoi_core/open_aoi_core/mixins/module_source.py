@@ -8,7 +8,7 @@ from typing import Optional, Tuple
 
 from open_aoi_core.mixins import MinioBasedMixin
 from open_aoi_core.constants import SystemBuckets
-from open_aoi_core.content.modules import dynamic_import
+from open_aoi_core.utils_basic import dynamic_import
 from open_aoi_core.exceptions import AssetIntegrityException
 
 

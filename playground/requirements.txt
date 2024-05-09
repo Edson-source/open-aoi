@@ -1,0 +1,14 @@
+pandas
+dtw-python
+
+imutils
+scikit-image
+opencv-python
+pillow
+
+matplotlib
+ipympl
+ipywidgets
+
+python-doctr
+python-doctr[tf]

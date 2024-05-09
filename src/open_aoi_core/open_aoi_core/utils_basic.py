@@ -1,25 +1,11 @@
-from typing import List
+from typing import Tuple
 
 import cv2 as cv
 import numpy as np
 from PIL import Image
-from sensor_msgs.msg import Image as ImageMsg
 
-
-def image_to_msg(im: np.ndarray):
-    """Convert image for to ROS image message format"""
-    msg = ImageMsg()
-    msg.encoding = "bgr8"
-    msg.height, msg.width = im.shape[:2]
-    msg.step = msg.width
-    msg.data = im.flatten().astype(int).tolist()
-    return msg
-
-
-def msg_to_image(msg: ImageMsg) -> np.ndarray:
-    """Convert image from ROS image format"""
-    data = np.array(msg.data)
-    return data.reshape((msg.height, msg.width, 3))
+from open_aoi_core.content.modules import IModule
+from open_aoi_core.exceptions import AssetIntegrityException
 
 
 def scale(image: Image, width: int) -> Image:
@@ -31,7 +17,7 @@ def scale(image: Image, width: int) -> Image:
     return image.resize((width, height))
 
 
-def crop_stat_cv(im: np.ndarray, cv_stat_value: List[int]) -> np.ndarray:
+def crop_stat_cv(im: np.ndarray, cv_stat_value: Tuple[int]) -> np.ndarray:
     """
     Function parse CV connected component detection statics (values)
     to cut out component from provided image
@@ -45,7 +31,7 @@ def crop_stat_cv(im: np.ndarray, cv_stat_value: List[int]) -> np.ndarray:
     return im[t : t + h, l : l + w, :]
 
 
-def crop_stat_image(image: Image.Image, cv_stat_value: List[int]) -> Image.Image:
+def crop_stat_image(image: Image.Image, cv_stat_value: Tuple[int]) -> Image.Image:
     """Wrapper for cropping PIL images"""
     image = np.array(image)
     image = crop_stat_cv(image, cv_stat_value)
@@ -122,3 +108,26 @@ def align(image: np.ndarray, template: np.ndarray, feature_point_amount: int = 1
     image = cv.warpPerspective(image, H, (w, h))
     # Return the aligned image
     return image
+
+
+def dynamic_import(source: bytes) -> Tuple[IModule, str]:
+    """
+    Import dynamically generated code as a module.
+    """
+    ctx = {}
+
+    try:
+        exec(source.decode(), ctx, ctx)
+    except Exception as e:
+        raise AssetIntegrityException(f"Failed to execute module: {str(e)}") from e
+
+    try:
+        assert ctx.get("DOCUMENTATION") is not None, "Documentation is missing."
+        assert ctx.get("module") is not None, "Module instance function is missing."
+        assert isinstance(
+            ctx.get("module"), IModule
+        ), "Module does not provide IModule interface."
+    except AssertionError as e:
+        raise AssetIntegrityException(f"Failed to validate module: {str(e)}") from e
+
+    return ctx.get("module"), ctx.get("DOCUMENTATION")

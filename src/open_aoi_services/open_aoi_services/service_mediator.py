@@ -29,7 +29,7 @@ from open_aoi_core.controllers.inspection_profile import InspectionProfileContro
 from open_aoi_core.controllers.inspection import InspectionController
 from open_aoi_core.controllers.inspection_log import InspectionLogController
 from open_aoi_core.controllers.camera import CameraController
-from open_aoi_core.utils import image_to_msg, msg_to_image
+from open_aoi_core.utils_ros import image_to_msg, msg_to_image
 
 
 def _inspection_target_to_msg(target: InspectionTargetModel) -> InspectionTarget:

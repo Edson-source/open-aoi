@@ -9,7 +9,8 @@ from rclpy.executors import MultiThreadedExecutor
 
 from open_aoi_core.services import StandardService
 from open_aoi_interfaces.srv import IdentificationTrigger
-from open_aoi_core.utils import msg_to_image, isolate_product
+from open_aoi_core.utils_basic import isolate_product
+from open_aoi_core.utils_ros import msg_to_image
 from open_aoi_core.constants import ProductIdentificationConstants, SystemServiceStatus
 
 

@@ -20,7 +20,7 @@ from open_aoi_core.controllers.inspection_target import InspectionTargetControll
 from open_aoi_core.models import InspectionTargetModel
 from open_aoi_core.constants import MediatorServiceConstants
 from open_aoi_core.services import StandardClient
-from open_aoi_core.utils import msg_to_image
+from open_aoi_core.utils_ros import msg_to_image
 from open_aoi_portal.settings import ACCESS_PAGE, HOME_PAGE
 from open_aoi_portal.common import (
     inject_header,

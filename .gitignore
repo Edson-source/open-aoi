@@ -3,6 +3,7 @@ install
 log
 
 venv
+.venv
 .vscode
 **/__pycache__
 

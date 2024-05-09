@@ -10,8 +10,9 @@ from open_aoi_core.services import StandardService
 from open_aoi_interfaces.msg import InspectionLog
 from open_aoi_interfaces.srv import InspectionExecutionTrigger
 from open_aoi_core.constants import InspectionExecutionConstants, SystemServiceStatus
-from open_aoi_core.utils import msg_to_image
-from open_aoi_core.content.modules import dynamic_import, IModule
+from open_aoi_core.utils_ros import msg_to_image
+from open_aoi_core.utils_basic import dynamic_import
+from open_aoi_core.content.modules import IModule
 
 
 class Service(StandardService):
@@ -123,7 +124,9 @@ class Service(StandardService):
             self.logger.info(f"Failed to execute inspection handler")
 
             response.error = InspectionExecutionConstants.Error.GENERAL
-            response.error_description = f"Failed to execute inspection handler: {str(e)}"
+            response.error_description = (
+                f"Failed to execute inspection handler: {str(e)}"
+            )
 
             self.set_status(SystemServiceStatus.IDLE)
             return response
