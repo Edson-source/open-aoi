@@ -6,10 +6,11 @@ import rclpy
 from pypylon import pylon
 from rcl_interfaces.msg import ParameterDescriptor, SetParametersResult
 
-from open_aoi_core.settings import SIMULATION
-from open_aoi_core.utils_ros import image_to_msg
-from open_aoi_core.constants import ImageAcquisitionConstants, SystemServiceStatus
 from open_aoi_interfaces.srv import ImageAcquisitionTrigger
+from open_aoi_core.settings import SIMULATION
+from open_aoi_core.utils_ros import image_to_message
+from open_aoi_core.utils_basic import Profiler
+from open_aoi_core.constants import ImageAcquisitionConstants, SystemServiceStatus
 from open_aoi_core.services import StandardService
 
 EMULATION_DIR = "./emulation"
@@ -142,7 +143,9 @@ class Service(StandardService):
                 return
 
     def acquire_image(self, request, response):
-        self.logger.info("Image requested")
+        p = Profiler()
+
+        self.logger.info(f"Image requested. [{p.tick()}]")
         self.set_status(SystemServiceStatus.BUSY)
 
         if self.camera is None:
@@ -152,23 +155,23 @@ class Service(StandardService):
                 "Capture image called before camera initialization"
             )
             self.set_status(SystemServiceStatus.IDLE)
-            self.logger.info("Response returned")
+            self.logger.info(f"Response returned. [{p.tick()}]")
             return response
         try:
             grab_result = self.camera.GrabOne(1000)
             if grab_result.GrabSucceeded():
                 # Access the image data
                 image = grab_result.Array
-                self.logger.info(f"Grabbed successfully: {image.shape}")
+                self.logger.info(f"Grabbed successfully: {image.shape}. [{p.tick()}]")
                 grab_result.Release()
-                response.image = image_to_msg(image)
+                response.image = image_to_message(image)
                 response.error = ImageAcquisitionConstants.Error.NONE
                 response.error_description = ""
-                self.logger.info("Image returned")
+                self.logger.info(f"Image returned. [{p.tick()}]")
                 self.set_status(SystemServiceStatus.IDLE)
                 return response
             else:
-                self.logger.error("Grabbed unsuccessfully")
+                self.logger.error("Grabbed unsuccessfully.")
                 grab_result.Release()
                 self.logger.error(
                     "Error: ", grab_result.ErrorCode, grab_result.ErrorDescription

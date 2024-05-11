@@ -14,7 +14,7 @@ from rclpy.client import Client as ServiceClient
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rcl_interfaces.srv._set_parameters import SetParameters
 from rcl_interfaces.msg import Parameter, ParameterType, ParameterValue
-from sensor_msgs.msg import Image as ImageMsg
+from sensor_msgs.msg import Image as ImageMessage
 
 from open_aoi_interfaces.msg import InspectionTarget as InspectionTargetMSg
 from open_aoi_interfaces.srv import (
@@ -106,7 +106,7 @@ class ProductIdentificationClient(BaseClient):
     product_identification_get_barcode_cli: ServiceClient
     product_identification_get_status_cli: ServiceClient
 
-    def product_identification_get_barcode(self, image_msg: ImageMsg):
+    def product_identification_get_barcode(self, image_msg: ImageMessage):
         """
         Dispatch product identification request. Require image as message as it is meant to work on
         image acquisition service results (prevent unnecessary conversion from message  to image and back)
@@ -129,8 +129,8 @@ class InspectionExecutionClient(BaseClient):
 
     def inspection_execution_execute_inspection(
         self,
-        test_image_msg: ImageMsg,
-        template_image_msg: ImageMsg,
+        test_image_msg: ImageMessage,
+        template_image_msg: ImageMessage,
         environment: str,
         inspection_handler_source: str,
         inspection_target_list: List[InspectionTargetMSg],

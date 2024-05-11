@@ -1,4 +1,5 @@
 from typing import Tuple
+import time
 
 import cv2 as cv2
 import numpy as np
@@ -6,6 +7,26 @@ from PIL import Image
 
 from open_aoi_core.content.modules import IModule
 from open_aoi_core.exceptions import AssetIntegrityException
+
+
+class Profiler:
+    """Measure system performance"""
+
+    def __init__(self):
+        self._start = self._last_tick = self._now()
+
+    def _now(self):
+        """Current time in ms"""
+        return round(time.time() * 1000)
+
+    def tick(self):
+        """Return delta time from start"""
+        now = self._now()
+        step_time = self._last_tick - now
+        self._last_tick = now
+        total_time = now - self._start
+
+        return f"+{step_time}/{total_time}ms"
 
 
 def scale(image: Image, width: int) -> Image:

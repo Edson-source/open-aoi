@@ -15,10 +15,12 @@ import numpy as np
 from PIL import Image
 from sqlalchemy.orm import Session
 from collections import defaultdict
+from sensor_msgs.msg import Image as ImageMessage
 
 from open_aoi_interfaces.srv import InspectionTrigger
 from open_aoi_interfaces.msg import InspectionTarget
 from open_aoi_core.services import StandardService
+from open_aoi_core.models import CameraModel, InspectionProfileModel, TemplateModel
 from open_aoi_core.constants import (
     MediatorServiceConstants,
     ImageAcquisitionConstants,
@@ -29,21 +31,22 @@ from open_aoi_core.controllers.inspection_profile import InspectionProfileContro
 from open_aoi_core.controllers.inspection import InspectionController
 from open_aoi_core.controllers.inspection_log import InspectionLogController
 from open_aoi_core.controllers.camera import CameraController
-from open_aoi_core.utils_ros import image_to_msg, msg_to_image
+from open_aoi_core.utils_ros import image_to_message, message_to_image
+from open_aoi_core.utils_basic import Profiler
 
 
-def _inspection_target_to_msg(target: InspectionTargetModel) -> InspectionTarget:
-    msg = InspectionTarget()
-    msg.id = target.id
+def _inspection_target_to_message(target: InspectionTargetModel) -> InspectionTarget:
+    message = InspectionTarget()
+    message.id = target.id
 
-    msg.rotation = float(target.inspection_zone.rotation)
+    message.rotation = float(target.inspection_zone.rotation)
 
-    msg.stat_left = target.inspection_zone.cc.stat_left
-    msg.stat_top = target.inspection_zone.cc.stat_top
-    msg.stat_width = target.inspection_zone.cc.stat_width
-    msg.stat_height = target.inspection_zone.cc.stat_height
+    message.stat_left = target.inspection_zone.cc.stat_left
+    message.stat_top = target.inspection_zone.cc.stat_top
+    message.stat_width = target.inspection_zone.cc.stat_width
+    message.stat_height = target.inspection_zone.cc.stat_height
 
-    return msg
+    return message
 
 
 class Service(StandardService):
@@ -74,6 +77,290 @@ class Service(StandardService):
             self.update_watch_pin_list,
         )
 
+    def _request_camera(self, request, response, camera_controller) -> CameraModel:
+        """Retrieve camera based on request"""
+
+        if request.camera_id_valid:
+            # Particular camera has been requested (request comes from UI)
+            try:
+                camera = camera_controller.retrieve(request.camera_id)
+                assert camera is not None, "Camera with specified id does not exist."
+                return camera
+            except Exception as e:
+                self.logger.error(str(e))
+                response.error = MediatorServiceConstants.Error.GENERAL
+                response.error_description = "Failed to retrieve related camera by id."
+                raise RuntimeError()
+        elif request.io_pin_valid:
+            # Particular pin was triggered (request comes from GPIO interface)
+            # Get camera with provided pin.
+            try:
+                camera = camera_controller.retrieve_by_io_pin_trigger(request.io_pin)
+                assert camera is not None, "Camera with specified id does not exist."
+                return camera
+            except Exception as e:
+                self.logger.error(str(e))
+                response.error = MediatorServiceConstants.Error.GENERAL
+                response.error_description = (
+                    "Failed to retrieve related camera by I/O pin."
+                )
+                raise RuntimeError()
+        else:
+            # No camera - no candies
+            self.logger.warning("Camera identification not provided")
+            response.error = MediatorServiceConstants.Error.GENERAL
+            response.error_description = "No camera identification provided."
+            raise RuntimeError()
+
+    def _request_test_image(
+        self, request, response, camera: CameraModel
+    ) -> ImageMessage:
+        """Trigger image service and await response"""
+        future = self.image_acquisition_capture_image(camera.ip_address)
+        sub_response = self.await_future(future)
+        if sub_response.error != ImageAcquisitionConstants.Error.NONE:
+            response.error = MediatorServiceConstants.Error.CAPTURE_FAILED
+            response.error_description = (
+                f"Failed to capture image. {response.error_description}"
+            )
+            raise RuntimeError()
+        return sub_response.image
+
+    def _request_identification(
+        self, request, response, test_image_message: ImageMessage
+    ) -> str:
+        # Product identification
+        future = self.product_identification_get_barcode(test_image_message)
+        sub_response = self.await_future(future)
+
+        identification_code = sub_response.identification_code
+        try:
+            identification_code = identification_code.strip()
+            assert sub_response.identification_code
+        except (AttributeError, AssertionError):
+            response.error = MediatorServiceConstants.Error.IDENTIFICATION_FAILED
+            response.error_description = f"Failed to identify product."
+            raise RuntimeError()
+        return identification_code
+
+    def _request_inspection_profile(
+        self,
+        request,
+        response,
+        inspection_profile_controller: InspectionProfileController,
+        identification_code: str,
+    ) -> InspectionProfileModel:
+        try:
+            inspection_profile = (
+                inspection_profile_controller.retrieve_by_identification_code(
+                    identification_code
+                )
+            )
+            assert (
+                inspection_profile is not None
+            ), "Inspection profile not detected by product code"
+        except Exception as e:
+            self.logger.error(str(e))
+            response.error = MediatorServiceConstants.Error.GENERAL
+            response.error_description = (
+                "Failed to retrieve inspection profile. Is profile active?"
+            )
+            raise RuntimeError()
+        return InspectionProfileModel
+
+    def _request_inspection_handlers_with_targets(
+        self, request, response, inspection_profile: InspectionProfileModel
+    ):
+        # Map each required inspection handler to related inspection zones
+        # Retrieve inspection handler source
+        inspection_handler_id_list = []  # ih1, ih2, ...
+        inspection_handler_source_list = []  # ih1 source, ih2 source, ...
+
+        inspection_handler_related_inspection_target_map = defaultdict(
+            list
+        )  # handler id: insp. target
+        inspection_handler_related_inspection_target_message_map = defaultdict(
+            list
+        )  # handler id: insp. target as message
+
+        try:
+            template = inspection_profile.template
+            assert template, "Template record not available"
+
+            inspection_zone_list = template.inspection_zone_list
+            assert len(inspection_zone_list), "Inspection zone list is empty"
+
+            for inspection_zone in inspection_zone_list:
+
+                inspection_target_list = inspection_zone.inspection_target_list
+                assert len(inspection_target_list), "Inspection target list is empty"
+
+                for target in inspection_target_list:
+
+                    inspection_handler = target.inspection_handler
+                    assert inspection_handler, "Inspection handler record not available"
+
+                    # Assign target to handler
+                    inspection_handler_related_inspection_target_map[
+                        inspection_handler.id
+                    ].append(target)
+                    inspection_handler_related_inspection_target_message_map[
+                        inspection_handler.id
+                    ].append(_inspection_target_to_message(target))
+
+                    if inspection_handler.id in inspection_handler_id_list:
+                        continue
+
+                    # Materialize inspection handler source
+                    inspection_handler_id_list.append(inspection_handler.id)
+                    source = inspection_handler.materialize_source().decode()
+                    inspection_handler_source_list.append(source)
+        except Exception as e:
+            self.logger.error(str(e))
+            response.error = MediatorServiceConstants.Error.RESOURCE_FAILED
+            response.error_description = (
+                "Failed to retrieve related inspection handler."
+            )
+            raise RuntimeError()
+
+        return (
+            inspection_handler_id_list,
+            inspection_handler_source_list,
+            inspection_handler_related_inspection_target_map,
+            inspection_handler_related_inspection_target_message_map,
+        )
+
+    def _request_template_image(
+        self, request, response, template: TemplateModel
+    ) -> ImageMessage:
+        try:
+            template_image = template.materialize_image()
+            template_image = np.array(template_image)
+            template_image_message = image_to_message(template_image)
+        except Exception as e:
+            self.logger.error(str(e))
+            response.error = MediatorServiceConstants.Error.RESOURCE_FAILED
+            response.error_description = "Failed to retrieve related template."
+            raise RuntimeError()
+
+        return template_image_message
+
+    def _request_inspection_handler_execution(
+        self,
+        request,
+        response,
+        inspection_handler_id_list,
+        inspection_handler_source_list,
+        inspection_handler_related_inspection_target_map,
+        inspection_handler_related_inspection_target_message_map,
+        test_image_message,
+        template_image_message,
+        inspection_profile: InspectionProfileModel,
+    ):
+
+        # Lists of all inspection targets and related logs (order is kept)
+        inspection_target_list_full = []
+        inspection_target_list_full_message = []
+        inspection_log_list_full_message = []
+
+        for inspection_handler_id, inspection_handler_source in zip(
+            inspection_handler_id_list, inspection_handler_source_list
+        ):
+            self.logger.info(f"Executing handler: {inspection_handler_id}")
+            try:
+                inspection_target_list = (
+                    inspection_handler_related_inspection_target_map[
+                        inspection_handler_id
+                    ]
+                )
+                inspection_target_message_list = (
+                    inspection_handler_related_inspection_target_message_map[
+                        inspection_handler_id
+                    ]
+                )
+                future = self.inspection_execution_execute_inspection(
+                    test_image_message=test_image_message,
+                    template_image_message=template_image_message,
+                    inspection_handler_source=inspection_handler_source,
+                    inspection_target_list=inspection_target_message_list,
+                    environment=inspection_profile.environment,
+                )
+
+                sub_response = self.await_future(future)
+                if sub_response.error != InspectionExecutionConstants.Error.NONE:
+                    self.logger.error(
+                        f"Failed to apply inspection execution. {sub_response.error}: {sub_response.error_description}"
+                    )
+                    response.error = MediatorServiceConstants.Error.CONTROL_FAILED
+                    response.error_description = f"Failed to apply inspection handler {inspection_handler_id}. {sub_response.error_description}"
+                    raise RuntimeError()
+
+                for inspection_target_message, inspection_log_message in zip(
+                    inspection_target_message_list,
+                    sub_response.inspection_log_list,
+                ):
+                    assert (
+                        inspection_target_message.id == inspection_log_message.id
+                    ), "Inspection log disorder detected."
+
+                # Collect all records (flatten)
+                inspection_target_list_full_message.extend(
+                    inspection_target_message_list
+                )
+                inspection_target_list_full.extend(inspection_target_list)
+                inspection_log_list_full_message.extend(
+                    sub_response.inspection_log_list
+                )
+            except Exception as e:
+                self.logger.error(str(e))
+                response.error = MediatorServiceConstants.Error.CONTROL_FAILED
+                response.error_description = (
+                    f"Failed to apply inspection handler: {inspection_handler_id}."
+                )
+                raise RuntimeError()
+
+            self.logger.info(f"Completed: {inspection_handler_id}")
+
+        return (
+            inspection_target_list_full,
+            inspection_target_list_full_message,
+            inspection_log_list_full_message,
+        )
+
+    def _request_log_dump(
+        self,
+        request,
+        response,
+        inspection_controller: InspectionController,
+        inspection_log_controller: InspectionLogController,
+        inspection_profile: InspectionProfileModel,
+        test_image_message,
+        inspection_target_list_full,
+        inspection_log_list_full_message,
+    ):
+        try:
+            inspection = inspection_controller.create(inspection_profile)
+
+            test_image = message_to_image(test_image_message)
+            test_image = Image.fromarray(test_image)
+
+            inspection.publish_image(test_image)
+            for inspection_target, inspection_log_message in zip(
+                inspection_target_list_full, inspection_log_list_full_message
+            ):
+                inspection_log_controller.create(
+                    inspection_target,
+                    inspection,
+                    inspection_log_message.log,
+                    inspection_log_message.passed,
+                )
+            inspection_controller.commit()
+        except Exception as e:
+            self.logger.error(str(e))
+            response.error = MediatorServiceConstants.Error.CONTROL_FAILED
+            response.error_description = f"Failed to store inspection results."
+            raise RuntimeError()
+
     def inspection(self, request, response):
         """Service curate inspection logic bringing all required resources together"""
 
@@ -87,251 +374,103 @@ class Service(StandardService):
             inspection_log_controller = InspectionLogController(session)
             camera_controller = CameraController(session)
 
-            # Camera identification
-            if request.camera_id_valid:
-                # Particular camera has been requested (request comes from UI)
-                try:
-                    camera = camera_controller.retrieve(request.camera_id)
-                except Exception as e:
-                    self.logger.error(str(e))
-                    sub_response.error = MediatorServiceConstants.Error.GENERAL
-                    sub_response.error_description = (
-                        "Failed to retrieve related camera by id."
-                    )
-                    return sub_response
-            elif request.io_pin_valid:
-                # Particular pin was triggered (request comes from GPIO interface)
-                # Get camera with provided pin.
-                try:
-                    camera = camera_controller.retrieve_by_io_pin_trigger(
-                        request.io_pin
-                    )
-                except Exception as e:
-                    self.logger.error(str(e))
-                    sub_response.error = MediatorServiceConstants.Error.GENERAL
-                    sub_response.error_description = (
-                        "Failed to retrieve related camera by I/O pin."
-                    )
-                    return sub_response
-            else:
-                # No camera - no candies
-                self.logger.warning("Camera identification not provided")
-                response.error = MediatorServiceConstants.Error.GENERAL
-                response.error_description = "No camera identification provided."
-                return response
+            p = Profiler()
 
-            self.logger.info(f"Camera retrieved [{camera.id}]: {camera.title}")
-
-            # Capture test image
-            future = self.image_acquisition_capture_image(camera.ip_address)
-            sub_response = self.await_future(future)
-            if sub_response.error != ImageAcquisitionConstants.Error.NONE:
-                response.error = MediatorServiceConstants.Error.CAPTURE_FAILED
-                response.error_description = (
-                    f"Failed to capture image. {response.error_description}"
+            try:
+                # Camera identification
+                camera = self._request_camera(request, response, camera_controller)
+                self.logger.info(
+                    f"Camera {camera.id} retrieved: {camera.title}. [{p.tick()}]"
                 )
-                return response
-            test_image_msg = sub_response.image
-            self.logger.info(f"Test image captured as message")
 
-            # Product identification
-            future = self.product_identification_get_barcode(test_image_msg)
-            # Decode test image while waiting for sub_response (will be used for logging purposed)
-            test_image = msg_to_image(test_image_msg)
-            sub_response = self.await_future(future)
+                # Capture test image
+                test_image_message = self._request_test_image(request, response, camera)
+                self.logger.info(f"Test image captured as message. [{p.tick()}]")
 
-            self.logger.info(f"Test image captured as message")
-
-            try:
-                assert (
-                    sub_response.identification_code is not None
-                    and sub_response.identification_code.strip()
+                # Product identification
+                identification_code = self._request_identification(
+                    request, response, test_image_message
                 )
-            except AssertionError:
-                response.error = MediatorServiceConstants.Error.IDENTIFICATION_FAILED
-                response.error_description = f"Failed to identify product."
-                return response
+                self.logger.info(f"Identification finished. [{p.tick()}]")
 
-            # Inspection profile retrieval
-            try:
-                inspection_profile = (
-                    inspection_profile_controller.retrieve_by_identification_code(
-                        sub_response.identification_code
-                    )
+                # Inspection profile retrieval
+                inspection_profile = self._request_inspection_profile(
+                    request,
+                    response,
+                    inspection_profile_controller,
+                    identification_code,
                 )
-                assert (
-                    inspection_profile is not None
-                ), "Inspection profile not detected by product code"
-            except Exception as e:
-                self.logger.error(str(e))
-                response.error = MediatorServiceConstants.Error.GENERAL
-                response.error_description = (
-                    "Failed to retrieve inspection profile. Is profile active?"
+                self.logger.info(
+                    f"Inspection profile {inspection_profile.id} retrieved: {inspection_profile.title}. [{p.tick()}]"
                 )
-                return response
 
-            self.logger.info(
-                f"Inspection profile retrieved [{inspection_profile.id}]: {inspection_profile.title}"
-            )
-
-            # Template retrieval
-            try:
-                template = inspection_profile.template
-            except Exception as e:
-                self.logger.error(str(e))
-                response.error = MediatorServiceConstants.Error.GENERAL
-                response.error_description = "Failed to retrieve related template."
-                return response
-
-            self.logger.info(f"Template retrieved [{template.id}]: {template.title}")
-
-            # Map each required inspection handler to related inspection zones
-            # Retrieve inspection handler source
-            inspection_handler_list = []
-            inspection_handler_source_list = []
-            inspection_handler_related_inspection_target_msg_map = defaultdict(list)
-            inspection_handler_related_inspection_target_map = defaultdict(list)
-            try:
-                inspection_zone_list = template.inspection_zone_list
-                assert len(inspection_zone_list), "Inspection zone list is empty"
-
-                for zone in inspection_zone_list:
-                    inspection_target_list = zone.inspection_target_list
-                    assert len(
-                        inspection_target_list
-                    ), "Inspection target list is empty"
-
-                    for target in inspection_target_list:
-                        handler = target.inspection_handler
-                        self.logger.info(
-                            f"Registering inspection target [{target.id}]: inspection zone: {zone.title}, inspection handler: {handler.title}"
-                        )
-                        inspection_handler_related_inspection_target_map[
-                            handler.id
-                        ].append(target)
-                        inspection_handler_related_inspection_target_msg_map[
-                            handler.id
-                        ].append(_inspection_target_to_msg(target))
-
-                        if handler.id in inspection_handler_list:
-                            continue
-
-                        inspection_handler_list.append(handler.id)
-                        # Materialize inspection handler source
-                        source = handler.materialize_source().decode()
-                        inspection_handler_source_list.append(source)
-            except Exception as e:
-                self.logger.error(str(e))
-                response.error = MediatorServiceConstants.Error.RESOURCE_FAILED
-                response.error_description = (
-                    "Failed to retrieve related inspection handler."
+                # Inspection handler target mapping
+                (
+                    inspection_handler_id_list,
+                    inspection_handler_source_list,
+                    inspection_handler_related_inspection_target_map,
+                    inspection_handler_related_inspection_target_message_map,
+                ) = self._request_inspection_handlers_with_targets(
+                    request, response, inspection_profile
                 )
+                self.logger.info(
+                    f"Inspection handler retrieved and inspection targets are ready. [{p.tick()}]"
+                )
+
+                # Template image materialization
+                template_image_message = self._request_template_image(
+                    request, response, inspection_profile.template
+                )
+                self.logger.info(f"Template image retrieved. [{p.tick()}]")
+
+                # Inspection handler execution
+                (
+                    inspection_target_list_full,
+                    inspection_target_list_full_message,
+                    inspection_log_list_full_message,
+                ) = self._request_inspection_handler_execution(
+                    request,
+                    response,
+                    inspection_handler_id_list,
+                    inspection_handler_source_list,
+                    inspection_handler_related_inspection_target_map,
+                    inspection_handler_related_inspection_target_message_map,
+                    test_image_message,
+                    template_image_message,
+                    inspection_profile,
+                )
+                self.logger.info(f"Inspection execution completed. [{p.tick()}]")
+
+                # Log dumping
+                self._request_log_dump(
+                    request,
+                    response,
+                    inspection_controller,
+                    inspection_log_controller,
+                    inspection_profile,
+                    test_image_message,
+                    inspection_target_list_full,
+                    inspection_log_list_full_message,
+                )
+                self.logger.info(f"Inspection log dumped. [{p.tick()}]")
+
+                response.overall_passed = all(
+                    [
+                        inspection_log.passed
+                        for inspection_log in inspection_log_list_full_message
+                    ]
+                )
+                response.image = test_image_message
+                response.inspection_log_list = inspection_log_list_full_message
+                response.inspection_target_list = inspection_target_list_full_message
+                response.error = MediatorServiceConstants.Error.NONE
+
+                self.logger.info(f"Response constructed and returned. [{p.tick()}]")
                 return response
 
-            self.logger.info(
-                f"Inspection handler retrieved and inspection targets are ready"
-            )
-
-            # Template image materialization
-
-            try:
-                template_image = template.materialize_image()
-                template_image = np.array(template_image)
-                template_image_msg = image_to_msg(template_image)
-            except Exception as e:
-                self.logger.error(str(e))
-                response.error = MediatorServiceConstants.Error.RESOURCE_FAILED
-                response.error_description = "Failed to retrieve related template."
+            except RuntimeError:
+                self.logger.info(f"Error ocurred while processing request.")
                 return response
-
-            self.logger.info(f"Template image retrieved: {template_image.shape}")
-
-            inspection_target_list_full_msg = []
-            inspection_target_list_full = []
-            inspection_log_list_full_msg = []
-            for inspection_handler_id, inspection_handler_source in zip(
-                inspection_handler_list, inspection_handler_source_list
-            ):
-                self.logger.info(f"Executing: {inspection_handler_id}")
-                try:
-                    inspection_target_list = (
-                        inspection_handler_related_inspection_target_map[
-                            inspection_handler_id
-                        ]
-                    )
-                    inspection_target_msg_list = (
-                        inspection_handler_related_inspection_target_msg_map[
-                            inspection_handler_id
-                        ]
-                    )
-                    future = self.inspection_execution_execute_inspection(
-                        template_image_msg=template_image_msg,
-                        test_image_msg=test_image_msg,
-                        inspection_handler_source=inspection_handler_source,
-                        environment=inspection_profile.environment,
-                        inspection_target_list=inspection_target_msg_list,
-                    )
-                    sub_response = self.await_future(future)
-                    if sub_response.error != InspectionExecutionConstants.Error.NONE:
-                        self.logger.error(
-                            f"Failed to apply inspection execution. {sub_response.error}: {sub_response.error_description}"
-                        )
-                        response.error = MediatorServiceConstants.Error.CONTROL_FAILED
-                        response.error_description = f"Failed to apply inspection handler {inspection_handler_id}. {sub_response.error_description}"
-                        return response
-                    for inspection_target_msg, inspection_log_msg in zip(
-                        inspection_target_msg_list, sub_response.inspection_log_list
-                    ):
-                        assert (
-                            inspection_target_msg.id == inspection_log_msg.id
-                        ), "Inspection log disorder detected."
-
-                    # Collect all logs before creating inspection record
-                    inspection_target_list_full_msg.extend(inspection_target_msg_list)
-                    inspection_target_list_full.extend(inspection_target_list)
-                    inspection_log_list_full_msg.extend(
-                        sub_response.inspection_log_list
-                    )
-                except Exception as e:
-                    self.logger.error(str(e))
-                    response.error = MediatorServiceConstants.Error.CONTROL_FAILED
-                    response.error_description = (
-                        f"Failed to apply inspection handler {inspection_handler_id}."
-                    )
-                    return response
-                self.logger.info(f"Completed: {inspection_handler_id}")
-
-            self.logger.info(f"Inspection execution completed")
-
-            try:
-                inspection = inspection_controller.create(inspection_profile)
-                inspection.publish_image(Image.fromarray(test_image))
-                for inspection_target, inspection_log_msg in zip(
-                    inspection_target_list_full, inspection_log_list_full_msg
-                ):
-                    inspection_log_controller.create(
-                        inspection_target,
-                        inspection,
-                        inspection_log_msg.log,
-                        inspection_log_msg.passed,
-                    )
-                inspection_controller.commit()
-            except Exception as e:
-                self.logger.error(str(e))
-                response.error = MediatorServiceConstants.Error.CONTROL_FAILED
-                response.error_description = f"Failed to store inspection results."
-                return response
-
-            response.overall_passed = all(
-                [record.passed for record in inspection_log_list_full_msg]
-            )
-            response.image = test_image_msg
-            response.inspection_log_list = inspection_log_list_full_msg
-            response.inspection_target_list = inspection_target_list_full_msg
-            response.error = MediatorServiceConstants.Error.NONE
-
-            self.logger.info(f"Response constructed and returned")
-            return response
 
     def update_watch_pin_list(self):
         """Callback to update GPIO interface with new pins to watch"""

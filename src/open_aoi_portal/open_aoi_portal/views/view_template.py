@@ -11,7 +11,7 @@ from nicegui import ui, app
 from fastapi.responses import RedirectResponse
 
 from open_aoi_core.constants import ImageAcquisitionConstants, SystemLimit
-from open_aoi_core.utils_ros import msg_to_image
+from open_aoi_core.utils_ros import message_to_image
 from open_aoi_core.services import StandardClient
 from open_aoi_core.models import TemplateModel
 from open_aoi_core.controllers.template import TemplateController
@@ -163,7 +163,7 @@ def get_view(node: StandardClient):
                 ui.notify("Failed to capture image.", type="warning")
                 return
 
-            template_image = msg_to_image(response.image)
+            template_image = message_to_image(response.image)
             template_image = Image.fromarray(template_image)
             template_image_element.set_source(template_image)
 

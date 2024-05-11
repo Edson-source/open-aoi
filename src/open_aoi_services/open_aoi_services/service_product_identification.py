@@ -5,12 +5,11 @@
 
 import rclpy
 import cv2 as cv2
-from rclpy.executors import MultiThreadedExecutor
 
-from open_aoi_core.services import StandardService
 from open_aoi_interfaces.srv import IdentificationTrigger
-from open_aoi_core.utils_basic import isolate_product
-from open_aoi_core.utils_ros import msg_to_image
+from open_aoi_core.services import StandardService
+from open_aoi_core.utils_basic import isolate_product, Profiler
+from open_aoi_core.utils_ros import message_to_image
 from open_aoi_core.constants import ProductIdentificationConstants, SystemServiceStatus
 
 
@@ -19,7 +18,6 @@ class Service(StandardService):
 
     def __init__(self):
         super().__init__()
-        # --- Services ---
         self.registration_service = self.create_service(
             IdentificationTrigger,
             f"{self.NODE_NAME}/get_barcode",
@@ -27,38 +25,40 @@ class Service(StandardService):
         )
 
     def get_barcode(self, request, response):
-        self.logger.info("Barcode identification triggered")
+        p = Profiler()
+        self.logger.info(f"Barcode identification triggered. [{p.tick()}]")
         self.set_status(SystemServiceStatus.BUSY)
 
+        identification_code = ""
         try:
-            im = msg_to_image(request.image)
+            im = message_to_image(request.image)
+            self.logger.info(f"Message converted to image. [{p.tick()}]")
 
-            isolated = isolate_product(im)  # TODO: set as parameters
-            isolated = cv2.resize(isolated, (1000, 1000), interpolation=cv2.INTER_LINEAR) 
+            isolated = isolate_product(im)  # TODO: remove
+            self.logger.info(f"Product isolated. [{p.tick()}]")
+
+            isolated = cv2.resize(  # TODO: remove
+                isolated, (1000, 1000), interpolation=cv2.INTER_LINEAR
+            )
+            self.logger.info(f"Image resized. [{p.tick()}]")
 
             bardet = cv2.barcode.BarcodeDetector()
             identification_code, *_ = bardet.detectAndDecode(im)
-
-            response.identification_code = identification_code
+            self.logger.info(f"Barcode identified and decoded. [{p.tick()}]")
         except Exception as e:
-            # No errors expected
             self.logger.error(str(e))
+        response.identification_code = identification_code
 
         self.set_status(SystemServiceStatus.IDLE)
-        self.logger.info(f"Barcode identification returned: {identification_code}")
+        self.logger.info(f"Barcode detected: {identification_code}")
+
         return response
 
 
 def main():
     rclpy.init()
     service = Service()
-
-    executor = MultiThreadedExecutor(10)
-    executor.add_node(service)
-
-    executor.spin()
-
-    executor.shutdown()
+    rclpy.spin(service)
     rclpy.shutdown()
 
 

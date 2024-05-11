@@ -10,8 +10,8 @@ from open_aoi_core.services import StandardService
 from open_aoi_interfaces.msg import InspectionLog
 from open_aoi_interfaces.srv import InspectionExecutionTrigger
 from open_aoi_core.constants import InspectionExecutionConstants, SystemServiceStatus
-from open_aoi_core.utils_ros import msg_to_image
-from open_aoi_core.utils_basic import dynamic_import
+from open_aoi_core.utils_ros import message_to_image
+from open_aoi_core.utils_basic import dynamic_import, Profiler
 from open_aoi_core.content.modules import IModule
 
 
@@ -34,9 +34,11 @@ class Service(StandardService):
         self.logger.info("Execution request received")
         self.set_status(SystemServiceStatus.BUSY)
 
-        # TODO: align and isolate product
+        p = Profiler()
+
+        # Decode test image
         try:
-            test_image = msg_to_image(request.test_image)
+            test_image = message_to_image(request.test_image)
         except Exception as e:
             self.logger.error(str(e))
             self.logger.info("Failed to decode test image")
@@ -46,11 +48,11 @@ class Service(StandardService):
 
             self.set_status(SystemServiceStatus.IDLE)
             return response
+        self.logger.info(f"Test image decoded. [{p.tick()}]")
 
-        self.logger.info("Test image decoded")
-
+        # Decode template image
         try:
-            template_image = msg_to_image(request.template_image)
+            template_image = message_to_image(request.template_image)
         except Exception as e:
             self.logger.error(str(e))
             self.logger.info("Failed to decode template image")
@@ -60,9 +62,9 @@ class Service(StandardService):
 
             self.set_status(SystemServiceStatus.IDLE)
             return response
+        self.logger.info(f"Template image decoded. [{p.tick()}]")
 
-        self.logger.info("Template image decoded")
-
+        # Import handler
         source = request.inspection_handler
         self.logger.info(source)
         try:
@@ -80,9 +82,9 @@ class Service(StandardService):
 
             self.set_status(SystemServiceStatus.IDLE)
             return response
+        self.logger.info(f"Handler was imported. [{p.tick()}]")
 
-        self.logger.info("Controller is valid")
-
+        # Prase environment
         environment = StringIO(request.environment)
         try:
             environment = dotenv_values(stream=environment)
@@ -95,8 +97,7 @@ class Service(StandardService):
 
             self.set_status(SystemServiceStatus.IDLE)
             return response
-
-        self.logger.info("Environment is valid")
+        self.logger.info(f"Environment was imported. [{p.tick()}]")
 
         inspection_zone_list = [
             IModule.InspectionZone(
@@ -108,17 +109,18 @@ class Service(StandardService):
             )
             for ct in request.inspection_target_list
         ]
-        self.logger.info("Inspection zone list constructed")
+        self.logger.info(f"Inspection zone list constructed. [{p.tick()}]")
 
+        # Invoke handler
         try:
-            self.logger.info("Process requested")
+            self.logger.info(f"Inspection handler invoked. [{p.tick()}]")
             inspection_log_list = module.process(
                 environment=environment,
                 test_image=test_image,
                 template_image=template_image,
                 inspection_zone_list=inspection_zone_list,
             )
-            self.logger.info("Process finished")
+            self.logger.info(f"Inspection handler finished. [{p.tick()}]")
         except Exception as e:
             self.logger.error(str(e))
             self.logger.info(f"Failed to execute inspection handler")
@@ -131,18 +133,19 @@ class Service(StandardService):
             self.set_status(SystemServiceStatus.IDLE)
             return response
 
-        inspection_log_list_msg = []
+        # Construct response
+        inspection_log_list_message = []
         for log, target in zip(inspection_log_list, request.inspection_target_list):
             ros_log = InspectionLog()
             ros_log.id = target.id
             ros_log.log = log.log
             ros_log.passed = log.passed
-            inspection_log_list_msg.append(ros_log)
-        response.inspection_log_list = inspection_log_list_msg
+            inspection_log_list_message.append(ros_log)
+        response.inspection_log_list = inspection_log_list_message
         response.error = InspectionExecutionConstants.Error.NONE
 
         self.set_status(SystemServiceStatus.IDLE)
-        self.logger.info("Log constructed and returned")
+        self.logger.info(f"Log constructed and returned. [{p.tick()}]")
         return response
 
 

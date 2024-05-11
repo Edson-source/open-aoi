@@ -2,7 +2,7 @@ import numpy as np
 from sensor_msgs.msg import Image as Image
 
 
-def image_to_msg(im: np.ndarray):
+def image_to_message(im: np.ndarray):
     """Convert image for to ROS image message format"""
     msg = Image()
     msg.encoding = "bgr8"
@@ -12,7 +12,7 @@ def image_to_msg(im: np.ndarray):
     return msg
 
 
-def msg_to_image(msg: Image) -> np.ndarray:
+def message_to_image(msg: Image) -> np.ndarray:
     """Convert image from ROS image format"""
     data = np.array(msg.data)
     return data.reshape((msg.height, msg.width, 3))
