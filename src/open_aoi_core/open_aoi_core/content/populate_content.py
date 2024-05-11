@@ -36,8 +36,6 @@ if __name__ == "__main__":
                 allow_system_view=True,
                 allow_inspection_view=True,
                 allow_inspection_control=True,
-                allow_accessor_operations=False,
-                allow_device_operations=False,
                 allow_system_operations=False,
                 allow_statistics_view=False,
             )
@@ -49,8 +47,6 @@ if __name__ == "__main__":
                 allow_system_view=True,
                 allow_inspection_view=True,
                 allow_inspection_control=True,
-                allow_accessor_operations=True,
-                allow_device_operations=True,
                 allow_system_operations=True,
                 allow_statistics_view=True,
             )

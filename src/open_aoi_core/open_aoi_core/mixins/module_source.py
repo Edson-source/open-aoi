@@ -8,7 +8,7 @@ from typing import Optional, Tuple
 
 from open_aoi_core.mixins import MinioBasedMixin
 from open_aoi_core.constants import SystemBuckets
-from open_aoi_core.utils_basic import dynamic_import
+from open_aoi_core.content.modules import _dynamic_import
 from open_aoi_core.exceptions import AssetIntegrityException
 
 
@@ -55,7 +55,7 @@ class ModuleSourceMixin(MinioBasedMixin):
     def validate_source(cls, source: bytes) -> Tuple[bool, str]:
         """Validate modules content (python code). Call before uploading source to storage."""
         try:
-            dynamic_import(source)
+            _dynamic_import(source)
         except AssetIntegrityException as e:
             return False, str(e)
         return True, "Module is valid."
@@ -64,7 +64,7 @@ class ModuleSourceMixin(MinioBasedMixin):
     def get_source_documentation(cls, source: bytes) -> str:
         """Return documentation from module source."""
         try:
-            _, doc = dynamic_import(source)
+            _, doc = _dynamic_import(source)
             return doc
         except AssetIntegrityException as e:
             return "No documentation available"

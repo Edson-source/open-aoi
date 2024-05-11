@@ -1,10 +1,10 @@
-from typing import List
+from typing import List, Tuple
 from dataclasses import dataclass
 
 import numpy as np
 
 from open_aoi_core.utils_basic import crop_stat_cv
-
+from open_aoi_core.exceptions import AssetIntegrityException
 
 class IModule:
     """
@@ -88,3 +88,26 @@ class IModule:
         inspection_zone_list: List[InspectionZone],
     ) -> List[InspectionLog]:
         raise NotImplementedError()
+
+
+def _dynamic_import(source: bytes) -> Tuple[IModule, str]:
+    """
+    Import dynamically generated code as a module.
+    """
+    ctx = {}
+
+    try:
+        exec(source.decode(), ctx, ctx)
+    except Exception as e:
+        raise AssetIntegrityException(f"Failed to execute module: {str(e)}") from e
+
+    try:
+        assert ctx.get("DOCUMENTATION") is not None, "Documentation is missing."
+        assert ctx.get("module") is not None, "Module instance function is missing."
+        assert isinstance(
+            ctx.get("module"), IModule
+        ), "Module does not provide IModule interface."
+    except AssertionError as e:
+        raise AssetIntegrityException(f"Failed to validate module: {str(e)}") from e
+
+    return ctx.get("module"), ctx.get("DOCUMENTATION")

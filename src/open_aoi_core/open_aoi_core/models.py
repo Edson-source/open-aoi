@@ -132,7 +132,7 @@ class InspectionHandlerModel(Base, ModuleSourceMixin):
     # Public description
     title: Mapped[str] = mapped_column(String(SystemLimit.TITLE_LENGTH), nullable=False)
     description: Mapped[str] = mapped_column(
-        String(SystemLimit.DESCRIPTION_LENGTH), nullable=False
+        String(SystemLimit.DOCUMENTATION_LENGTH), nullable=False
     )
 
     # If null, should not be used!

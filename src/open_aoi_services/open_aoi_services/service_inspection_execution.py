@@ -11,8 +11,8 @@ from open_aoi_interfaces.msg import InspectionLog
 from open_aoi_interfaces.srv import InspectionExecutionTrigger
 from open_aoi_core.constants import InspectionExecutionConstants, SystemServiceStatus
 from open_aoi_core.utils_ros import message_to_image
-from open_aoi_core.utils_basic import dynamic_import, Profiler
-from open_aoi_core.content.modules import IModule
+from open_aoi_core.utils_basic import Profiler
+from open_aoi_core.content.modules import IModule, _dynamic_import
 
 
 class Service(StandardService):
@@ -68,7 +68,7 @@ class Service(StandardService):
         source = request.inspection_handler
         self.logger.info(source)
         try:
-            module, _ = dynamic_import(source.encode())
+            module, _ = _dynamic_import(source.encode())
         except Exception as e:
             self.logger.error(str(e))
             self.logger.info(

@@ -5,9 +5,6 @@ import cv2 as cv2
 import numpy as np
 from PIL import Image
 
-from open_aoi_core.content.modules import IModule
-from open_aoi_core.exceptions import AssetIntegrityException
-
 
 class Profiler:
     """Measure system performance"""
@@ -129,26 +126,3 @@ def align(image: np.ndarray, template: np.ndarray, feature_point_amount: int = 1
     image = cv2.warpPerspective(image, H, (w, h))
     # Return the aligned image
     return image
-
-
-def dynamic_import(source: bytes) -> Tuple[IModule, str]:
-    """
-    Import dynamically generated code as a module.
-    """
-    ctx = {}
-
-    try:
-        exec(source.decode(), ctx, ctx)
-    except Exception as e:
-        raise AssetIntegrityException(f"Failed to execute module: {str(e)}") from e
-
-    try:
-        assert ctx.get("DOCUMENTATION") is not None, "Documentation is missing."
-        assert ctx.get("module") is not None, "Module instance function is missing."
-        assert isinstance(
-            ctx.get("module"), IModule
-        ), "Module does not provide IModule interface."
-    except AssertionError as e:
-        raise AssetIntegrityException(f"Failed to validate module: {str(e)}") from e
-
-    return ctx.get("module"), ctx.get("DOCUMENTATION")
