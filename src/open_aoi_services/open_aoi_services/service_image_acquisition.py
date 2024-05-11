@@ -8,7 +8,7 @@ from rcl_interfaces.msg import ParameterDescriptor, SetParametersResult
 
 from open_aoi_interfaces.srv import ImageAcquisitionTrigger
 from open_aoi_core.settings import SIMULATION
-from open_aoi_core.utils_ros import image_to_message
+from open_aoi_core.utils_ros import cv2_to_imgmsg
 from open_aoi_core.utils_basic import Profiler
 from open_aoi_core.constants import ImageAcquisitionConstants, SystemServiceStatus
 from open_aoi_core.services import StandardService
@@ -164,7 +164,7 @@ class Service(StandardService):
                 image = grab_result.Array
                 self.logger.info(f"Grabbed successfully: {image.shape}. [{p.tick()}]")
                 grab_result.Release()
-                response.image = image_to_message(image)
+                response.image = cv2_to_imgmsg(image)
                 response.error = ImageAcquisitionConstants.Error.NONE
                 response.error_description = ""
                 self.logger.info(f"Image returned. [{p.tick()}]")

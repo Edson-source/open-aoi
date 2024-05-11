@@ -9,7 +9,7 @@ import cv2 as cv2
 from open_aoi_interfaces.srv import IdentificationTrigger
 from open_aoi_core.services import StandardService
 from open_aoi_core.utils_basic import isolate_product, Profiler
-from open_aoi_core.utils_ros import message_to_image
+from open_aoi_core.utils_ros import imgmsg_to_cv2
 from open_aoi_core.constants import ProductIdentificationConstants, SystemServiceStatus
 
 
@@ -31,19 +31,11 @@ class Service(StandardService):
 
         identification_code = ""
         try:
-            im = message_to_image(request.image)
+            image = imgmsg_to_cv2(request.image)
             self.logger.info(f"Message converted to image. [{p.tick()}]")
 
-            isolated = isolate_product(im)  # TODO: remove
-            self.logger.info(f"Product isolated. [{p.tick()}]")
-
-            isolated = cv2.resize(  # TODO: remove
-                isolated, (1000, 1000), interpolation=cv2.INTER_LINEAR
-            )
-            self.logger.info(f"Image resized. [{p.tick()}]")
-
             bardet = cv2.barcode.BarcodeDetector()
-            identification_code, *_ = bardet.detectAndDecode(im)
+            identification_code, *_ = bardet.detectAndDecode(image)
             self.logger.info(f"Barcode identified and decoded. [{p.tick()}]")
         except Exception as e:
             self.logger.error(str(e))

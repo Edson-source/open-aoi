@@ -12,7 +12,7 @@ from fastapi.responses import RedirectResponse
 from PIL import Image
 
 from open_aoi_portal.settings import ACCESS_PAGE, HOME_PAGE
-from open_aoi_core.utils_ros import message_to_image
+from open_aoi_core.utils_ros import imgmsg_to_cv2
 from open_aoi_core.utils_basic import scale
 from open_aoi_core.constants import ImageAcquisitionConstants, SystemLimit
 from open_aoi_core.services import StandardClient
@@ -159,7 +159,7 @@ def get_view(node: StandardClient):
                 ui.notify("Failed to capture image.", type="warning")
                 return
 
-            image = message_to_image(response.image)
+            image = imgmsg_to_cv2(response.image)
             image = Image.fromarray(image)
 
             # Reduce size to speed up network image transfer

@@ -10,7 +10,7 @@ from open_aoi_core.services import StandardService
 from open_aoi_interfaces.msg import InspectionLog
 from open_aoi_interfaces.srv import InspectionExecutionTrigger
 from open_aoi_core.constants import InspectionExecutionConstants, SystemServiceStatus
-from open_aoi_core.utils_ros import message_to_image
+from open_aoi_core.utils_ros import imgmsg_to_cv2
 from open_aoi_core.utils_basic import Profiler
 from open_aoi_core.content.modules import IModule, _dynamic_import
 
@@ -38,7 +38,7 @@ class Service(StandardService):
 
         # Decode test image
         try:
-            test_image = message_to_image(request.test_image)
+            test_image = imgmsg_to_cv2(request.test_image)
         except Exception as e:
             self.logger.error(str(e))
             self.logger.info("Failed to decode test image")
@@ -52,7 +52,7 @@ class Service(StandardService):
 
         # Decode template image
         try:
-            template_image = message_to_image(request.template_image)
+            template_image = imgmsg_to_cv2(request.template_image)
         except Exception as e:
             self.logger.error(str(e))
             self.logger.info("Failed to decode template image")
@@ -66,7 +66,6 @@ class Service(StandardService):
 
         # Import handler
         source = request.inspection_handler
-        self.logger.info(source)
         try:
             module, _ = _dynamic_import(source.encode())
         except Exception as e:

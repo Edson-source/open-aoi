@@ -235,25 +235,24 @@ def get_view(node: StandardClient):
 
             with defect_types_container:
                 if len(defect_types):
-                    with ui.scroll_area().classes("w-full"):
-                        with ui.list().classes("w-full"):
-                            for defect_type in defect_types:
-                                with ui.item().props("clickable").classes("w-full"):
-                                    with ui.item_section():
-                                        ui.item_label(defect_type.title)
-                                        ui.item_label(defect_type.description).props(
-                                            "caption"
-                                        )
-                                    with ui.item_section().props("side"):
-                                        ui.button(
-                                            on_click=partial(
-                                                _handle_defect_type_delete, defect_type
-                                            ),
-                                            icon="close",
-                                            color="negative",
-                                        ).props(
-                                            "size=sm",
-                                        )
+                    with ui.list().classes("w-full"):
+                        for defect_type in defect_types:
+                            with ui.item().props("clickable").classes("w-full"):
+                                with ui.item_section():
+                                    ui.item_label(defect_type.title)
+                                    ui.item_label(defect_type.description).props(
+                                        "caption"
+                                    )
+                                with ui.item_section().props("side"):
+                                    ui.button(
+                                        on_click=partial(
+                                            _handle_defect_type_delete, defect_type
+                                        ),
+                                        icon="close",
+                                        color="negative",
+                                    ).props(
+                                        "size=sm",
+                                    )
                 else:
                     with ui.card().classes("w-full bg-primary text-white"):
                         ui.markdown("**No defect types to show.**")
@@ -276,52 +275,54 @@ def get_view(node: StandardClient):
 
             with modules_container:
                 if len(inspection_handlers):
-                    with ui.scroll_area().classes("w-full"):
-                        with ui.list().classes("w-full"):
-                            for inspection_handler in inspection_handlers:
-                                with ui.item().props("clickable").classes("w-full"):
-                                    ui.tooltip(inspection_handler.description)
-                                    with ui.item_section():
-                                        ui.item_label(
-                                            f"{ICON_INVALID_MODULE if inspection_handler.blob is None else ICON_VALID_MODULE} {inspection_handler.defect_type.title} | {inspection_handler.title}"
+                    with ui.list().classes("w-full"):
+                        for inspection_handler in inspection_handlers:
+                            with ui.item().props("clickable").classes("w-full"):
+                                with ui.item_section():
+                                    with ui.row():
+                                        ui.markdown(
+                                            f"{ICON_INVALID_MODULE if inspection_handler.blob is None else ICON_VALID_MODULE} **{inspection_handler.title}** {inspection_handler.defect_type.title}"
                                         )
-                                        ui.item_label(
-                                            inspection_handler.description
-                                        ).props("caption")
-                                    with ui.item_section().props("side"):
-                                        with ui.row():
-                                            ui.button(
-                                                on_click=partial(
-                                                    _handle_module_upload_request,
-                                                    inspection_handler,
-                                                ),
-                                                color="white",
-                                                icon="upload",
-                                            ).props(
-                                                "size=sm",
+                                        ui.space()
+                                        ui.button(
+                                            on_click=partial(
+                                                _handle_module_upload_request,
+                                                inspection_handler,
+                                            ),
+                                            color="white",
+                                            icon="upload",
+                                        ).props(
+                                            "size=sm",
+                                        )
+                                        download = ui.button(
+                                            on_click=partial(
+                                                _handle_module_download_request,
+                                                inspection_handler,
+                                            ),
+                                            color="white",
+                                            icon="download",
+                                        ).props(
+                                            "size=sm",
+                                        )
+                                        if inspection_handler.blob is None:
+                                            download.disable()
+                                        ui.button(
+                                            on_click=partial(
+                                                _handle_module_delete,
+                                                inspection_handler,
+                                            ),
+                                            icon="close",
+                                            color="negative",
+                                        ).props("size=sm")
+                                    with ui.card().classes(
+                                        "w-full bg-grey-8 text-white"
+                                    ):
+                                        ui.html(
+                                            inspection_handler.description.strip().replace(
+                                                "\n", "<br>"
                                             )
-                                            download = ui.button(
-                                                on_click=partial(
-                                                    _handle_module_download_request,
-                                                    inspection_handler,
-                                                ),
-                                                color="white",
-                                                icon="download",
-                                            ).props(
-                                                "size=sm",
-                                            )
-                                            if inspection_handler.blob is None:
-                                                download.disable()
-                                            ui.button(
-                                                on_click=partial(
-                                                    _handle_module_delete,
-                                                    inspection_handler,
-                                                ),
-                                                icon="close",
-                                                color="negative",
-                                            ).props(
-                                                "size=sm",
-                                            )
+                                        )
+
                 else:
                     with ui.card().classes("w-full bg-primary text-white"):
                         ui.markdown("**No modules to show**")
@@ -339,48 +340,46 @@ def get_view(node: StandardClient):
             )
             ui.markdown("##### **Defects**")
             ui.markdown("Define defect here to assign them to modules.")
-            with ui.grid(columns=2).classes("w-full"):
-                with ui.column():
-                    defect_type_title_input = await inject_text_field(
-                        "Defect title", "Enter defect title", SystemLimit.TITLE_LENGTH
+            with ui.column().classes("w-full"):
+                defect_type_title_input = await inject_text_field(
+                    "Defect title", "Enter defect title", SystemLimit.TITLE_LENGTH
+                )
+                defect_type_description_input = await inject_text_field(
+                    "Defect description",
+                    "Enter defect description",
+                    SystemLimit.DESCRIPTION_LENGTH,
+                )
+                with ui.row().classes("w-full"):
+                    ui.space()
+                    ui.button(
+                        "Create",
+                        color="positive",
+                        on_click=_handle_defect_type_create,
                     )
-                    defect_type_description_input = await inject_text_field(
-                        "Defect description",
-                        "Enter defect description",
-                        SystemLimit.DESCRIPTION_LENGTH,
-                    )
-                    with ui.row().classes("w-full"):
-                        ui.space()
-                        ui.button(
-                            "Create",
-                            color="positive",
-                            on_click=_handle_defect_type_create,
-                        )
-                defect_types_container = ui.row()
+            defect_types_container = ui.row().classes("w-full")
 
             ui.markdown("##### **Modules**")
             ui.markdown(
                 "Upload custom inspection code here! For more information please refer project documentation. Each module may provide own documentation, which will be visible after upload."
             )
-            with ui.grid(columns=2).classes("w-full"):
-                with ui.column():
-                    module_title_input = await inject_text_field(
-                        "Module title", "Enter module title", SystemLimit.TITLE_LENGTH
-                    )
-                    module_defect_type_selection = ui.select(
-                        {},
-                        label="Detectable defect type",
-                        validation={
-                            "Defect type is required": lambda value: value is not None
-                        },
-                    ).classes("w-full")
+            with ui.column().classes("w-full"):
+                module_title_input = await inject_text_field(
+                    "Module title", "Enter module title", SystemLimit.TITLE_LENGTH
+                )
+                module_defect_type_selection = ui.select(
+                    {},
+                    label="Detectable defect type",
+                    validation={
+                        "Defect type is required": lambda value: value is not None
+                    },
+                ).classes("w-full")
 
-                    with ui.row().classes("w-full"):
-                        ui.space()
-                        ui.button(
-                            "Create", color="positive", on_click=_handle_module_create
-                        )
-                modules_container = ui.row()
+                with ui.row().classes("w-full"):
+                    ui.space()
+                    ui.button(
+                        "Create", color="positive", on_click=_handle_module_create
+                    )
+            modules_container = ui.row().classes("w-full")
 
             await _inject_module_list()
             await _inject_defect_list()

@@ -16,7 +16,7 @@ from rcl_interfaces.srv._set_parameters import SetParameters
 from rcl_interfaces.msg import Parameter, ParameterType, ParameterValue
 from sensor_msgs.msg import Image as ImageMessage
 
-from open_aoi_interfaces.msg import InspectionTarget as InspectionTargetMSg
+from open_aoi_interfaces.msg import InspectionTarget as InspectionTargetMessage
 from open_aoi_interfaces.srv import (
     ImageAcquisitionTrigger,
     IdentificationTrigger,
@@ -106,7 +106,7 @@ class ProductIdentificationClient(BaseClient):
     product_identification_get_barcode_cli: ServiceClient
     product_identification_get_status_cli: ServiceClient
 
-    def product_identification_get_barcode(self, image_msg: ImageMessage):
+    def product_identification_get_barcode(self, image_message: ImageMessage):
         """
         Dispatch product identification request. Require image as message as it is meant to work on
         image acquisition service results (prevent unnecessary conversion from message  to image and back)
@@ -114,7 +114,7 @@ class ProductIdentificationClient(BaseClient):
         """
         try:
             req = IdentificationTrigger.Request()
-            req.image = image_msg
+            req.image = image_message
 
             self.logger.info("Identification request dispatched")
             return self.product_identification_get_barcode_cli.call_async(req)
@@ -129,11 +129,11 @@ class InspectionExecutionClient(BaseClient):
 
     def inspection_execution_execute_inspection(
         self,
-        test_image_msg: ImageMessage,
-        template_image_msg: ImageMessage,
+        test_image_message: ImageMessage,
+        template_image_message: ImageMessage,
         environment: str,
         inspection_handler_source: str,
-        inspection_target_list: List[InspectionTargetMSg],
+        inspection_target_list: List[InspectionTargetMessage],
     ):
         """
         Dispatch inspection execution request. Require image as message as it is meant to work on
@@ -143,8 +143,8 @@ class InspectionExecutionClient(BaseClient):
         try:
             req = InspectionExecutionTrigger.Request()
 
-            req.test_image = test_image_msg
-            req.template_image = template_image_msg
+            req.test_image = test_image_message
+            req.template_image = template_image_message
 
             req.environment = environment
             req.inspection_handler = inspection_handler_source
@@ -329,8 +329,8 @@ class StandardClient(
             ServiceStatus,
         )
 
-    def _acquire_service(self, name: str, property_name: str, msg):
-        cli = self.create_client(msg, name, callback_group=self._group)
+    def _acquire_service(self, name: str, property_name: str, message_type):
+        cli = self.create_client(message_type, name, callback_group=self._group)
         setattr(self, property_name, cli)
 
     def await_dependencies(self, service_cli_list: List[ServiceClient]):

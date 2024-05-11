@@ -31,7 +31,7 @@ from open_aoi_core.controllers.inspection_profile import InspectionProfileContro
 from open_aoi_core.controllers.inspection import InspectionController
 from open_aoi_core.controllers.inspection_log import InspectionLogController
 from open_aoi_core.controllers.camera import CameraController
-from open_aoi_core.utils_ros import image_to_message, message_to_image
+from open_aoi_core.utils_ros import cv2_to_imgmsg, imgmsg_to_cv2
 from open_aoi_core.utils_basic import Profiler
 
 
@@ -166,7 +166,7 @@ class Service(StandardService):
                 "Failed to retrieve inspection profile. Is profile active?"
             )
             raise RuntimeError()
-        return InspectionProfileModel
+        return inspection_profile
 
     def _request_inspection_handlers_with_targets(
         self, request, response, inspection_profile: InspectionProfileModel
@@ -236,7 +236,7 @@ class Service(StandardService):
         try:
             template_image = template.materialize_image()
             template_image = np.array(template_image)
-            template_image_message = image_to_message(template_image)
+            template_image_message = cv2_to_imgmsg(template_image)
         except Exception as e:
             self.logger.error(str(e))
             response.error = MediatorServiceConstants.Error.RESOURCE_FAILED
@@ -341,7 +341,7 @@ class Service(StandardService):
         try:
             inspection = inspection_controller.create(inspection_profile)
 
-            test_image = message_to_image(test_image_message)
+            test_image = imgmsg_to_cv2(test_image_message)
             test_image = Image.fromarray(test_image)
 
             inspection.publish_image(test_image)
