@@ -1,26 +1,26 @@
-import cv2 as cv
+import cv2 as cv2
 import numpy as np
 
 
 def cut(im: np.ndarray, cv_stat_value):
     # Function parse CV connected component detection statics (values)
     # to cut out component from provided image
-    t = cv_stat_value[cv.CC_STAT_TOP]
-    l = cv_stat_value[cv.CC_STAT_LEFT]
+    t = cv_stat_value[cv2.CC_STAT_TOP]
+    l = cv_stat_value[cv2.CC_STAT_LEFT]
 
-    w = cv_stat_value[cv.CC_STAT_WIDTH]
-    h = cv_stat_value[cv.CC_STAT_HEIGHT]
+    w = cv_stat_value[cv2.CC_STAT_WIDTH]
+    h = cv_stat_value[cv2.CC_STAT_HEIGHT]
 
     return im[t : t + h, l : l + w]
 
 
 def highlight(im: np.ndarray, cv_stat_value, value: int = 255):
     # Function acts like cut function but highlight area instead of cutting it out
-    t = cv_stat_value[cv.CC_STAT_TOP]
-    l = cv_stat_value[cv.CC_STAT_LEFT]
+    t = cv_stat_value[cv2.CC_STAT_TOP]
+    l = cv_stat_value[cv2.CC_STAT_LEFT]
 
-    w = cv_stat_value[cv.CC_STAT_WIDTH]
-    h = cv_stat_value[cv.CC_STAT_HEIGHT]
+    w = cv_stat_value[cv2.CC_STAT_WIDTH]
+    h = cv_stat_value[cv2.CC_STAT_HEIGHT]
 
     im = im.copy()
     im[t : t + h, l : l + w] = value
@@ -29,11 +29,11 @@ def highlight(im: np.ndarray, cv_stat_value, value: int = 255):
 
 def inpaint(src: np.ndarray, trg: np.ndarray, cv_stat_value):
     # Function acts like cut function but copy area from source to target
-    t = cv_stat_value[cv.CC_STAT_TOP]
-    l = cv_stat_value[cv.CC_STAT_LEFT]
+    t = cv_stat_value[cv2.CC_STAT_TOP]
+    l = cv_stat_value[cv2.CC_STAT_LEFT]
 
-    w = cv_stat_value[cv.CC_STAT_WIDTH]
-    h = cv_stat_value[cv.CC_STAT_HEIGHT]
+    w = cv_stat_value[cv2.CC_STAT_WIDTH]
+    h = cv_stat_value[cv2.CC_STAT_HEIGHT]
 
     trg = trg.copy()
     trg[t : t + h, l : l + w] = src[t : t + h, l : l + w]
@@ -41,13 +41,13 @@ def inpaint(src: np.ndarray, trg: np.ndarray, cv_stat_value):
 
 
 def highpass(img, sigma):
-    return img - cv.GaussianBlur(img, (0, 0), sigma) + 127
+    return img - cv2.GaussianBlur(img, (0, 0), sigma) + 127
 
 
 def extract(im: np.ndarray, color: list[int], mask: np.ndarray):
     # Function perform extraction of colored connected components from `im` according to `mask`. `color` is an RGB value.
-    mask = cv.inRange(mask, color, color)
-    analysis = cv.connectedComponentsWithStats(mask, cv.CV_32S)
+    mask = cv2.inRange(mask, color, color)
+    analysis = cv2.connectedComponentsWithStats(mask, cv2.CV_32S)
     (_, _, values, _) = analysis
 
     chunks = []
@@ -59,7 +59,7 @@ def extract(im: np.ndarray, color: list[int], mask: np.ndarray):
 
 def extract_with_mask(im: np.ndarray, mask: np.ndarray):
     # Function perform extraction of white connected components from `im` according to `mask` (B/W image).
-    analysis = cv.connectedComponentsWithStats(mask, cv.CV_32S)
+    analysis = cv2.connectedComponentsWithStats(mask, cv2.CV_32S)
     (_, _, values, _) = analysis
 
     chunks = []
@@ -74,14 +74,14 @@ def align(im, template):
 
     # Use ORB to detect keypoints and extract (binary) local
     # invariant features
-    orb = cv.ORB_create(1000)
+    orb = cv2.ORB_create(1000)
 
     (kpsA, descsA) = orb.detectAndCompute(im, None)
     (kpsB, descsB) = orb.detectAndCompute(template, None)
 
     # Match the features
-    method = cv.DESCRIPTOR_MATCHER_BRUTEFORCE_HAMMING
-    matcher = cv.DescriptorMatcher_create(method)
+    method = cv2.DESCRIPTOR_MATCHER_BRUTEFORCE_HAMMING
+    matcher = cv2.DescriptorMatcher_create(method)
     matches = matcher.match(descsA, descsB, None)
 
     # Sort the matches by their distance (the smaller the distance,
@@ -110,10 +110,10 @@ def align(im, template):
 
     # Compute the homography matrix between the two sets of matched
     # points
-    (H, mask) = cv.findHomography(pts_a, pts_b, method=cv.RANSAC)
+    (H, mask) = cv2.findHomography(pts_a, pts_b, method=cv2.RANSAC)
     # Use the homography matrix to align the images
     (h, w) = template.shape[:2]
-    im = cv.warpPerspective(im, H, (w, h))
+    im = cv2.warpPerspective(im, H, (w, h))
     # Return the aligned image
     return im
 

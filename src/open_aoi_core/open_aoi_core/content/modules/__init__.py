@@ -3,6 +3,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from open_aoi_core.utils_basic import crop_stat_cv
+
 
 class IModule:
     """
@@ -60,16 +62,29 @@ class IModule:
         Class that represent result of the inspection process. Set passed flag to False to indicate rejection of
         the zone (defect is present) or to True to indicate that zone has no defect. Log is a free form optional inspection message.
         """
+
         log: str
         passed: bool
+
+    def cut_inspection_zone(
+        im: np.ndarray, inspection_zone: InspectionZone
+    ) -> np.ndarray:
+        """Cut chunk from provided image with provided inspection zone"""
+        # TODO: Apply rotation
+        stat = [
+            inspection_zone.stat_left,
+            inspection_zone.stat_top,
+            inspection_zone.stat_width,
+            inspection_zone.stat_height,
+        ]
+        chunk = crop_stat_cv(im, stat)
+        return chunk
 
     def process(
         self,
         environment: dict,
         test_image: np.ndarray,
-        test_image_chunk_list: List[np.ndarray],
         template_image: np.array,
-        template_image_chunk_list: List[np.ndarray],
         inspection_zone_list: List[InspectionZone],
     ) -> List[InspectionLog]:
         raise NotImplementedError()

@@ -1,6 +1,18 @@
-import numpy as np
+# Component presence with discrete wavelet transformation.
+# This module identify presence of component using DWT.
+
+
 from typing import List
-from open_aoi_core.content.modules import IModule
+
+import numpy as np
+
+try:
+    from open_aoi_core.content.modules import IModule  # Import module interface
+except ImportError:
+    import sys  # Add core library to the path for development (in production it will be available without this)
+
+    sys.path.append("./src/open_aoi_core")
+    from open_aoi_core.content.modules import IModule  # Import module interface
 
 
 def iter_average_h(im: np.ndarray):
@@ -63,14 +75,12 @@ def test_passed(
 
 
 DOCUMENTATION = """
-# DWT
-## Introduction
-Brief introduction....
+This module identify presence of component using DWT.
 
-## Parameters
-- COMPRESSION_RATIO: int = 3. Specify how strong compression should be.
-- BINARIZATION_THRESHOLD: int = 10. Specify how to get binary image after compression. May require testing to get this parametr right, generally should be greater than zero and located some where between 20 and 100.
-- ALLOWED_DIFFERENCE: float = 0.05 [%/100]. How much difference after binarization is allowed.
+Parameters
+- COMP_PRES_DWT_COMPRESSION_RATIO: int = 3. Specify how strong compression should be.
+- COMP_PRES_DWT_BINARIZATION_THRESHOLD: int = 10. Specify how to get binary image after compression. May require testing to get this parametr right, generally should be greater than zero and located some where between 20 and 100.
+- COMP_PRES_DWT_ALLOWED_DIFFERENCE: float = 0.05 [%/100]. How much difference after binarization is allowed.
 """
 
 
@@ -84,23 +94,25 @@ class Module(IModule):
     ) -> List[IModule.InspectionLog]:
         # Algorithm does not require preprocessing for whole image
 
-        COMPRESSION_RATIO = int(environment["COMPRESSION_RATIO"])
+        COMPRESSION_RATIO = int(environment["COMP_PRES_DWT_COMPRESSION_RATIO"])
         assert (
             COMPRESSION_RATIO > 0
         ), "Compression is required to be non zero positive integer"
 
-        BINARIZATION_THRESHOLD = int(environment["BINARIZATION_THRESHOLD"])
+        BINARIZATION_THRESHOLD = int(
+            environment["COMP_PRES_DWT_BINARIZATION_THRESHOLD"]
+        )
         assert (
             BINARIZATION_THRESHOLD > 0
         ), "Binarization threshold is required to be non zero positive integer"
 
-        ALLOWED_DIFFERENCE = float(environment["ALLOWED_DIFFERENCE"])
+        ALLOWED_DIFFERENCE = float(environment["COMP_PRES_DWT_ALLOWED_DIFFERENCE"])
         assert 1 >= ALLOWED_DIFFERENCE >= 0, "Allowed threshold should be from 0 to 1."
 
         inspection_log_list = []
         for inspection_zone in inspection_zone_list:
-            test_chunk = self.apply_inspection_zone(test_image, inspection_zone)
-            template_chunk = self.apply_inspection_zone(template_image, inspection_zone)
+            test_chunk = self.cut_inspection_zone(test_image, inspection_zone)
+            template_chunk = self.cut_inspection_zone(template_image, inspection_zone)
 
             passed = test_passed(
                 test_chunk,

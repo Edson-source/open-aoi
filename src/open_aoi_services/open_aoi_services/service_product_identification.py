@@ -4,7 +4,7 @@
 """
 
 import rclpy
-import cv2 as cv
+import cv2 as cv2
 from rclpy.executors import MultiThreadedExecutor
 
 from open_aoi_core.services import StandardService
@@ -34,9 +34,9 @@ class Service(StandardService):
             im = msg_to_image(request.image)
 
             isolated = isolate_product(im)  # TODO: set as parameters
-            isolated = cv.resize(isolated, (1000, 1000), interpolation=cv.INTER_LINEAR) 
+            isolated = cv2.resize(isolated, (1000, 1000), interpolation=cv2.INTER_LINEAR) 
 
-            bardet = cv.barcode.BarcodeDetector()
+            bardet = cv2.barcode.BarcodeDetector()
             identification_code, *_ = bardet.detectAndDecode(im)
 
             response.identification_code = identification_code

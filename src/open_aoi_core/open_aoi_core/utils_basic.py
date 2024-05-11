@@ -1,6 +1,6 @@
 from typing import Tuple
 
-import cv2 as cv
+import cv2 as cv2
 import numpy as np
 from PIL import Image
 
@@ -22,11 +22,11 @@ def crop_stat_cv(im: np.ndarray, cv_stat_value: Tuple[int]) -> np.ndarray:
     Function parse CV connected component detection statics (values)
     to cut out component from provided image
     """
-    t = cv_stat_value[cv.CC_STAT_TOP]
-    l = cv_stat_value[cv.CC_STAT_LEFT]
+    t = cv_stat_value[cv2.CC_STAT_TOP]
+    l = cv_stat_value[cv2.CC_STAT_LEFT]
 
-    w = cv_stat_value[cv.CC_STAT_WIDTH]
-    h = cv_stat_value[cv.CC_STAT_HEIGHT]
+    w = cv_stat_value[cv2.CC_STAT_WIDTH]
+    h = cv_stat_value[cv2.CC_STAT_HEIGHT]
 
     return im[t : t + h, l : l + w, :]
 
@@ -40,19 +40,19 @@ def crop_stat_image(image: Image.Image, cv_stat_value: Tuple[int]) -> Image.Imag
 
 def isolate_product(image: np.ndarray, kernel_size: int = 31, threshold: int = 30):
     # Blur to vanish texture defects
-    tmp = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
-    tmp = cv.medianBlur(tmp, kernel_size)
+    tmp = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    tmp = cv2.medianBlur(tmp, kernel_size)
 
     # Arbitrary selected global threshold to separate background
-    _, tmp = cv.threshold(tmp, threshold, 255, cv.THRESH_BINARY)
+    _, tmp = cv2.threshold(tmp, threshold, 255, cv2.THRESH_BINARY)
 
-    analysis = cv.connectedComponentsWithStats(tmp, cv.CV_32S)
+    analysis = cv2.connectedComponentsWithStats(tmp, cv2.CV_32S)
     (_, _, values, _) = analysis
 
     # Select the biggest connected component (product)
     mx, mxi = 0, 0
     for i, value in enumerate(values):
-        area = value[cv.CC_STAT_AREA]
+        area = value[cv2.CC_STAT_AREA]
         if area >= mx and i != 0:
             mx = area
             mxi = i
@@ -66,14 +66,14 @@ def align(image: np.ndarray, template: np.ndarray, feature_point_amount: int = 1
 
     # Use ORB to detect keypoints and extract (binary) local
     # invariant features
-    orb = cv.ORB_create(feature_point_amount)
+    orb = cv2.ORB_create(feature_point_amount)
 
     (kpsA, descsA) = orb.detectAndCompute(image, None)
     (kpsB, descsB) = orb.detectAndCompute(template, None)
 
     # Match the features
-    method = cv.DESCRIPTOR_MATCHER_BRUTEFORCE_HAMMING
-    matcher = cv.DescriptorMatcher_create(method)
+    method = cv2.DESCRIPTOR_MATCHER_BRUTEFORCE_HAMMING
+    matcher = cv2.DescriptorMatcher_create(method)
     matches = matcher.match(descsA, descsB, None)
 
     # Sort the matches by their distance (the smaller the distance,
@@ -102,10 +102,10 @@ def align(image: np.ndarray, template: np.ndarray, feature_point_amount: int = 1
 
     # Compute the homography matrix between the two sets of matched
     # points
-    (H, mask) = cv.findHomography(pts_a, pts_b, method=cv.RANSAC)
+    (H, mask) = cv2.findHomography(pts_a, pts_b, method=cv2.RANSAC)
     # Use the homography matrix to align the images
     (h, w) = template.shape[:2]
-    image = cv.warpPerspective(image, H, (w, h))
+    image = cv2.warpPerspective(image, H, (w, h))
     # Return the aligned image
     return image
 
