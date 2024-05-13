@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime
 from typing import Optional
+from functools import partial
 
 from nicegui import app, ui
 from fastapi.responses import RedirectResponse
@@ -92,7 +93,7 @@ def get_view(node: StandardClient):
                                     ui.button(
                                         icon="info",
                                         color="white",
-                                        on_click=lambda: ui.open(url),
+                                        on_click=partial(ui.open, url),
                                     ).props("size=sm")
                 next_page_container.clear()
                 with next_page_container:
