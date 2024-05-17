@@ -14,7 +14,8 @@ This is a ROS2 powered Automated Optical Inspection framework, developed as part
 Open AOI should be deployed to a computer with Bastler camera connected (in current version only Ethernet is supported). Connect camera, setup light and follow the following steps to deploy Open AOI!
 ## Docker mode
 1. Follow Docker [installation guide](https://docs.docker.com/) and install Docker and Docker compose.
-2. Run system with following command from project root folder.
+2. Create `.env` file in project root folder and fill in required variables. Use `host.docker.internal` for hosts (valid for dockr deployment only).
+3. Run system with following command from project root folder.
 ```
 docker compose --profile full up -d
 ```
