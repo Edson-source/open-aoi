@@ -84,7 +84,7 @@ from open_aoi_core.content.modules import IModule
 # Do not import other open_aoi packages and do not call Open AOI services (may break the system)
 
 # Required
-DOCUMENTATION = "This is my module. No environment variable (parameters are used). Module does nothing."
+DOCUMENTATION = "This is my module. No environment variable (parameters) are used. Module does nothing."
 
 
 class Module(IModule):
