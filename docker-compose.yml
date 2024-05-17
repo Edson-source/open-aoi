@@ -15,6 +15,9 @@ services:
         - "host.docker.internal:host-gateway"
     ports:
       - 10006:8080  # AOI Portal
+    depends_on:
+      - aoi-mysql
+      - aoi-minio
   aoi-mysql:
     container_name: aoi-mysql
     profiles: [infra, full]
