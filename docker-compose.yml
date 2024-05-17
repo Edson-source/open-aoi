@@ -13,6 +13,8 @@ services:
       context: .
     extra_hosts:
         - "host.docker.internal:host-gateway"
+    ports:
+      - 10006:8080  # AOI Portal
   aoi-mysql:
     container_name: aoi-mysql
     profiles: [infra, full]
