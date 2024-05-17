@@ -16,7 +16,7 @@ Open AOI should be deployed to a computer with Bastler camera connected (in curr
 1. Follow Docker [installation guide](https://docs.docker.com/) and install Docker and Docker compose.
 2. Run system with following command from project root folder.
 ```
-docker-compose up -d
+docker compose --profile full up -d
 ```
 
 ## Native mode
