@@ -1,57 +1,65 @@
-version: "3.1"
+version: "3.8"
 
 services:
   aoi-ros2:
     container_name: aoi-ros2
     privileged: true  # For GPIO  # WARNING!
     profiles: [full]
+    build:
+      context: .
     image: aoi-ros2:latest
     restart: always
     volumes:
-      - aoi:/aoi # For production
-    build:
-      context: .
+      - aoi:/aoi  # For production
     extra_hosts:
-        - "host.docker.internal:host-gateway"
+      - "host.docker.internal:host-gateway"
     ports:
-      - 10006:8080  # AOI Portal
+      - "10006:8080"  # AOI Portal
     depends_on:
       - aoi-mysql
       - aoi-minio
+
   aoi-mysql:
     container_name: aoi-mysql
     profiles: [infra, full]
-    image: mysql
+    image: mysql:latest
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: $MYSQL_ROOT_PASSWORD
-      MYSQL_DATABASE: $MYSQL_DATABASE
-      MYSQL_USER: $MYSQL_USER
-      MYSQL_PASSWORD: $MYSQL_PASSWORD
-      MYSQL_ROOT_HOST: "%"  # WARNING!
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
-      - 10002:3306
+      - "10002:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql  # Persist MySQL data
+    command: --default-authentication-plugin=mysql_native_password --bind-address=0.0.0.0
+
   aoi-adminer:
     container_name: aoi-adminer
     profiles: [infra, full]
-    image: adminer
+    image: adminer:latest
     restart: always
     depends_on:
       - aoi-mysql
     ports:
-      - 10003:8080
+      - "10003:8080"
+
   aoi-minio:
     container_name: aoi-minio
-    image: docker.io/minio/minio
-    command: server /data --console-address ":9001"
     profiles: [infra, full]
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
     ports:
-      - 10004:9000
-      - 10005:9001
+      - "10004:9000"
+      - "10005:9001"
     volumes:
-      - aoi:/data
+      - minio_data:/data  # Persist MinIO data
     environment:
-      MINIO_ROOT_USER: $MINIO_ROOT_USER
-      MINIO_ROOT_PASSWORD: $MINIO_ROOT_PASSWORD
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+
 volumes:
   aoi:
+  mysql_data:
+  minio_data:
