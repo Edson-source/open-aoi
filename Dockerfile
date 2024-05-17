@@ -16,4 +16,7 @@ RUN bash aoi.build.bash
 # Install python dependencies and copy default content
 RUN bash aoi.install.bash
 
+# Ensure scripts have execution permissions
+RUN chmod +x /aoi/open_aoi/aoi.build.bash /aoi/open_aoi/aoi.install.bash /aoi/open_aoi/aoi.launch.bash
+
 CMD ["bash", "/aoi/open_aoi/aoi.launch.bash"]
