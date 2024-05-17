@@ -3,7 +3,7 @@ version: "3.1"
 services:
   aoi-ros2:
     container_name: aoi-ros2
-    privileged: true  # For GPIO and to address related services with localhost
+    privileged: true  # For GPIO  # WARNING!
     profiles: [full]
     image: aoi-ros2:latest
     restart: always
@@ -11,6 +11,8 @@ services:
       - aoi:/aoi # For production
     build:
       context: .
+    extra_hosts:
+        - "host.docker.internal:host-gateway"
   aoi-mysql:
     container_name: aoi-mysql
     profiles: [infra, full]
@@ -21,6 +23,7 @@ services:
       MYSQL_DATABASE: $MYSQL_DATABASE
       MYSQL_USER: $MYSQL_USER
       MYSQL_PASSWORD: $MYSQL_PASSWORD
+      MYSQL_ROOT_HOST: "%"  # WARNING!
     ports:
       - 10002:3306
   aoi-adminer:
