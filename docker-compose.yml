@@ -3,6 +3,7 @@ version: "3.1"
 services:
   aoi-ros2:
     container_name: aoi-ros2
+    privileged: true  # For GPIO and to address related services with localhost
     profiles: [full]
     image: aoi-ros2:latest
     restart: always
