@@ -1,3 +1,4 @@
+echo Welcome to Open AOI!
 source /opt/ros/foxy/setup.bash    # Source ROS2
 source install/setup.bash          # Source Open-AOI stack
 
