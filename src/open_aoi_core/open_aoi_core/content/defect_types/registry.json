@@ -1,1 +1,22 @@
-
+{
+    "missing_component": {
+        "title": "Missing component",
+        "description": "Component is present on template, but is missing on tested image.",
+    },
+    "automatic_rejection": {
+        "title": "Automatic rejection",
+        "description": "Inspection zone is automatically rejected.",
+    },
+    "automatic_acceptance": {
+        "title": "Automatic acceptance",
+        "description": "Inspection zone is automatically accepted.",
+    },
+    "print_quality": {
+        "title": "Print quality",
+        "description": "Print quality issue.",
+    },
+    "capacitor_opposite_orientation": {
+        "title": "Capacitor opposite orientation",
+        "description": "Capacitor orientation is opposite to template.",
+    }
+}
