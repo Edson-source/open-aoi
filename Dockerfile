@@ -22,4 +22,4 @@ RUN /aoi/open_aoi/aoi.build.bash
 RUN /aoi/open_aoi/aoi.install.bash
 
 # Set the default command to launch the application
-CMD ["bash", "/aoi/open_aoi/aoi.launch.bash"]
+CMD ["/aoi/open_aoi/aoi.launch.bash"]
