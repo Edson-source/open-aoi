@@ -14,7 +14,6 @@ import rclpy
 import numpy as np
 from PIL import Image
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import ProgrammingError
 from collections import defaultdict
 from sensor_msgs.msg import Image as ImageMessage
 
