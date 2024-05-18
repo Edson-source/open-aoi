@@ -33,8 +33,7 @@ services:
       - "10002:3306"
     volumes:
       - mysql_data:/var/lib/mysql  # Persist MySQL data
-    command: --default-authentication-plugin=mysql_native_password --bind-address=0.0.0.0
-
+    
   aoi-adminer:
     container_name: aoi-adminer
     profiles: [infra, full]
