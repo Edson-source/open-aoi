@@ -86,7 +86,7 @@ class Service(StandardService):
                         populate()
                         break
                     except Exception as e:
-                        self.logger.warning(f"Failed to create database structure and populate content. Retrying...")
+                        self.logger.warning(f"Failed to create database structure and populate content ({str(e)}). Retrying...")
                         time.sleep(1)
 
         self.watch_pin_list_update_service = self.create_timer(
