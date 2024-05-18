@@ -9,17 +9,19 @@
     - Pass inspection handler with related inspection zones to inspection executor and wait for logs
     - Create inspection profile and inspection logs records in database to store results
 """
-
+import time
 import rclpy
 import numpy as np
 from PIL import Image
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import ProgrammingError
 from collections import defaultdict
 from sensor_msgs.msg import Image as ImageMessage
 
 from open_aoi_interfaces.srv import InspectionTrigger
 from open_aoi_interfaces.msg import InspectionTarget
 from open_aoi_core.services import StandardService
+from open_aoi_core.content.populate_content import populate
 from open_aoi_core.models import CameraModel, InspectionProfileModel, TemplateModel
 from open_aoi_core.constants import (
     MediatorServiceConstants,
@@ -71,6 +73,21 @@ class Service(StandardService):
                 self.gpio_interface_set_parameters_cli,
             ]
         )
+        # Try to connect to database. When booting for the first 
+        # time no tables will be created - recreated them and populate the content.
+        with Session(engine) as session:
+            inspection_profile_controller = InspectionProfileController(session)
+            try:
+                inspection_profile_controller.list()
+            except ProgrammingError:
+                self.logger.info('Database structure not created. Creating...')
+                while True:
+                    try:
+                        populate()
+                        break
+                    except Exception as e:
+                        self.logger.warning(f"Failed to create database structure and populate content. Retrying...")
+                        time.sleep(1)
 
         self.watch_pin_list_update_service = self.create_timer(
             1,
