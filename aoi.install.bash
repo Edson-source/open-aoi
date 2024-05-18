@@ -32,10 +32,4 @@ fi
 source /opt/ros/foxy/setup.bash
 source install/setup.bash
 
-# Copy default content to database
-# ! This will drop the current database content !
-cd src/open_aoi_core/open_aoi_core/ || { echo "Directory not found: src/open_aoi_core/open_aoi_core/"; exit 1; }
-python3 -m content.populate_content || { echo "Failed to populate content"; exit 1; }
-cd ../../../
-
 echo "Setup and installation complete."
