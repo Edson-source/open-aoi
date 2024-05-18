@@ -78,8 +78,9 @@ class Service(StandardService):
         with Session(engine) as session:
             inspection_profile_controller = InspectionProfileController(session)
             try:
+                self.logger.info('Checking database...')
                 inspection_profile_controller.list()
-            except ProgrammingError:
+            except Exception as e:
                 self.logger.info('Database structure not created. Creating...')
                 while True:
                     try:
