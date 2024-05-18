@@ -26,7 +26,7 @@ DEFAULT_DEFECT_TYPES = {
     },
 }
 
-MODULES_PATH = "./content/modules"
+MODULES_PATH = "./src/open_aoi_core/open_aoi_core/content/modules"
 DEFAULT_MODULES = {
     f"{MODULES_PATH}/component_presence_discrete_wavelet_transformation.py": {
         "title": "Component presence detection (wavelet transformation, default module)",
