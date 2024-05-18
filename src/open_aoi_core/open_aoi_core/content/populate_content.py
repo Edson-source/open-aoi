@@ -12,7 +12,7 @@ from open_aoi_core.settings import (
     DEFAULT_MODULES,
 )
 
-if __name__ == "__main__":
+def populate():
     metadata_obj.drop_all(engine)
     metadata_obj.create_all(engine)
 
