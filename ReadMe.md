@@ -39,8 +39,7 @@ docker compose --profile infra up -d
 # - Build workspace (symlinks)
 bash aoi.build.bash
 
-# - Install python dependencies and upload default content
-# Will create default database content and upload default modules to Minio
+# - Install python dependencies
 bash aoi.install.bash 
 ```
 5. Launch! 
