@@ -475,17 +475,20 @@ class Service(StandardService):
     def update_watch_pin_list(self):
         """Callback to update GPIO interface with new pins to watch"""
 
-        with Session(engine) as session:
-            camera_controller = CameraController(session)
-            camera_list = camera_controller.list()
-
-            watch_pin_list = []
-            for camera in camera_list:
-                if camera.io_pin_trigger is not None:
-                    watch_pin_list.append(camera.io_pin_trigger)
-
-            future = self.gpio_interface_set_parameters(watch_pin_list)
-            self.await_future(future)
+        try:
+            with Session(engine) as session:
+                camera_controller = CameraController(session)
+                camera_list = camera_controller.list()
+    
+                watch_pin_list = []
+                for camera in camera_list:
+                    if camera.io_pin_trigger is not None:
+                        watch_pin_list.append(camera.io_pin_trigger)
+    
+                future = self.gpio_interface_set_parameters(watch_pin_list)
+                self.await_future(future)
+        except Exception as e:
+            self.logger.warning(f"Failed to update pin watch list: {str(e)}")
 
 
 def main(args=None):
