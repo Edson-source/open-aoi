@@ -1,1 +1,16 @@
-
+[
+  {
+    "allow_system_view": true,
+    "allow_inspection_view": true,
+    "allow_inspection_control": true,
+    "allow_system_operations": false,
+    "allow_statistics_view": false,
+  },
+  {
+    "allow_system_view": true,
+    "allow_inspection_view": true,
+    "allow_inspection_control": true,
+    "allow_system_operations": true,
+    "allow_statistics_view": true,
+  }
+]
