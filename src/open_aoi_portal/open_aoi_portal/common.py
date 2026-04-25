@@ -96,7 +96,7 @@ def confirm(msg: str, callback: callable):
 # Global injections
 @safe_operation
 async def inject_header(accessor: AccessorModel):
-    """Function injects common header, that should be present on every page"""
+    """Function injects common header and sidebar, that should be present on every page"""
 
     @safe_operation
     async def _handle_logout_request():
@@ -104,44 +104,54 @@ async def inject_header(accessor: AccessorModel):
         @safe_operation
         async def _logout():
             AccessorController.revoke_session_access(app.storage.user)
-            ui.open(ACCESS_PAGE)
+            ui.navigate.to(ACCESS_PAGE)
 
         confirm("You are about to logout. Are you sure?", _logout)
 
-    ui.right_drawer().props("bordered")
-    with ui.left_drawer(top_corner=False, bottom_corner=True).props("bordered"):
-        ui.button("Overview", on_click=lambda: ui.open(HOME_PAGE)).props(
-            "flat align=left icon=home"
-        ).tailwind.width("full")
-        if accessor.role.allow_system_operations:
-            ui.button("Devices", on_click=lambda: ui.open(DEVICES_PAGE)).props(
-                "flat align=left icon=photo_camera"
-            ).tailwind.width("full")
-        if accessor.role.allow_system_operations:
-            ui.button("Modules", on_click=lambda: ui.open(MODULES_PAGE)).props(
-                "flat align=left icon=widgets"
-            ).tailwind.width("full")
-        if accessor.role.allow_system_operations:
-            ui.button(
-                "Inspection profiles",
-                on_click=lambda: ui.open(INSPECTION_PROFILE_CREATE_PAGE),
-            ).props("flat align=left icon=cameraswitch").tailwind.width("full")
-        if accessor.role.allow_system_operations:
-            ui.button(
-                "Inspection templates", on_click=lambda: ui.open(TEMPLATES_PAGE)
-            ).props("flat align=left icon=tune").tailwind.width("full")
-        if accessor.role.allow_inspection_view:
-            ui.button(
-                "Inspection (live)",
-                on_click=lambda: ui.open(INSPECTION_PAGE),
-            ).props("flat align=left icon=online_prediction").tailwind.width("full")
-        ui.separator()
-        ui.button("Logout", on_click=_handle_logout_request).props(
-            "flat color=negative align=left icon=logout"
-        ).tailwind.width("full")
-    with ui.header(fixed=True).classes("py-1 items-center"):
-        ui.markdown(f"**{APP_TITLE}** | Powered by ROS")
+    # Create drawer
+    left_drawer = ui.left_drawer(top_corner=False, bottom_corner=False).props("bordered").classes("bg-slate-100")
+    with left_drawer:
+        with ui.column().classes("w-full gap-0"):
+            ui.button("Overview", on_click=lambda: ui.navigate.to(HOME_PAGE)).props(
+                "flat align=left icon=home"
+            ).classes("w-full justify-start")
+            if accessor.role.allow_system_operations:
+                ui.button("Devices", on_click=lambda: ui.navigate.to(DEVICES_PAGE)).props(
+                    "flat align=left icon=photo_camera"
+                ).classes("w-full justify-start")
+            if accessor.role.allow_system_operations:
+                ui.button("Modules", on_click=lambda: ui.navigate.to(MODULES_PAGE)).props(
+                    "flat align=left icon=widgets"
+                ).classes("w-full justify-start")
+            if accessor.role.allow_system_operations:
+                ui.button(
+                    "Inspection profiles",
+                    on_click=lambda: ui.navigate.to(INSPECTION_PROFILE_CREATE_PAGE),
+                ).props("flat align=left icon=cameraswitch").classes("w-full justify-start")
+            if accessor.role.allow_system_operations:
+                ui.button(
+                    "Inspection templates", on_click=lambda: ui.navigate.to(TEMPLATES_PAGE)
+                ).props("flat align=left icon=tune").classes("w-full justify-start")
+            if accessor.role.allow_inspection_view:
+                ui.button(
+                    "Inspection (live)",
+                    on_click=lambda: ui.navigate.to(INSPECTION_PAGE),
+                ).props("flat align=left icon=online_prediction").classes("w-full justify-start")
+            ui.separator()
+            ui.button("Logout", on_click=_handle_logout_request).props(
+                "flat color=negative align=left icon=logout"
+            ).classes("w-full justify-start")
 
+    # Create header after drawer
+    with ui.header(fixed=True).classes("bg-blue-600 text-white").props("bordered"):
+        ui.icon("menu").classes("cursor-pointer text-xl").on(
+            "click", lambda: left_drawer.toggle()
+        )
+        ui.label(f"{APP_TITLE}").classes("ml-3 text-lg font-bold")
+        ui.space()
+    
+    # Add spacing to account for fixed header
+    ui.column().classes("h-16")
 
 @safe_operation
 async def inject_text_field(

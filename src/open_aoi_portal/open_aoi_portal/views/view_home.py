@@ -93,7 +93,7 @@ def get_view(node: StandardClient):
                                     ui.button(
                                         icon="info",
                                         color="white",
-                                        on_click=partial(ui.open, url),
+                                        on_click=lambda: ui.navigate.to(url),
                                     ).props("size=sm")
                 next_page_container.clear()
                 with next_page_container:
@@ -101,7 +101,7 @@ def get_view(node: StandardClient):
                     ui.button(
                         icon="navigate_before",
                         color="white",
-                        on_click=lambda: ui.open(
+                        on_click=lambda: ui.navigate.to(
                             f"{HOME_PAGE}?select_from_id={inspection_list[0].id}&select_to_id={inspection_list[0].id + SELECT_AMOUNT}"
                         ),
                     )
@@ -111,7 +111,7 @@ def get_view(node: StandardClient):
                         ui.button(
                             icon="navigate_next",
                             color="white",
-                            on_click=lambda: ui.open(
+                            on_click=lambda: ui.navigate.to(
                                 f"{HOME_PAGE}?select_from_id={inspection_list[-1].id}&select_to_id={inspection_list[-1].id - SELECT_AMOUNT}",
                             ),
                         )

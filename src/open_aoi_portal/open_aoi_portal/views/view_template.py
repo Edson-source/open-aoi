@@ -183,7 +183,7 @@ def get_view(node: StandardClient):
                         partial_preview = partial(_handle_preview_template, template)
                         partial_delete = partial(_handle_delete_template, template)
                         partial_edit = partial(
-                            ui.open, CONTROL_ZONE_PAGE.format(template_id=template.id)
+                            ui.navigate.to, CONTROL_ZONE_PAGE.format(template_id=template.id)
                         )
                         with ui.item().props("clickable"):
                             with ui.item_section():

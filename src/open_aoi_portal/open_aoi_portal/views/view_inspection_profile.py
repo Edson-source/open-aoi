@@ -116,7 +116,7 @@ def get_view(node: StandardClient):
                     inspection_profile is not None
                     and profile.id == inspection_profile.id
                 ):
-                    ui.open(INSPECTION_PROFILE_CREATE_PAGE)
+                    ui.navigate.to(INSPECTION_PROFILE_CREATE_PAGE)
                     return
                 await _inject_profile_list()
 
@@ -128,7 +128,7 @@ def get_view(node: StandardClient):
         @safe_operation
         async def _handle_edit_profile(profile: InspectionProfileModel):
             """Redirect to profile page for editing"""
-            ui.open(INSPECTION_PROFILE_EDIT_PAGE.format(profile_id=profile.id))
+            ui.navigate.to(INSPECTION_PROFILE_EDIT_PAGE.format(profile_id=profile.id))
 
         @safe_operation
         async def _handle_activate_profile(profile: InspectionProfileModel):

@@ -1,8 +1,8 @@
 FROM ros:foxy-ros-base
-
+#python-rpi.gpio python3-rpi.gpio &&
 # Install dependencies
 RUN apt-get update && \
-    apt-get install -y software-properties-common python3-pip libgl1 python-rpi.gpio python3-rpi.gpio && \
+    apt-get install -y software-properties-common python3-pip libgl1 && \ 
     python3 -m pip install --upgrade pip && \
     add-apt-repository universe && \
     apt-get update && \

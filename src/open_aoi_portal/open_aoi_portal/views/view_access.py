@@ -16,7 +16,6 @@ from open_aoi_core.exceptions import AuthenticationException
 from open_aoi_core.services import StandardClient
 from open_aoi_portal.common import get_session, safe_operation, safe_view
 from open_aoi_portal.settings import APP_TITLE, HOME_PAGE
-
 logger = logging.getLogger("ui.access")
 
 
@@ -45,7 +44,7 @@ def get_view(node: StandardClient):
             else:
                 # Allow access
                 accessor.grant_session_access(app.storage.user)
-                ui.open(HOME_PAGE)
+                ui.navigate.to(HOME_PAGE)
 
         # ------------------------------------
 
