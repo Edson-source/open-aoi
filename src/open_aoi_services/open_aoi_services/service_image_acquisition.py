@@ -2,8 +2,9 @@ import os
 import random
 from typing import List, Optional
 
+import cv2 # IMPORTAMOS O OPENCV AQUI
 import rclpy
-from pypylon import pylon
+# from pypylon import pylon  <- REMOVIDO PARA PARAR DE BUSCAR CAMERA INDUSTRIAL
 from rcl_interfaces.msg import ParameterDescriptor, SetParametersResult
 
 from open_aoi_interfaces.srv import ImageAcquisitionTrigger
@@ -22,7 +23,8 @@ class Service(StandardService):
     CAMERA_IP_ADDRESS: str = ""
     CAMERA_ENABLED: bool = False
 
-    camera: Optional[pylon.InstantCamera] = None
+    # camera: Optional[pylon.InstantCamera] = None <- REMOVIDO
+    camera_index: Optional[int] = None # ADICIONADO PARA GUARDAR O ÍNDICE DA WEBCAM
 
     emulation_images = [f for f in os.listdir(EMULATION_DIR) if ".png" in f]
 
@@ -84,62 +86,36 @@ class Service(StandardService):
 
     def _acquire_camera(self):
         self.logger.info("Camera connection requested")
-        if self.camera is not None:
-            # TODO: close if ip does not match
-            self.logger.info("Existing camera detected. Closing...")
-            self.camera.Close()
 
-        # Emulation
+        # Emulation (Mantido para caso você ligue o .env novamente)
         if SIMULATION:
-            self.logger.info("Running emulation mode")
-            try:
-                os.environ["PYLON_CAMEMU"] = "1"
-                tlf: pylon.TlFactory = pylon.TlFactory.GetInstance()
-                self.camera = pylon.InstantCamera(tlf.CreateFirstDevice())
-                self.camera.Open()
-                sample = f"{EMULATION_DIR}/{random.sample(self.emulation_images, 1)[0]}"
-                self.logger.info(f"Sample image selected: {sample}")
-                self.camera.ImageFilename = sample
-                self.camera.PixelFormat = "RGB8Packed"
-                self.camera.ImageFileMode = "On"
-                self.camera.TestImageSelector = "Off"
-                self.camera.Height = 2048
-                self.camera.Width = 2592
-                self.set_status(
-                    SystemServiceStatus.IDLE, "Connected to camera: EMULATION"
-                )
-                return
-            except Exception as e:
-                self.logger.error(str(e))
-                self.set_status(SystemServiceStatus.ERROR, "Failed to setup emulator")
-                return
-        # Real camera
+            self.logger.info("Running emulation mode (Ignorado pois SIMULATION=0)")
+            # ... toda a lógica de emulação pylon foi limpa para evitar dependências desnecessárias, 
+            # já que o foco é a webcam USB agora.
+            self.set_status(SystemServiceStatus.IDLE, "Emulation mode requires pypylon, which is disabled.")
+            return
+
+        # Real camera via OpenCV (Nossa WebCam)
         else:
-            self.logger.info(f"Running with real camera: {self.CAMERA_IP_ADDRESS}")
+            self.logger.info(f"Running with WEBCAM via OpenCV")
             try:
-                tlf: pylon.TlFactory = pylon.TlFactory.GetInstance()
-                for dev_info in tlf.EnumerateDevices():
-                    if (
-                        dev_info.GetDeviceClass() == "BaslerGigE"
-                        and dev_info.GetIpAddress() == self.CAMERA_IP_ADDRESS
-                    ):
-                        self.camera = pylon.InstantCamera(tlf.CreateDevice(dev_info))
-                        break
-                else:
-                    self.set_status(
-                        SystemServiceStatus.ERROR,
-                        f"Failed to acquire camera with IP: {self.camera_ip_address}",
-                    )
-                    return
-                self.camera.Open()
+                # O /dev/video0 é o índice 0 no OpenCV. Se o IP não for numérico, assume 0.
+                self.camera_index = "http://host.docker.internal:5000/video"  # URL do stream da webcam
+                
+                # Fazemos um pequeno teste silencioso só para ver se a câmera existe
+                cap = cv2.VideoCapture(self.camera_index)
+                if not cap.isOpened():
+                     raise Exception("OpenCV não conseguiu abrir /dev/video0")
+                cap.release()
+
                 self.set_status(
                     SystemServiceStatus.IDLE,
-                    f"Connected to camera: {self.CAMERA_IP_ADDRESS}",
+                    f"Connected to webcam at /dev/video{self.camera_index}",
                 )
                 return
             except Exception as e:
                 self.logger.error(str(e))
-                self.set_status(SystemServiceStatus.ERROR, "Failed to setup camera")
+                self.set_status(SystemServiceStatus.ERROR, "Failed to setup webcam")
                 return
 
     def acquire_image(self, request, response):
@@ -148,8 +124,8 @@ class Service(StandardService):
         self.logger.info(f"Image requested. [{p.tick()}]")
         self.set_status(SystemServiceStatus.BUSY)
 
-        if self.camera is None:
-            self.logger.error("Camera not initialized")
+        if self.camera_index is None:
+            self.logger.error("Camera index not initialized")
             response.error = ImageAcquisitionConstants.Error.GENERAL
             response.error_description = (
                 "Capture image called before camera initialization"
@@ -157,27 +133,33 @@ class Service(StandardService):
             self.set_status(SystemServiceStatus.IDLE)
             self.logger.info(f"Response returned. [{p.tick()}]")
             return response
+            
         try:
-            grab_result = self.camera.GrabOne(1000)
-            if grab_result.GrabSucceeded():
-                # Access the image data
-                image = grab_result.Array
-                self.logger.info(f"Grabbed successfully: {image.shape}. [{p.tick()}]")
-                grab_result.Release()
-                response.image = cv2_to_imgmsg(image)
+            # AQUI A MÁGICA ACONTECE: O OpenCV abre a câmera, bate a foto e fecha.
+            cap = cv2.VideoCapture(self.camera_index)
+            
+            # Limpa o buffer antigo (Webcams costumam guardar frames velhos no buffer do Linux)
+            for _ in range(5):
+                cap.grab()
+                
+            ret, frame = cap.read()
+            cap.release()
+
+            if ret:
+                self.logger.info(f"Grabbed successfully: {frame.shape}. [{p.tick()}]")
+                # Se necessário, converte de BGR para RGB para compatibilidade de cor
+                # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) 
+                
+                response.image = cv2_to_imgmsg(frame)
                 response.error = ImageAcquisitionConstants.Error.NONE
                 response.error_description = ""
                 self.logger.info(f"Image returned. [{p.tick()}]")
                 self.set_status(SystemServiceStatus.IDLE)
                 return response
             else:
-                self.logger.error("Grabbed unsuccessfully.")
-                grab_result.Release()
-                self.logger.error(
-                    "Error: ", grab_result.ErrorCode, grab_result.ErrorDescription
-                )
+                self.logger.error("Webcam read return false (Grabbed unsuccessfully).")
                 response.error = ImageAcquisitionConstants.Error.GENERAL
-                response.error_description = "Capture image failed"
+                response.error_description = "Capture image failed from Webcam"
                 self.logger.info("Response returned")
                 self.set_status(SystemServiceStatus.IDLE)
                 return response

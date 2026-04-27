@@ -18,8 +18,8 @@ services:
     depends_on:
       - aoi-mysql
       - aoi-minio
-    devices:
-    - "/dev/video0:/dev/video0"
+    #devices:
+     # - "/dev/video0:/dev/video0"
 
   aoi-mysql:
     container_name: aoi-mysql
