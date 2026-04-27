@@ -62,18 +62,18 @@ class Service(StandardService):
             f"{self.NODE_NAME}/inspection",
             self.inspection,
         )
-        # Wait for dependencies: image acquisition, product identification and inspection execution nodes
+
+        # --- ALTERAÇÃO: REMOVIDO GPIO DAS DEPENDÊNCIAS ---
         self.await_dependencies(
             [
                 self.image_acquisition_capture_cli,
                 self.product_identification_get_barcode_cli,
                 self.inspection_execution_execute_inspection_cli,
-                self.gpio_interface_propagate_results_cli,
-                self.gpio_interface_set_parameters_cli,
+                # Removidos: gpio_interface_propagate_results_cli e gpio_interface_set_parameters_cli
             ]
         )
-        # Try to connect to database. When booting for the first 
-        # time no tables will be created - recreated them and populate the content.
+
+        # Try to connect to database
         with Session(engine) as session:
             inspection_profile_controller = InspectionProfileController(session)
             try:
@@ -89,16 +89,16 @@ class Service(StandardService):
                         self.logger.warning(f"Failed to create database structure and populate content ({str(e)}). Retrying...")
                         time.sleep(1)
 
-        self.watch_pin_list_update_service = self.create_timer(
-            1,
-            self.update_watch_pin_list,
-        )
+        # --- ALTERAÇÃO: DESATIVADO O TIMER DE MONITORAMENTO DE PINS GPIO ---
+        # self.watch_pin_list_update_service = self.create_timer(
+        #     1,
+        #     self.update_watch_pin_list,
+        # )
 
     def _request_camera(self, request, response, camera_controller) -> CameraModel:
         """Retrieve camera based on request"""
 
         if request.camera_id_valid:
-            # Particular camera has been requested (request comes from UI)
             try:
                 camera = camera_controller.retrieve(request.camera_id)
                 assert camera is not None, "Camera with specified id does not exist."
@@ -109,8 +109,6 @@ class Service(StandardService):
                 response.error_description = "Failed to retrieve related camera by id."
                 raise RuntimeError()
         elif request.io_pin_valid:
-            # Particular pin was triggered (request comes from GPIO interface)
-            # Get camera with provided pin.
             try:
                 camera = camera_controller.retrieve_by_io_pin_trigger(request.io_pin)
                 assert camera is not None, "Camera with specified id does not exist."
@@ -123,7 +121,6 @@ class Service(StandardService):
                 )
                 raise RuntimeError()
         else:
-            # No camera - no candies
             self.logger.warning("Camera identification not provided")
             response.error = MediatorServiceConstants.Error.GENERAL
             response.error_description = "No camera identification provided."
@@ -188,17 +185,11 @@ class Service(StandardService):
     def _request_inspection_handlers_with_targets(
         self, request, response, inspection_profile: InspectionProfileModel
     ):
-        # Map each required inspection handler to related inspection zones
-        # Retrieve inspection handler source
-        inspection_handler_id_list = []  # ih1, ih2, ...
-        inspection_handler_source_list = []  # ih1 source, ih2 source, ...
+        inspection_handler_id_list = []
+        inspection_handler_source_list = []
 
-        inspection_handler_related_inspection_target_map = defaultdict(
-            list
-        )  # handler id: insp. target
-        inspection_handler_related_inspection_target_message_map = defaultdict(
-            list
-        )  # handler id: insp. target as message
+        inspection_handler_related_inspection_target_map = defaultdict(list)
+        inspection_handler_related_inspection_target_message_map = defaultdict(list)
 
         try:
             template = inspection_profile.template
@@ -208,16 +199,13 @@ class Service(StandardService):
             assert len(inspection_zone_list), "Inspection zone list is empty"
 
             for inspection_zone in inspection_zone_list:
-
                 inspection_target_list = inspection_zone.inspection_target_list
                 assert len(inspection_target_list), "Inspection target list is empty"
 
                 for target in inspection_target_list:
-
                     inspection_handler = target.inspection_handler
                     assert inspection_handler, "Inspection handler record not available"
 
-                    # Assign target to handler
                     inspection_handler_related_inspection_target_map[
                         inspection_handler.id
                     ].append(target)
@@ -228,7 +216,6 @@ class Service(StandardService):
                     if inspection_handler.id in inspection_handler_id_list:
                         continue
 
-                    # Materialize inspection handler source
                     inspection_handler_id_list.append(inspection_handler.id)
                     source = inspection_handler.materialize_source().decode()
                     inspection_handler_source_list.append(source)
@@ -274,8 +261,6 @@ class Service(StandardService):
         template_image_message,
         inspection_profile: InspectionProfileModel,
     ):
-
-        # Lists of all inspection targets and related logs (order is kept)
         inspection_target_list_full = []
         inspection_target_list_full_message = []
         inspection_log_list_full_message = []
@@ -320,7 +305,6 @@ class Service(StandardService):
                         inspection_target_message.id == inspection_log_message.id
                     ), "Inspection log disorder detected."
 
-                # Collect all records (flatten)
                 inspection_target_list_full_message.extend(
                     inspection_target_message_list
                 )
@@ -385,7 +369,6 @@ class Service(StandardService):
         response.overall_passed = False
 
         with Session(engine) as session:
-            # Node is going to communicate with database, so initiate controllers
             inspection_profile_controller = InspectionProfileController(session)
             inspection_controller = InspectionController(session)
             inspection_log_controller = InspectionLogController(session)
@@ -490,22 +473,8 @@ class Service(StandardService):
                 return response
 
     def update_watch_pin_list(self):
-        """Callback to update GPIO interface with new pins to watch"""
-
-        try:
-            with Session(engine) as session:
-                camera_controller = CameraController(session)
-                camera_list = camera_controller.list()
-    
-                watch_pin_list = []
-                for camera in camera_list:
-                    if camera.io_pin_trigger is not None:
-                        watch_pin_list.append(camera.io_pin_trigger)
-    
-                future = self.gpio_interface_set_parameters(watch_pin_list)
-                self.await_future(future)
-        except Exception as e:
-            self.logger.warning(f"Failed to update pin watch list: {str(e)}")
+        """Callback to update GPIO interface - DESATIVADO PARA WINDOWS"""
+        pass
 
 
 def main(args=None):
@@ -513,7 +482,6 @@ def main(args=None):
 
     service = Service()
 
-    # Use multithread executor to be avoid deadlocks while awaiting services sub_responses
     executor = rclpy.executors.MultiThreadedExecutor()
     executor.add_node(service)
     executor.spin()

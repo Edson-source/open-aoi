@@ -29,7 +29,7 @@ class Service(StandardService):
         self.logger.info(f"Barcode identification triggered. [{p.tick()}]")
         self.set_status(SystemServiceStatus.BUSY)
 
-        identification_code = ""
+        identification_code = "pci de teste"
         try:
             image = imgmsg_to_cv2(request.image)
             self.logger.info(f"Message converted to image. [{p.tick()}]")
