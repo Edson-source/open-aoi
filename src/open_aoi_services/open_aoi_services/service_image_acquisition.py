@@ -2,9 +2,8 @@ import os
 import random
 from typing import List, Optional
 
-import cv2# IMPORTAMOS O OPENCV AQUI
+import cv2
 import rclpy
-# from pypylon import pylon  <- REMOVIDO PARA PARAR DE BUSCAR CAMERA INDUSTRIAL
 from rcl_interfaces.msg import ParameterDescriptor, SetParametersResult
 
 from open_aoi_interfaces.srv import ImageAcquisitionTrigger
@@ -16,29 +15,24 @@ from open_aoi_core.services import StandardService
 
 EMULATION_DIR = "./emulation"
 
-
 class Service(StandardService):
     NODE_NAME = ImageAcquisitionConstants.NODE_NAME
 
     CAMERA_IP_ADDRESS: str = ""
     CAMERA_ENABLED: bool = False
-
-    # camera: Optional[pylon.InstantCamera] = None <- REMOVIDO
-    camera_index: Optional[int] = None # ADICIONADO PARA GUARDAR O ÍNDICE DA WEBCAM
+    camera_index: Optional[int] = None
 
     emulation_images = [f for f in os.listdir(EMULATION_DIR) if ".png" in f]
 
     def __init__(self):
         super().__init__()
 
-        # --- Services ---
         self.acquire_image_service = self.create_service(
             ImageAcquisitionTrigger,
             f"{self.NODE_NAME}/capture",
             self.acquire_image,
         )
 
-        # --- Parameters ---
         self.declare_parameter(
             ImageAcquisitionConstants.Parameter.CAMERA_ENABLED,
             value=self.CAMERA_ENABLED,
@@ -54,7 +48,7 @@ class Service(StandardService):
             descriptor=ParameterDescriptor(
                 name="Camera IP address",
                 type=rclpy.Parameter.Type.STRING.value,
-                description="IP address of camera to use. If not provided, node will connect to the first found camera.",
+                description="IP address of camera to use.",
             ),
         )
 
@@ -65,15 +59,11 @@ class Service(StandardService):
         self.logger.info("Parameters update triggered")
         reload = False
         for p in parameters:
-            self.logger.info(
-                f"Parameter {p.name}: {getattr(self, p.name)} -> {p.value}"
-            )
+            self.logger.info(f"Parameter {p.name}: {getattr(self, p.name)} -> {p.value}")
             setattr(self, p.name, p.value)
             if p.name == ImageAcquisitionConstants.Parameter.CAMERA_ENABLED:
                 reload = True
-        if (
-            reload
-        ):  # This function is triggered multiple times for unknown reason - reload services only once though
+        if reload: 
             self._reload_service()
         self.logger.info("Parameters update done")
         return SetParametersResult(successful=True, reason="")
@@ -87,42 +77,25 @@ class Service(StandardService):
     def _acquire_camera(self):
         self.logger.info("Camera connection requested")
 
-        # Emulation (Mantido para caso você ligue o .env novamente)
         if SIMULATION:
-            self.logger.info("Running emulation mode (Ignorado pois SIMULATION=0)")
-            # ... toda a lógica de emulação pylon foi limpa para evitar dependências desnecessárias, 
-            # já que o foco é a webcam USB agora.
-            self.set_status(SystemServiceStatus.IDLE, "Emulation mode requires pypylon, which is disabled.")
+            self.logger.info("Running emulation mode (Ignorado)")
+            self.set_status(SystemServiceStatus.IDLE, "Emulation mode is disabled.")
             return
-
-        # Real camera via OpenCV (Nossa WebCam)
         else:
             self.logger.info(f"Running with WEBCAM via OpenCV")
             try:
-                # O /dev/video0 é o índice 0 no OpenCV. Se o IP não for numérico, assume 0.
-                self.camera_index = "http://host.docker.internal:5000/video"  # URL do stream da webcam
+                self.camera_index = "http://host.docker.internal:5000/video"
                 
-                # Fazemos um pequeno teste silencioso só para ver se a câmera existe
                 cap = cv2.VideoCapture(self.camera_index)
-                
-                # Desativar Autofoco (0 = manual) - Se a câmera suportar
                 cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
-
-                # Desativar Exposição Automática (1 = manual, dependendo do driver)
                 cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1) 
-
-                # Ajustar um valor fixo de exposição (teste valores entre -1 e -10 ou 10 e 500)
-                # Isso impede que a imagem mude de brilho sozinha
                 cap.set(cv2.CAP_PROP_EXPOSURE, -5)
 
                 if not cap.isOpened():
-                     raise Exception("OpenCV não conseguiu abrir /dev/video0")
+                     raise Exception("OpenCV não conseguiu abrir o stream da camera")
                 cap.release()
 
-                self.set_status(
-                    SystemServiceStatus.IDLE,
-                    f"Connected to webcam at /dev/video{self.camera_index}",
-                )
+                self.set_status(SystemServiceStatus.IDLE, f"Connected to webcam at {self.camera_index}")
                 return
             except Exception as e:
                 self.logger.error(str(e))
@@ -131,25 +104,19 @@ class Service(StandardService):
 
     def acquire_image(self, request, response):
         p = Profiler()
-
         self.logger.info(f"Image requested. [{p.tick()}]")
         self.set_status(SystemServiceStatus.BUSY)
 
         if self.camera_index is None:
             self.logger.error("Camera index not initialized")
             response.error = ImageAcquisitionConstants.Error.GENERAL
-            response.error_description = (
-                "Capture image called before camera initialization"
-            )
+            response.error_description = "Capture image called before camera initialization"
             self.set_status(SystemServiceStatus.IDLE)
-            self.logger.info(f"Response returned. [{p.tick()}]")
             return response
             
         try:
-            # AQUI A MÁGICA ACONTECE: O OpenCV abre a câmera, bate a foto e fecha.
             cap = cv2.VideoCapture(self.camera_index)
             
-            # Limpa o buffer antigo (Webcams costumam guardar frames velhos no buffer do Linux)
             for _ in range(5):
                 cap.grab()
                 
@@ -158,10 +125,12 @@ class Service(StandardService):
 
             if ret:
                 self.logger.info(f"Grabbed successfully: {frame.shape}. [{p.tick()}]")
-                # Se necessário, converte de BGR para RGB para compatibilidade de cor
-                # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) 
                 
-                response.image = cv2_to_imgmsg(frame)
+                # CORREÇÃO AQUI: Converte a imagem capturada em BGR para RGB
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) 
+                
+                # Envia a imagem RGB para o ROS
+                response.image = cv2_to_imgmsg(frame_rgb)
                 response.error = ImageAcquisitionConstants.Error.NONE
                 response.error_description = ""
                 self.logger.info(f"Image returned. [{p.tick()}]")
@@ -171,7 +140,6 @@ class Service(StandardService):
                 self.logger.error("Webcam read return false (Grabbed unsuccessfully).")
                 response.error = ImageAcquisitionConstants.Error.GENERAL
                 response.error_description = "Capture image failed from Webcam"
-                self.logger.info("Response returned")
                 self.set_status(SystemServiceStatus.IDLE)
                 return response
         except Exception as e:
@@ -179,17 +147,13 @@ class Service(StandardService):
             response.error = ImageAcquisitionConstants.Error.GENERAL
             response.error_description = "Capture image failed"
             self.set_status(SystemServiceStatus.IDLE)
-            self.logger.info("Response returned")
             return response
-
 
 def main():
     rclpy.init()
     service = Service()
-
     rclpy.spin(service)
     rclpy.shutdown()
-
 
 if __name__ == "__main__":
     main()

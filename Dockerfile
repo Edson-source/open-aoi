@@ -2,7 +2,7 @@ FROM ros:foxy-ros-base
 #python-rpi.gpio python3-rpi.gpio &&
 # Install dependencies
 RUN apt-get update && \
-    apt-get install -y software-properties-common python3-pip libgl1 && \ 
+    apt-get install -y software-properties-common python3-pip libgl1 tesseract-ocr && \
     python3 -m pip install --upgrade pip && \
     add-apt-repository universe && \
     apt-get update && \

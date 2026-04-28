@@ -22,3 +22,6 @@ minio
 
 # GPIO
 SimulRPi  # Used for simulation mode, RPi.GPIO should be available in production (in case of deployment to RaspberryPi)
+
+# OCR
+pytesseract
