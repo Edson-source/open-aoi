@@ -148,7 +148,7 @@ docker compose --profile full down
 docker compose --profile full build aoi-ros2
 
 # 3. Sobe o sistema em background
-docker compose --profile full up -d
+docker compose --profile full up -d --build
    IP Aplicação: 127.0.0.1:10006
    login: Administrator
    senha: senha_admin
@@ -157,6 +157,8 @@ docker compose --profile full up -d
 python .\camera_server.py
    IP Câmera: 127.0.0.1:5000/video
 
+# 5. Remove volume (cache do build)
+docker volume rm open-aoi_aoi
 
 
 ## To-Do List: Implementação do Sistema AOI
