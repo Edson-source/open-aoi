@@ -25,17 +25,15 @@ class Service(StandardService):
     def preprocess_image(self, image):
         """Aplica filtros para facilitar a leitura do código."""
         # 1. Correção de Cor (Caso esteja invertido BGR <-> RGB)
-        # Se o azul está marrom, tente descomentar a linha abaixo:
-        image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
+        image_rgb = cv.cvtColor(image, cv.COLOR_BGR2RGB)
 
         # 2. Converter para Tons de Cinza (Essencial para detecção de padrões)
       #   gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
 
         # 3. Aumentar Contraste (CLAHE é ótimo para inspeção industrial)
-        clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-        contrast_enhanced = clahe.apply(image)
-
-        return contrast_enhanced
+        enhance_gray = cv.cvtColor(image_rgb, cv.COLOR_RGB2GRAY)
+        
+        return enhance_gray
 
     def get_barcode(self, request, response):
         p = Profiler()
@@ -77,6 +75,32 @@ class Service(StandardService):
             self.logger.warn("Falha: Nenhum código identificado na PCI.")
 
         return response
+     
+    def apply_smart_sharpening(image):
+         """
+         Aplica nitidez inteligente para compensar lentes de baixa qualidade.
+         """
+         # 1. Converter para cinza para processar a luminância
+         gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+
+         # 2. Unsharp Masking
+         # O GaussianBlur cria uma máscara de "baixa frequência"
+         # sigma=1.5 a 3.0 é o ideal para webcams borradas
+         blurred = cv.GaussianBlur(gray, (0, 0), sigmaX=2.0)
+         
+         # alpha: peso da imagem original
+         # beta: peso da imagem borrada (negativo para subtrair)
+         # A fórmula é: resultado = original * alpha + borrada * beta + gamma
+         sharpened = cv.addWeighted(gray, 1.6, blurred, -0.6, 0)
+
+         # 3. CLAHE (Contrast Limited Adaptive Histogram Equalization)
+         # Isso ajuda a definir melhor as trilhas e labels na PCI azul
+         clahe = cv.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8))
+         enhanced = clahe.apply(sharpened)
+
+         # Opcional: Retornar para BGR se o resto do pipeline exigir cor, 
+         # mas para inspeção de componentes, o cinza é superior.
+         return enhanced
 
 def main():
     rclpy.init()

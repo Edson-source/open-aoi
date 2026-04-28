@@ -135,3 +135,66 @@ Once ready, follow native installation guide to install ROS2 and docker. The fol
 As bonus, there are publicly available dataset with over 300 image, taken on industrial camera. The dataset is located in OSF project files (see links on top of the page) and described in main project paper. Dataset is not labeled for any defects. Information about exposure, objective and camera, aperture and illumination conditions is however available.
 
 ![Dataset sample image](/assets/drawcore.bmp)
+
+## Passo a passo inicialização do sistema
+
+# Instale docker desktop
+https://docs.docker.com/desktop/setup/install/windows-install/?uuid=5A005D38-5A61-475C-8459-799CDD901479#wsl-verification-and-setup
+
+# 1. Derruba tudo
+docker compose --profile full down
+
+# 2. Reconstrói com as novas configurações de rede e código sem GPIO
+docker compose --profile full build aoi-ros2
+
+# 3. Sobe o sistema em background
+docker compose --profile full up -d
+   IP Aplicação: 127.0.0.1:10006
+   login: Administrator
+   senha: senha_admin
+   
+# 4. Roda o servidor da camera
+python .\camera_server.py
+   IP Câmera: 127.0.0.1:5000/video
+
+
+
+## To-Do List: Implementação do Sistema AOI
+
+# Fase 1: Estabilização da Imagem (Fundação)
+Antes de analisar, a imagem precisa estar perfeita.
+
+[x] Correção de Cores: Implementar a conversão BGR para RGB no script de aquisição.
+
+[ ] Compensação de Nitidez: Adicionar filtro de Sharpening ou Unsharp Mask para compensar a lente da webcam.
+
+[ ] Controle de Exposição: Travar o ganho e a exposição da webcam via código para evitar que a imagem "pisque" ou mude de brilho entre as capturas.
+
+[ ] Normalização de Buffer: Aumentar o cap.grab() para garantir que o frame processado seja o mais atual possível.
+
+# Fase 2: Identificação Inteligente (Quem é a placa?)
+Substituir o foco em código de barras pela realidade das suas PCIs.
+
+[ ] Motor de OCR: Integrar o PyTesseract para ler os números de série e versão (ex: 10946 R1.1) diretamente da serigrafia.
+
+[ ] Fallback de Template: Se o OCR falhar, criar um sistema que compare a "silhueta" da placa com o banco de dados para tentar adivinhar o modelo.
+
+[ ] Vincular Golden Image: Criar a lógica que, ao identificar o ID "10935", o sistema automaticamente carregue o arquivo de imagem e as coordenadas de inspeção correspondentes.
+
+# Fase 3: Inspeção de Montagem (Análise de Erros)
+Aqui o sistema começa a "pensar" como um inspetor de qualidade.
+
+[ ] Alinhamento Automático (Registration): Implementar o algoritmo ORB ou ECC para alinhar a imagem da câmera perfeitamente com a Golden Image (ajustando rotação e escala).
+
+[ ] Inspeção de Presença/Absência: Criar um serviço que compare o histograma das áreas de componentes para detectar se um capacitor ou chip está faltando.
+
+[ ] Detecção de Polaridade: Verificar se componentes polarizados (capacitores eletrolíticos, diodos) estão invertidos, analisando a posição da marcação (faixa branca/chanfro).
+
+[ ] Verificação de Lables: Usar o OCR em áreas específicas para confirmar se o componente soldado é o correto (ex: ler "ESP32" no topo do módulo).
+
+Fase 4: Interface e Feedback (Resultados)
+[ ] Destaque de Incongruências: Gerar uma imagem de saída com quadrados vermelhos onde o sistema detectou falha na PCI.
+
+[ ] Relatório de Inspeção: Salvar um log com: ID da Placa, Status (Pass/Fail) e quais componentes falharam.
+
+[ ] Dashboard de Estatísticas: Mostrar no portal a taxa de aprovação da linha de produção.

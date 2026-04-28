@@ -2,7 +2,7 @@ import os
 import random
 from typing import List, Optional
 
-import cv2 # IMPORTAMOS O OPENCV AQUI
+import cv2# IMPORTAMOS O OPENCV AQUI
 import rclpy
 # from pypylon import pylon  <- REMOVIDO PARA PARAR DE BUSCAR CAMERA INDUSTRIAL
 from rcl_interfaces.msg import ParameterDescriptor, SetParametersResult
@@ -104,6 +104,17 @@ class Service(StandardService):
                 
                 # Fazemos um pequeno teste silencioso só para ver se a câmera existe
                 cap = cv2.VideoCapture(self.camera_index)
+                
+                # Desativar Autofoco (0 = manual) - Se a câmera suportar
+                cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
+
+                # Desativar Exposição Automática (1 = manual, dependendo do driver)
+                cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1) 
+
+                # Ajustar um valor fixo de exposição (teste valores entre -1 e -10 ou 10 e 500)
+                # Isso impede que a imagem mude de brilho sozinha
+                cap.set(cv2.CAP_PROP_EXPOSURE, -5)
+
                 if not cap.isOpened():
                      raise Exception("OpenCV não conseguiu abrir /dev/video0")
                 cap.release()
