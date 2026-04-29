@@ -168,9 +168,9 @@ Antes de analisar, a imagem precisa estar perfeita.
 
 [x] Correção de Cores: Implementar a conversão BGR para RGB no script de aquisição.
 
-[ ] Compensação de Nitidez: Adicionar filtro de Sharpening ou Unsharp Mask para compensar a lente da webcam.
+[x] Compensação de Nitidez: Adicionar filtro de Sharpening ou Unsharp Mask para compensar a lente da webcam.
 
-[ ] Controle de Exposição: Travar o ganho e a exposição da webcam via código para evitar que a imagem "pisque" ou mude de brilho entre as capturas.
+[x] Controle de Exposição: Travar o ganho e a exposição da webcam via código para evitar que a imagem "pisque" ou mude de brilho entre as capturas.
 
 [ ] Normalização de Buffer: Aumentar o cap.grab() para garantir que o frame processado seja o mais atual possível.
 

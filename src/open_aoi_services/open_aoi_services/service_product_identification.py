@@ -88,68 +88,62 @@ class Service(StandardService):
 
         return response
      
-    def align_images(current_img, golden_img, max_features=5000, keep_percent=0.2):
-         """
-         Alinha a imagem atual com a imagem de referência (Golden Image).
-         
-         :param current_img: Imagem capturada (pode estar torta/desalinhada).
-         :param golden_img: O template perfeito.
-         :param max_features: Quantidade máxima de pontos-chave a procurar.
-         :param keep_percent: Porcentagem dos melhores matches a reter (filtra erros).
-         :return: Imagem alinhada e a matriz de homografia (ou None se falhar).
-         """
-         # 1. Converter ambas para tons de cinza
-         current_gray = cv.cvtColor(current_img, cv.COLOR_BGR2GRAY)
-         golden_gray = cv.cvtColor(golden_img, cv.COLOR_BGR2GRAY)
+    def align_images(self, current_img, golden_img, max_features=5000, keep_percent=0.2):
+        """
+        Alinha a imagem atual com a imagem de referência (Golden Image).
+        """
+        # 1. Converter ambas para tons de cinza (Lembrando que a current_img chega em RGB do ROS)
+        current_gray = cv.cvtColor(current_img, cv.COLOR_RGB2GRAY)
+        
+        # ATENÇÃO: Depende de como você vai carregar a golden_img (cv.imread carrega em BGR por padrão)
+        # Se carregar via cv.imread, use BGR2GRAY. Se vier do portal/ROS, use RGB2GRAY.
+        golden_gray = cv.cvtColor(golden_img, cv.COLOR_BGR2GRAY) 
 
-         # 2. Inicializar o detector ORB
-         orb = cv.ORB_create(max_features)
+        # 2. Inicializar o detector ORB
+        orb = cv.ORB_create(max_features)
 
-         # 3. Detectar pontos-chave (keypoints) e descritores em ambas as imagens
-         (kps_curr, descs_curr) = orb.detectAndCompute(current_gray, None)
-         (kps_gold, descs_gold) = orb.detectAndCompute(golden_gray, None)
+        # 3. Detectar pontos-chave (keypoints) e descritores em ambas as imagens
+        (kps_curr, descs_curr) = orb.detectAndCompute(current_gray, None)
+        (kps_gold, descs_gold) = orb.detectAndCompute(golden_gray, None)
 
-         # Proteção: Se não achar pontos suficientes (imagem muito borrada, por ex)
-         if descs_curr is None or descs_gold is None:
+        # Proteção: Se não achar pontos suficientes
+        if descs_curr is None or descs_gold is None:
+            self.logger.warn("Alinhamento falhou: Poucos features encontrados.")
             return None, None
 
-         # 4. Matcher: Encontrar as correspondências entre as duas imagens
-         # Usa a distância de Hamming (ideal para ORB)
-         matcher = cv.DescriptorMatcher_create(cv.DESCRIPTOR_MATCHER_BRUTEFORCE_HAMMING)
-         matches = matcher.match(descs_curr, descs_gold)
+        # 4. Matcher
+        matcher = cv.DescriptorMatcher_create(cv.DESCRIPTOR_MATCHER_BRUTEFORCE_HAMMING)
+        matches = matcher.match(descs_curr, descs_gold)
 
-         # 5. Ordenar os matches pela distância (os melhores ficam no topo da lista)
-         matches = sorted(matches, key=lambda x: x.distance)
+        # 5. Ordenar e Filtrar Matches
+        matches = sorted(matches, key=lambda x: x.distance)
+        keep = int(len(matches) * keep_percent)
+        matches = matches[:keep]
 
-         # 6. Manter apenas os melhores X% dos matches para evitar falsos positivos
-         keep = int(len(matches) * keep_percent)
-         matches = matches[:keep]
-
-         # Proteção: Precisamos de pelo menos 4 pontos para calcular a matriz 3D
-         if len(matches) < 4:
+        if len(matches) < 4:
+            self.logger.warn("Alinhamento falhou: Menos de 4 matches válidos.")
             return None, None
 
-         # 7. Extrair as coordenadas (x,y) dos melhores matches
-         pts_curr = np.zeros((len(matches), 2), dtype="float")
-         pts_gold = np.zeros((len(matches), 2), dtype="float")
+        # 7. Extrair coordenadas
+        pts_curr = np.zeros((len(matches), 2), dtype="float")
+        pts_gold = np.zeros((len(matches), 2), dtype="float")
 
-         for (i, match) in enumerate(matches):
+        for (i, match) in enumerate(matches):
             pts_curr[i] = kps_curr[match.queryIdx].pt
             pts_gold[i] = kps_gold[match.trainIdx].pt
 
-         # 8. Calcular a Matriz de Homografia usando RANSAC 
-         # O RANSAC é o herói aqui: ele ignora matches absurdos (outliers)
-         (H, mask) = cv.findHomography(pts_curr, pts_gold, method=cv.RANSAC)
+        # 8. Matriz de Homografia
+        (H, mask) = cv.findHomography(pts_curr, pts_gold, method=cv.RANSAC)
 
-         # Proteção de falha na matemática da matriz
-         if H is None:
+        if H is None:
+            self.logger.warn("Alinhamento falhou: Matriz de homografia inválida.")
             return None, None
 
-         # 9. Realizar a deformação (Warp) da imagem atual para bater com a Golden
-         (height, width) = golden_img.shape[:2]
-         aligned_img = cv.warpPerspective(current_img, H, (width, height))
+        # 9. Realizar a deformação (Warp)
+        (height, width) = golden_img.shape[:2]
+        aligned_img = cv.warpPerspective(current_img, H, (width, height))
 
-         return aligned_img, H
+        return aligned_img, H
       
       
 def main():
