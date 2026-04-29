@@ -339,6 +339,12 @@ class CameraModel(Base):
     io_pin_accept: Mapped[int] = mapped_column(Integer(), nullable=True)
     io_pin_reject: Mapped[int] = mapped_column(Integer(), nullable=True)
 
+    # Default inspection profile for this camera
+    default_inspection_profile_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("InspectionProfile.id"), nullable=True
+    )
+    default_inspection_profile: Mapped[Optional["InspectionProfileModel"]] = relationship()
+
     created_by_accessor_id: Mapped[int] = mapped_column(
         ForeignKey("Accessor.id"), nullable=False
     )

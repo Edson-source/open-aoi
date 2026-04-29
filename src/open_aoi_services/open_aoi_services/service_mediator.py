@@ -63,13 +63,11 @@ class Service(StandardService):
             self.inspection,
         )
 
-        # --- ALTERAÇÃO: REMOVIDO GPIO DAS DEPENDÊNCIAS ---
+        # Dependencies (removed: product_identification, GPIO)
         self.await_dependencies(
             [
                 self.image_acquisition_capture_cli,
-                self.product_identification_get_barcode_cli,
                 self.inspection_execution_execute_inspection_cli,
-                # Removidos: gpio_interface_propagate_results_cli e gpio_interface_set_parameters_cli
             ]
         )
 
@@ -140,47 +138,27 @@ class Service(StandardService):
             raise RuntimeError()
         return sub_response.image
 
-    def _request_identification(
-        self, request, response, test_image_message: ImageMessage
-    ) -> str:
-        # Product identification
-        future = self.product_identification_get_barcode(test_image_message)
-        sub_response = self.await_future(future)
-
-        identification_code = sub_response.identification_code
-        try:
-            identification_code = identification_code.strip()
-            assert sub_response.identification_code
-        except (AttributeError, AssertionError):
-            response.error = MediatorServiceConstants.Error.IDENTIFICATION_FAILED
-            response.error_description = f"Failed to identify product."
-            raise RuntimeError()
-        return identification_code
-
-    def _request_inspection_profile(
-        self,
-        request,
-        response,
-        inspection_profile_controller: InspectionProfileController,
-        identification_code: str,
+    def _request_inspection_profile_by_camera(
+        self, request, response, camera: CameraModel, inspection_profile_controller: InspectionProfileController
     ) -> InspectionProfileModel:
+        """Retrieve inspection profile associated with camera"""
         try:
-            inspection_profile = (
-                inspection_profile_controller.retrieve_by_identification_code(
-                    identification_code
-                )
-            )
+            # Get the default inspection profile for this camera
+            inspection_profile = inspection_profile_controller.retrieve_by_camera(camera.id)
             assert (
                 inspection_profile is not None
-            ), "Inspection profile not detected by product code"
+            ), f"No inspection profile found for camera {camera.id}. Please assign a profile in camera settings."
+            assert inspection_profile.is_active, "Inspection profile is not active."
         except Exception as e:
             self.logger.error(str(e))
             response.error = MediatorServiceConstants.Error.GENERAL
             response.error_description = (
-                "Failed to retrieve inspection profile. Is profile active?"
+                "Failed to retrieve inspection profile. Is profile active and associated with camera?"
             )
             raise RuntimeError()
         return inspection_profile
+
+
 
     def _request_inspection_handlers_with_targets(
         self, request, response, inspection_profile: InspectionProfileModel
@@ -387,18 +365,12 @@ class Service(StandardService):
                 test_image_message = self._request_test_image(request, response, camera)
                 self.logger.info(f"Test image captured as message. [{p.tick()}]")
 
-                # Product identification
-                identification_code = self._request_identification(
-                    request, response, test_image_message
-                )
-                self.logger.info(f"Identification finished. [{p.tick()}]")
-
-                # Inspection profile retrieval
-                inspection_profile = self._request_inspection_profile(
+                # Inspection profile retrieval (based on camera association)
+                inspection_profile = self._request_inspection_profile_by_camera(
                     request,
                     response,
+                    camera,
                     inspection_profile_controller,
-                    identification_code,
                 )
                 self.logger.info(
                     f"Inspection profile {inspection_profile.id} retrieved: {inspection_profile.title}. [{p.tick()}]"

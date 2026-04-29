@@ -144,21 +144,21 @@ https://docs.docker.com/desktop/setup/install/windows-install/?uuid=5A005D38-5A6
 # 1. Derruba tudo
 docker compose --profile full down
 
-# 2. Reconstrói com as novas configurações de rede e código sem GPIO
+# 2. Remove volume para limpeza do cache
+docker volume rm open-aoi_aoi
+
+# 3. Reconstrói com as novas configurações de rede e código sem GPIO
 docker compose --profile full build aoi-ros2
 
-# 3. Sobe o sistema em background
+# 4. Sobe o sistema em background
 docker compose --profile full up -d --build
    IP Aplicação: 127.0.0.1:10006
    login: Administrator
    senha: senha_admin
    
-# 4. Roda o servidor da camera
+# 5. Roda o servidor da camera
 python .\camera_server.py
    IP Câmera: 127.0.0.1:5000/video
-
-# 5. Remove volume (cache do build)
-docker volume rm open-aoi_aoi
 
 
 ## To-Do List: Implementação do Sistema AOI

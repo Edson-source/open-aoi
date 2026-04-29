@@ -67,7 +67,7 @@ class IModule:
         passed: bool
 
     def cut_inspection_zone(
-        im: np.ndarray, inspection_zone: InspectionZone
+        self, im: np.ndarray, inspection_zone: InspectionZone
     ) -> np.ndarray:
         """Cut chunk from provided image with provided inspection zone"""
         # TODO: Apply rotation

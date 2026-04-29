@@ -54,6 +54,23 @@ class InspectionProfileController(Controller):
             .one_or_none()
         )
 
+    def retrieve_by_camera(
+        self, camera_id: int
+    ) -> Optional[InspectionProfileModel]:
+        """Retrieve default inspection profile for a camera"""
+        from open_aoi_core.models import CameraModel
+        return (
+            self.session.query(self._model)
+            .join(CameraModel, CameraModel.default_inspection_profile_id == self._model.id)
+            .filter(
+                and_(
+                    CameraModel.id == camera_id,
+                    self._model.is_active == True,
+                )
+            )
+            .one_or_none()
+        )
+
     def allow_delete_hook(self, id: int) -> bool:
         """Allow delete if no inspection refer to this profile"""
         return not self.session.query(
