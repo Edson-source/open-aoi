@@ -15,17 +15,45 @@
   Idealmente: boa iluminação, sem sombras, centralizador
   ```
 
-### **FASE 2: Upload Handler** (1 minuto)
+### **FASE 2: Criar Defect Type** (1 minuto)
+
+- [ ] Criar tipo de defeito
+  ```
+  Portal → CONFIGURAÇÃO → Inspection Handlers (seção esquerda)
+  → Clique em "Create Defect Type"
+  
+  Preencha:
+  - Título: "Placa Alignment Check"
+  - Descrição: "Verifica alinhamento e defeitos da placa"
+  → Save
+  ```
+
+### **FASE 3: Criar Inspection Handler** (1 minuto)
+
+- [ ] Criar handler vinculado ao defect type
+  ```
+  Portal → CONFIGURAÇÃO → Inspection Handlers (continuando na mesma página)
+  → Clique em "Create New Module"
+  
+  Preencha:
+  - Título: "Plate Alignment Inspection"
+  - Defect Type: Selecione "Placa Alignment Check" (criado acima)
+  → Save
+  ```
+
+### **FASE 4: Upload Handler** (1 minuto)
 
 - [ ] Fazer upload do arquivo
   ```
-  Arquivo: playground/inspection_development/modules_production/plate_alignment_inspection.py
-  
-  Portal → CONFIGURAÇÃO → Módulos → Upload
-  Selecionar arquivo → Save
+  Portal → CONFIGURAÇÃO → Inspection Handlers
+  → Localize o module "Plate Alignment Inspection" na lista
+  → Clique em "Edit" (ou no nome do module)
+  → Clique em "Upload source"
+  → Selecione: plate_alignment_inspection.py
+  → Pronto! ✓
   ```
 
-### **FASE 3: Criar Template** (1 minuto)
+### **FASE 5: Criar Template** (1 minuto)
 
 - [ ] Capturar golden image
   ```
@@ -34,7 +62,7 @@
   Review → Save como "PCI_Template_v1"
   ```
 
-### **FASE 4: Definir Zonas** (2 minutos)
+### **FASE 6: Definir Zonas** (2 minutos)
 
 - [ ] Marcar componentes/áreas
   ```
@@ -43,7 +71,7 @@
   Ex: C1, C2, R1, IC1 (mínimo 2-3 zonas)
   ```
 
-### **FASE 5: Criar Profile** (1 minuto)
+### **FASE 7: Criar Profile** (1 minuto)
 
 - [ ] Criar inspection profile
   ```
@@ -64,7 +92,7 @@
 - [ ] Selecionar todas as zonas para o handler
 - [ ] Save
 
-### **FASE 6: Testar** (2 minutos)
+### **FASE 8: Testar** (2 minutos)
 
 - [ ] Teste no portal
   ```
@@ -162,21 +190,23 @@ Após validar que funciona, você pode:
 ## ⏱️ Tempo Total
 
 - Preparação: 2 min
-- Setup: 5 min
+- Setup (Defect Type + Handler): 2 min
+- Upload: 1 min
+- Template + Zones: 3 min
+- Profile: 1 min
 - Testes: 5-10 min
-- Ajustes: 5-15 min
+- Ajustes: 5-10 min
 
-**Total: ~15-30 minutos para estar funcionando!**
+**Total: ~20-30 minutos para estar funcionando!**
 
 ---
 
 ## 🚀 Começar Agora!
 
 1. Abra o portal: `http://127.0.0.1:10006`
-2. Vá para: `CONFIGURAÇÃO → Módulos`
-3. Upload `plate_alignment_inspection.py`
-4. Siga o Checklist Rápido acima
-5. Celebrar! 🎉
+2. Vá para: `CONFIGURAÇÃO → Inspection Handlers`
+3. Siga o Checklist acima (8 fases = ~15 minutos)
+4. Celebrar! 🎉
 
 ---
 

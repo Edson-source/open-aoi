@@ -24,6 +24,10 @@ DEFAULT_DEFECT_TYPES = {
         "title": "Capacitor opposite orientation",
         "description": "Capacitor orientation is opposite to template.",
     },
+    "plate_alignment": {
+        "title": "Plate alignment",
+        "description": "Plate alignment and component positioning issues detected through image registration and zone comparison.",
+    },
 }
 
 MODULES_PATH = "./src/open_aoi_core/open_aoi_core/content/modules"
@@ -57,6 +61,11 @@ DEFAULT_MODULES = {
         "title": "Capacitor opposite orientation inspection (classical image processing, default module)",
         "description": "Module provide capacitor orientation inspection to detect opposite orientation compared to template.",
         "type": "capacitor_opposite_orientation",
+    },
+    f"{MODULES_PATH}/plate_alignment_inspection.py": {
+        "title": "Plate alignment inspection (ORB/ECC registration, default module)",
+        "description": "Automatic image registration and zone-by-zone comparison to detect plate misalignment, missing components, and positioning defects. Supports ORB (fast) and ECC (robust) alignment methods.",
+        "type": "plate_alignment",
     },
 }
 
