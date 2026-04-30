@@ -26,6 +26,7 @@ and the golden image using ORB features, then compares each inspection zone.
 - Per-zone similarity comparison using histogram matching
 - Detailed logging of alignment success/failure
 - Threshold-based pass/fail decision per zone
+- Optional automatic component detection using template matching
 
 **Required Parameters:**
 - SIMILARITY_THRESHOLD: Float (0.0-1.0). Zones with similarity >= this value PASS. Default: 0.85
@@ -33,17 +34,30 @@ and the golden image using ORB features, then compares each inspection zone.
 - KEEP_PERCENT: Float (0.0-1.0). Percentage of best matches to keep. Default: 0.2
 - ALIGNMENT_METHOD: String ('ORB' or 'ECC'). Default: 'ORB'
 
-**Example Environment:**
+**Optional Parameters (Auto-Detection):**
+- AUTO_DETECT_COMPONENTS: String ('True' or 'False'). Enable automatic component detection. Default: 'False'
+- COMPONENT_DETECTION_THRESHOLD: Float (0.0-1.0). Confidence threshold for component detection. Default: 0.8
+
+**Example Environment (Basic):**
 SIMILARITY_THRESHOLD=0.85
 MAX_FEATURES=5000
 KEEP_PERCENT=0.2
 ALIGNMENT_METHOD=ORB
+
+**Example Environment (With Auto-Detection):**
+SIMILARITY_THRESHOLD=0.85
+MAX_FEATURES=5000
+KEEP_PERCENT=0.2
+ALIGNMENT_METHOD=ORB
+AUTO_DETECT_COMPONENTS=True
+COMPONENT_DETECTION_THRESHOLD=0.8
 
 **Expected Output:**
 Each inspection zone returns a log with:
 - Alignment status
 - Similarity percentage for the zone
 - Pass/Fail decision
+- (Optional) Auto-detection results if enabled
 """
 
 
@@ -168,6 +182,86 @@ class Module(IModule):
         except Exception as e:
             return None, None, f"ECC alignment error: {str(e)}"
 
+    def find_all_components(
+        self, 
+        image: np.ndarray, 
+        component_template: np.ndarray, 
+        threshold: float = 0.8
+    ) -> list:
+        """
+        Realiza uma varredura na imagem para encontrar todas as ocorrências de um template.
+        Útil para localizar componentes específicos de forma automática.
+        
+        Args:
+            image: Imagem onde buscar (RGB ou grayscale)
+            component_template: Template do componente a buscar (RGB ou grayscale)
+            threshold: Limiar de confiança para aceitar uma detecção (0.0-1.0)
+            
+        Returns:
+            Lista de dicts com detecções encontradas:
+            [
+                {
+                    "x": int (canto superior esquerdo),
+                    "y": int (canto superior esquerdo),
+                    "width": int,
+                    "height": int,
+                    "confidence": float (0.0-1.0)
+                },
+                ...
+            ]
+        """
+        try:
+            # 1. Converter ambas para tons de cinza
+            img_gray = cv.cvtColor(image, cv.COLOR_RGB2GRAY) if len(image.shape) == 3 else image
+            template_gray = cv.cvtColor(component_template, cv.COLOR_RGB2GRAY) if len(component_template.shape) == 3 else component_template
+            
+            # Obter as dimensões do template para criar as caixas delimitadoras depois
+            h, w = template_gray.shape[:2]
+
+            # 2. Executar a varredura (Template Matching) em toda a imagem
+            res = cv.matchTemplate(img_gray, template_gray, cv.TM_CCOEFF_NORMED)
+
+            # 3. Encontrar todos os locais onde a similaridade é maior que o threshold
+            loc = np.where(res >= threshold)
+            
+            found_components = []
+            # Agrupar os pontos encontrados (porque um mesmo componente pode gerar múltiplos hits próximos)
+            for pt in zip(*loc[::-1]):
+                # pt = (x, y) do canto superior esquerdo da ocorrência encontrada
+                found_components.append({
+                    "x": int(pt[0]),
+                    "y": int(pt[1]),
+                    "width": int(w),
+                    "height": int(h),
+                    "confidence": float(res[pt[1], pt[0]])
+                })
+            
+            self.logger.info(f"find_all_components found {len(found_components)} matches with threshold {threshold}")
+            
+            # 4. Supressão Não Máxima (NMS) - agrupa detecções muito próximas
+            # Ordena por confiança decrescente
+            found_components = sorted(found_components, key=lambda x: x["confidence"], reverse=True)
+            
+            # Remove detecções que se sobrepõem (mantém a de maior confiança)
+            filtered_components = []
+            for comp in found_components:
+                is_duplicate = False
+                for existing in filtered_components:
+                    # Verifica se os componentes se sobrepõem (com margem de 50 pixels)
+                    if (abs(comp["x"] - existing["x"]) < 50 and 
+                        abs(comp["y"] - existing["y"]) < 50):
+                        is_duplicate = True
+                        break
+                if not is_duplicate:
+                    filtered_components.append(comp)
+            
+            self.logger.info(f"After NMS: {len(filtered_components)} unique components")
+            return filtered_components
+            
+        except Exception as e:
+            self.logger.error(f"Error in find_all_components: {str(e)}", exc_info=True)
+            return []
+
     def compute_zone_similarity(
         self,
         test_chunk: np.ndarray,
@@ -250,6 +344,8 @@ class Module(IModule):
         max_features = int(environment.get("MAX_FEATURES", 5000))
         keep_percent = float(environment.get("KEEP_PERCENT", 0.2))
         alignment_method = environment.get("ALIGNMENT_METHOD", "ORB").upper()
+        auto_detect_components = environment.get("AUTO_DETECT_COMPONENTS", "False").lower() == "true"
+        component_detection_threshold = float(environment.get("COMPONENT_DETECTION_THRESHOLD", 0.8))
 
         # Step 1: Align images
         if alignment_method == "ECC":
@@ -260,6 +356,31 @@ class Module(IModule):
             )
 
         alignment_success = aligned_img is not None
+        
+        # Step 1.5 (Optional): Auto-detect components in aligned image
+        detected_components = []
+        if auto_detect_components and alignment_success:
+            self.logger.info("AUTO_DETECT_COMPONENTS enabled. Searching for components...")
+            detected_components = self.find_all_components(
+                aligned_img, 
+                template_image, 
+                threshold=component_detection_threshold
+            )
+            if detected_components:
+                self.logger.info(f"Found {len(detected_components)} components: {detected_components}")
+                inspection_log_list.append(
+                    IModule.InspectionLog(
+                        f"Auto-Detection: Found {len(detected_components)} components in aligned image",
+                        True
+                    )
+                )
+            else:
+                inspection_log_list.append(
+                    IModule.InspectionLog(
+                        f"Auto-Detection: No components found with threshold {component_detection_threshold}",
+                        True
+                    )
+                )
 
         # Step 2: Process each inspection zone
         for i, zone in enumerate(inspection_zone_list):

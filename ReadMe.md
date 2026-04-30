@@ -200,3 +200,11 @@ Fase 4: Interface e Feedback (Resultados)
 [ ] Relatório de Inspeção: Salvar um log com: ID da Placa, Status (Pass/Fail) e quais componentes falharam.
 
 [ ] Dashboard de Estatísticas: Mostrar no portal a taxa de aprovação da linha de produção.
+
+## Parametros de profile
+SIMILARITY_THRESHOLD=0.85
+MAX_FEATURES=7000
+KEEP_PERCENT=0.3
+ALIGNMENT_METHOD=ECC
+AUTO_DETECT_COMPONENTS=True
+COMPONENT_DETECTION_THRESHOLD=0.8
