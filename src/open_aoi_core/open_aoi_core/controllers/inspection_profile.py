@@ -91,10 +91,41 @@ class InspectionProfileController(Controller):
         """Activates profile"""
         profile.is_active = True
 
-    def deactivate(self, profile: InspectionProfileModel):
-        """Deactivates profile"""
-        profile.is_active = False
+    def activate(self, profile: InspectionProfileModel):
+        """Activates profile and links it to the default camera"""
+        profile.is_active = True
+        
+        # Importamos o modelo da Câmera (assim como você fez no retrieve_by_camera)
+        from open_aoi_core.models import CameraModel
+        
+        # Buscamos a primeira câmera cadastrada no sistema (ou filtre por ID == 1 se preferir)
+        camera = self.session.query(CameraModel).first()
+        
+        # Se a câmera existir, atribuímos o ID deste perfil recém-ativado a ela
+        if camera:
+            camera.default_inspection_profile_id = profile.id
+            # Nota: Não usamos self.session.commit() aqui porque o Open-AOI 
+            # já faz o commit automaticamente no final da requisição da API.
 
-    def list_active(self) -> List[InspectionProfileModel]:
-        """List active profiles"""
-        return self.session.query(self._model).filter(self._model.is_active == True).all()
+    def deactivate(self, profile: InspectionProfileModel):
+        """Deactivates profile and unlinks it from the camera if it was the default"""
+        profile.is_active = False
+        
+        from open_aoi_core.models import CameraModel
+        
+        # Se o perfil for desativado, removemos ele da câmera para não bugar a inspeção
+        camera = self.session.query(CameraModel).filter(
+            CameraModel.default_inspection_profile_id == profile.id
+        ).first()
+        
+        if camera:
+            camera.default_inspection_profile_id = None
+            
+            
+   #  def deactivate(self, profile: InspectionProfileModel):
+   #      """Deactivates profile"""
+   #      profile.is_active = False
+
+   #  def list_active(self) -> List[InspectionProfileModel]:
+   #      """List active profiles"""
+   #      return self.session.query(self._model).filter(self._model.is_active == True).all()
