@@ -3,6 +3,7 @@
 
 import numpy as np
 import cv2 as cv
+import logging
 from typing import List
 
 try:
@@ -48,6 +49,7 @@ Each inspection zone returns a log with:
 
 class Module(IModule):
     def __init__(self):
+        self.logger = logging.getLogger("plate_alignment_inspection")
         self.logger_messages = []
 
     def align_images_orb(
@@ -176,6 +178,9 @@ class Module(IModule):
         Returns a value between 0.0 (completely different) and 1.0 (identical).
         """
         try:
+            # Log input shapes
+            self.logger.info(f"compute_zone_similarity called with test_chunk shape: {test_chunk.shape if hasattr(test_chunk, 'shape') else 'NO SHAPE'}, template_chunk shape: {template_chunk.shape if hasattr(template_chunk, 'shape') else 'NO SHAPE'}")
+            
             # Convert to grayscale for comparison
             if len(test_chunk.shape) == 3:
                 test_gray = cv.cvtColor(test_chunk, cv.COLOR_RGB2GRAY)
@@ -189,6 +194,7 @@ class Module(IModule):
 
             # Ensure same size
             if test_gray.shape != template_gray.shape:
+                self.logger.warning(f"Shape mismatch: test {test_gray.shape} vs template {template_gray.shape}. Resizing template...")
                 template_gray = cv.resize(template_gray, (test_gray.shape[1], test_gray.shape[0]))
 
             # Histogram correlation (robust to lighting changes)
@@ -201,12 +207,20 @@ class Module(IModule):
 
             # Compare histograms (returns value 0-1)
             similarity = cv.compareHist(
-                hist_test, hist_template, cv.HISTCMP_CORR
+                hist_test, hist_template, cv.HISTCMP_CORREL
             )
 
+            self.logger.info(f"Similarity computed: {similarity}")
             return max(0.0, min(1.0, similarity))  # Clamp to [0, 1]
 
         except Exception as e:
+            # Log the error for debugging
+            self.logger.error(f"Error in compute_zone_similarity: {str(e)}", exc_info=True)
+            self.logger.error(f"test_chunk type: {type(test_chunk)}, template_chunk type: {type(template_chunk)}")
+            if hasattr(test_chunk, 'shape'):
+                self.logger.error(f"test_chunk shape: {test_chunk.shape}, dtype: {test_chunk.dtype}")
+            if hasattr(template_chunk, 'shape'):
+                self.logger.error(f"template_chunk shape: {template_chunk.shape}, dtype: {template_chunk.dtype}")
             return 0.0
 
     def process(
