@@ -110,6 +110,7 @@ class Service(StandardService):
         ]
         self.logger.info(f"Inspection zone list constructed. [{p.tick()}]")
 
+
         # Invoke handler
         try:
             self.logger.info(f"Inspection handler invoked. [{p.tick()}]")
