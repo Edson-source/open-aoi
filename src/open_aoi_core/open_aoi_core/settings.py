@@ -58,6 +58,11 @@ DEFAULT_MODULES = {
         "description": "Module provide capacitor orientation inspection to detect opposite orientation compared to template.",
         "type": "capacitor_opposite_orientation",
     },
+    f"{MODULES_PATH}/sliding_window_matching.py": {
+        "title": "Sliding window matching (dynamic search, default module)",
+        "description": "Module uses template matching to find the component anywhere on the image, ignoring exact box position.",
+        "type": "missing_component",
+    },
 }
 
 
@@ -99,8 +104,3 @@ assert MINIO_HOST
 
 MINIO_PORT = os.environ["MINIO_PORT"]
 assert MINIO_PORT
-DEFAULT_MODULES[f"{MODULES_PATH}/sliding_window_matching.py"] = {
-    "title": "Sliding window matching (dynamic search, default module)",
-    "description": "Module uses template matching to find the component anywhere on the image, ignoring exact box position.",
-    "type": "missing_component",
-}
