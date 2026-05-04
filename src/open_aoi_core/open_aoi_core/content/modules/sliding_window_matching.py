@@ -37,29 +37,31 @@ class Module(IModule):
         except Exception as e:
             raise RuntimeError("Parameters are missing or malformed.") from e
 
-        # Ensure images are in grayscale for template matching
+        # Ensure TEST image is in grayscale for template matching
         if len(test_image.shape) == 3:
-            test_gray = cv2.cvtColor(test_image, cv2.COLOR_BGR2GRAY)
+            # Assumindo RGB devido ao que configuramos antes
+            test_gray = cv2.cvtColor(test_image, cv2.COLOR_RGB2GRAY)
         else:
             test_gray = test_image
-
-        if len(template_image.shape) == 3:
-            template_gray = cv2.cvtColor(template_image, cv2.COLOR_BGR2GRAY)
-        else:
-            template_gray = template_image
 
         inspection_log_list = []
 
         for zone in inspection_zone_list:
-            # 1. Cut the target component from the template image using the zone
-            target_patch = self.cut_inspection_zone(template_gray, zone)
+            # 1. CORREÇÃO: Recorta o componente alvo usando a imagem COLORIDA ORIGINAL (3D)
+            target_patch_color = self.cut_inspection_zone(template_image, zone)
 
             # Basic sanity check
-            if target_patch is None or target_patch.size == 0:
+            if target_patch_color is None or target_patch_color.size == 0:
                 inspection_log_list.append(
                     IModule.InspectionLog("Invalid template patch size.", False)
                 )
                 continue
+
+            # Agora sim, converte apenas o recorte para tons de cinza (2D)
+            if len(target_patch_color.shape) == 3:
+                target_patch = cv2.cvtColor(target_patch_color, cv2.COLOR_RGB2GRAY)
+            else:
+                target_patch = target_patch_color
 
             # If the patch is larger than the test image for some reason, it will fail
             if target_patch.shape[0] > test_gray.shape[0] or target_patch.shape[1] > test_gray.shape[1]:
