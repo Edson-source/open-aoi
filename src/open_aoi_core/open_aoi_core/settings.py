@@ -67,6 +67,11 @@ DEFAULT_MODULES = {
         "description": "Automatic image registration and zone-by-zone comparison to detect plate misalignment, missing components, and positioning defects. Supports ORB (fast) and ECC (robust) alignment methods.",
         "type": "plate_alignment",
     },
+    f"{MODULES_PATH}/sliding_window_matching.py": {
+        "title": "Sliding window matching (dynamic search, default module)",
+        "description": "Module uses template matching to find the component anywhere on the image, ignoring exact box position.",
+        "type": "missing_component",
+    },
 }
 
 
