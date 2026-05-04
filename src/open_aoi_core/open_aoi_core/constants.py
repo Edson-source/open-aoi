@@ -48,14 +48,6 @@ class InspectionExecutionConstants:
         GENERAL = "GENERAL"
 
 
-class ProductIdentificationConstants:
-    NODE_NAME = "product_identification"
-
-    class Error:
-        NONE = "NONE"
-        GENERAL = "GENERAL"
-
-
 class ImageAcquisitionConstants:
     NODE_NAME = "image_acquisition"
 

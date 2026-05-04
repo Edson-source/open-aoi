@@ -29,7 +29,6 @@ from open_aoi_core.exceptions import SystemServiceException
 from open_aoi_core.constants import (
     ImageAcquisitionConstants,
     GPIOInterfaceConstants,
-    ProductIdentificationConstants,
     MediatorServiceConstants,
     SystemServiceStatus,
     InspectionExecutionConstants,
@@ -100,27 +99,6 @@ class ImageAcquisitionClient(BaseClient):
         except Exception as e:
             self.logger.error(str(e))
             raise SystemServiceException("Failed to capture image.") from e
-
-
-class ProductIdentificationClient(BaseClient):
-    product_identification_get_barcode_cli: ServiceClient
-    product_identification_get_status_cli: ServiceClient
-
-    def product_identification_get_barcode(self, image_message: ImageMessage):
-        """
-        Dispatch product identification request. Require image as message as it is meant to work on
-        image acquisition service results (prevent unnecessary conversion from message  to image and back)
-        - raise: SystemServiceException if any exception occur
-        """
-        try:
-            req = IdentificationTrigger.Request()
-            req.image = image_message
-
-            self.logger.info("Identification request dispatched")
-            return self.product_identification_get_barcode_cli.call_async(req)
-        except Exception as e:
-            self.logger.error(str(e))
-            raise SystemServiceException("Failed to identify product.")
 
 
 class InspectionExecutionClient(BaseClient):
@@ -248,7 +226,6 @@ class StandardClient(
     MediatorClient,
     GPIOInterfaceClient,
     InspectionExecutionClient,
-    ProductIdentificationClient,
     ImageAcquisitionClient,
 ):
 
@@ -257,18 +234,6 @@ class StandardClient(
         self.logger = self.get_logger()
 
         self._group = ReentrantCallbackGroup()
-
-        # Product identification
-        self._acquire_service(
-            f"{ProductIdentificationConstants.NODE_NAME}/get_barcode",
-            f"product_identification_get_barcode_cli",
-            IdentificationTrigger,
-        )
-        self._acquire_service(
-            f"{ProductIdentificationConstants.NODE_NAME}/get_status",
-            "product_identification_get_status_cli",
-            ServiceStatus,
-        )
 
         # Image acquisition
         self._acquire_service(

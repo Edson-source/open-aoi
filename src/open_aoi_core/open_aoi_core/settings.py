@@ -20,10 +20,6 @@ DEFAULT_DEFECT_TYPES = {
         "title": "Print quality",
         "description": "Print quality issue.",
     },
-    "capacitor_opposite_orientation": {
-        "title": "Capacitor opposite orientation",
-        "description": "Capacitor orientation is opposite to template.",
-    },
     "plate_alignment": {
         "title": "Plate alignment",
         "description": "Plate alignment and component positioning issues detected through image registration and zone comparison.",
@@ -32,21 +28,6 @@ DEFAULT_DEFECT_TYPES = {
 
 MODULES_PATH = "./src/open_aoi_core/open_aoi_core/content/modules"
 DEFAULT_MODULES = {
-    f"{MODULES_PATH}/component_presence_discrete_wavelet_transformation.py": {
-        "title": "Component presence detection (wavelet transformation, default module)",
-        "description": "Module provide component presence inspection with wavelet transformation.",
-        "type": "missing_component",
-    },
-    f"{MODULES_PATH}/component_presence_histogram_backprojection.py": {
-        "title": "Component presence detection (histogram backprojection, default module)",
-        "description": "Module provide component presence inspection with histogram backprojection.",
-        "type": "missing_component",
-    },
-    f"{MODULES_PATH}/print_quality_xor_morphology.py": {
-        "title": "Print quality inspection (classical image processing, default module)",
-        "description": "Module inspect print quality with classical image processing approach",
-        "type": "print_quality",
-    },
     f"{MODULES_PATH}/automatic_rejection.py": {
         "title": "Auto rejection module (default module)",
         "description": "This module automatically reject all inspection zones.",
@@ -57,19 +38,14 @@ DEFAULT_MODULES = {
         "description": "This module automatically accepts all inspection zones.",
         "type": "automatic_acceptance",
     },
-    f"{MODULES_PATH}/capacitor_orientation_opposite_orientation.py": {
-        "title": "Capacitor opposite orientation inspection (classical image processing, default module)",
-        "description": "Module provide capacitor orientation inspection to detect opposite orientation compared to template.",
-        "type": "capacitor_opposite_orientation",
-    },
     f"{MODULES_PATH}/plate_alignment_inspection.py": {
         "title": "Plate alignment inspection (ORB/ECC registration, default module)",
         "description": "Automatic image registration and zone-by-zone comparison to detect plate misalignment, missing components, and positioning defects. Supports ORB (fast) and ECC (robust) alignment methods.",
         "type": "plate_alignment",
     },
-    f"{MODULES_PATH}/sliding_window_matching.py": {
-        "title": "Sliding window matching (dynamic search, default module)",
-        "description": "Module uses template matching to find the component anywhere on the image, ignoring exact box position.",
+    f"{MODULES_PATH}/sliding_window_ocr.py": {
+        "title": "Sliding window + OCR (dynamic search with text recognition, default module)",
+        "description": "Module uses template matching to find the component anywhere on the image, then applies OCR to read the label.",
         "type": "missing_component",
     },
 }

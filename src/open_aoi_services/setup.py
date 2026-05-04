@@ -17,7 +17,6 @@ setup(
     entry_points={
         "console_scripts": [
             f"open_aoi_image_acquisition = {package_name}.service_image_acquisition:main",
-            f"open_aoi_product_identification = {package_name}.service_product_identification:main",
             f"open_aoi_inspection_execution = {package_name}.service_inspection_execution:main",
             f"open_aoi_mediator = {package_name}.service_mediator:main"
         ],

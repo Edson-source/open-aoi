@@ -12,11 +12,6 @@ def aoi_launch_description():
         package="open_aoi_services",
         executable="open_aoi_image_acquisition",
     )
-    # Services - product identification
-    aoi_product_identification = Node(
-        package="open_aoi_services",
-        executable="open_aoi_product_identification",
-    )
     # Services - inspection execution node
     aoi_inspection_execution = Node(
         package="open_aoi_services",
@@ -42,7 +37,6 @@ def aoi_launch_description():
         [
             # Independent
             aoi_image_acquisition,
-            aoi_product_identification,
             aoi_inspection_execution,
             aoi_gpio,
             # Dependent
