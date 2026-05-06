@@ -25,7 +25,9 @@ from open_aoi_portal.views.view_inspection import (
 from open_aoi_portal.views.view_inspection_detail import (
     get_view as get_view_inspection_detail,
 )
-
+from open_aoi_portal.views.view_system_health import (
+      get_view as get_view_system_health,
+   )
 
 class Service(StandardService):
     NODE_NAME = "open_aoi_portal"
@@ -41,8 +43,12 @@ class Service(StandardService):
         )
 
         with Client.auto_index_client:
-            ui.page(HOME_PAGE, title=f"Home | {APP_TITLE}")(get_view_home(self))
-            ui.page(ACCESS_PAGE, title=f"Access | {APP_TITLE}")(get_view_access(self))
+            ui.page(HOME_PAGE, title=f"Home | {APP_TITLE}")(
+               get_view_home(self)
+            )
+            ui.page(ACCESS_PAGE, title=f"Access | {APP_TITLE}")(
+               get_view_access(self)
+            )
             ui.page(DEVICES_PAGE, title=f"Devices | {APP_TITLE}")(
                 get_view_devices(self)
             )
@@ -70,6 +76,10 @@ class Service(StandardService):
                 INSPECTION_DETAIL_PAGE,
                 title=f"Inspection detail | {APP_TITLE}",
             )(get_view_inspection_detail(self))
+            ui.page(
+                SYSTEM_HEALTH_PAGE,
+                title=f"System Health | {APP_TITLE}",
+            )(get_view_system_health(self))
 
 
 def main() -> None:

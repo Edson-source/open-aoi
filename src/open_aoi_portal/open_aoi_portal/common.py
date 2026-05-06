@@ -138,6 +138,10 @@ async def inject_header(accessor: AccessorModel):
                     on_click=lambda: ui.navigate.to(INSPECTION_PAGE),
                 ).props("flat align=left icon=online_prediction").classes("w-full justify-start")
             ui.separator()
+            if accessor.role.allow_system_operations:
+                ui.button(
+                    "System Health", on_click=lambda: ui.navigate.to(SYSTEM_HEALTH_PAGE)
+                ).props("flat align=left icon=tune").classes("w-full justify-start")
             ui.button("Logout", on_click=_handle_logout_request).props(
                 "flat color=negative align=left icon=logout"
             ).classes("w-full justify-start")

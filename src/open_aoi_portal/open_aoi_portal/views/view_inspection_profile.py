@@ -294,7 +294,7 @@ def get_view(node: StandardClient):
                 profile_description.set_value(inspection_profile.description)
 
             identification_code = await inject_text_field(
-                "Product identification code (barcode value)",
+                "Product identification code (0000 RX.X)",
                 "Enter product code identification...",
                 SystemLimit.IDENTIFICATION_CODE_LENGTH,
             )
@@ -319,6 +319,68 @@ def get_view(node: StandardClient):
             if inspection_profile is not None:
                 environment.set_value(inspection_profile.environment)
 
+            # =========================================================================
+            # INÍCIO DO BLOCO DE TUNING VISUAL (OPÇÃO 2)
+            # =========================================================================
+            def parse_env_value(key, default, cast_type):
+                if environment.value:
+                    for line in environment.value.split('\n'):
+                        if line.startswith(f"{key}="):
+                            try:
+                                return cast_type(line.split('=')[1])
+                            except:
+                                pass
+                return default
+
+            def update_environment(e=None):
+                lines = environment.value.split('\n') if environment.value else []
+                keys_to_manage = [
+                    'SLIDING_WINDOW_MATCH_THRESHOLD', 
+                    'SEARCH_MARGIN',
+                    'OCR_CONFIDENCE',
+                    'ROTATION_TOLERANCE'
+                ]
+                
+                clean_lines = [l for l in lines if not any(l.startswith(f"{k}=") for k in keys_to_manage)]
+                
+                clean_lines.append(f"SLIDING_WINDOW_MATCH_THRESHOLD={visual_slider.value:.2f}")
+                clean_lines.append(f"SEARCH_MARGIN={int(margin_slider.value)}")
+                clean_lines.append(f"OCR_CONFIDENCE={ocr_slider.value:.2f}")
+                clean_lines.append(f"ROTATION_TOLERANCE={int(rot_slider.value)}")
+                
+                environment.set_value('\n'.join([l for l in clean_lines if l.strip()]))
+
+            if inspection_profile is not None:
+                with ui.expansion('⚙️ Tuning de Robustez da IA', icon='settings_suggest').classes('w-full border rounded-md mt-4'):
+                    with ui.column().classes('w-full p-4 gap-2'):
+                        
+                        # 1. Match Visual (Sensibilidade de detecção)
+                        with ui.row().classes('w-full items-center'):
+                            ui.label('Fidelidade Visual (Template):').classes('w-1/3 font-bold')
+                            visual_slider = ui.slider(min=0.1, max=1.0, step=0.05, value=parse_env_value('SLIDING_WINDOW_MATCH_THRESHOLD', 0.70, float), on_change=update_environment).classes('w-1/2')
+                            ui.label().bind_text_from(visual_slider, 'value', backward=lambda v: f"{v:.2f}")
+
+                        # 2. Margem de Busca (Folga mecânica)
+                        with ui.row().classes('w-full items-center'):
+                            ui.label('Margem de Busca (Folga):').classes('w-1/3 font-bold')
+                            margin_slider = ui.slider(min=0, max=150, step=5, value=parse_env_value('SEARCH_MARGIN', 40, int), on_change=update_environment).classes('w-1/2')
+                            ui.label().bind_text_from(margin_slider, 'value', backward=lambda v: f"{int(v)} px")
+
+                        # 3. OCR Confidence (Rigidez da leitura)
+                        with ui.row().classes('w-full items-center'):
+                            ui.label('Confiança do OCR (Texto):').classes('w-1/3 font-bold')
+                            ocr_slider = ui.slider(min=0.1, max=1.0, step=0.05, value=parse_env_value('OCR_CONFIDENCE', 0.60, float), on_change=update_environment).classes('w-1/2')
+                            ui.label().bind_text_from(ocr_slider, 'value', backward=lambda v: f"{int(v*100)}%")
+
+                        # 4. Tolerância de Rotação (Giro da placa)
+                        with ui.row().classes('w-full items-center'):
+                            ui.label('Tolerância de Rotação:').classes('w-1/3 font-bold')
+                            rot_slider = ui.slider(min=0, max=20, step=1, value=parse_env_value('ROTATION_TOLERANCE', 5, int), on_change=update_environment).classes('w-1/2')
+                            ui.label().bind_text_from(rot_slider, 'value', backward=lambda v: f"± {int(v)}°")
+            # =========================================================================
+            # FIM DO BLOCO DE TUNING VISUAL
+            # =========================================================================
+            
             # --- AQUI ESTÁ A MUDANÇA NA UI (Padrão Botão Nativo) ---
             with ui.row().classes("w-full items-center gap-4"):
                 ui.space()
