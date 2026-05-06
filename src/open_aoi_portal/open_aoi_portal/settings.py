@@ -1,4 +1,4 @@
-APP_TITLE = "Open AOI"
+APP_TITLE = "Automated Optical Inspection - Tecnnic"
 
 HOME_PAGE = "/"
 ACCESS_PAGE = "/access"
