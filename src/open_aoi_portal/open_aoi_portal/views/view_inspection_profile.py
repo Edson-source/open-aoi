@@ -98,6 +98,49 @@ def get_view(node: StandardClient):
             await _inject_profile_list()
 
         @safe_operation
+        async def _handle_pnp_upload(e):
+            """Process the Pick & Place .txt file and inject zones automatically"""
+            if inspection_profile is None:
+                ui.notify("Por favor, salve o perfil primeiro antes de importar a engenharia.", type="warning")
+                return
+            
+            try:
+                ui.notify(f'Processando arquivo: {e.name}...', type='info')
+                
+                raw_bytes = e.content.read()
+                try:
+                    content = raw_bytes.decode('utf-8')
+                except UnicodeDecodeError:
+                    content = raw_bytes.decode('latin-1')
+
+                template_id = template_select.value
+                
+                if not template_id:
+                    ui.notify("Selecione um Template antes de importar.", type="warning")
+                    return
+
+                from open_aoi_core.utils_pnp import process_pnp_content
+                
+                new_env = process_pnp_content(
+                    session=session,
+                    file_content=content,
+                    template_id=template_id,
+                    accessor_id=accessor.id,
+                    current_env=environment.value
+                )
+                
+                environment.set_value(new_env)
+                
+                # --- NOVO: Limpa o componente de upload ---
+                e.sender.reset() 
+                
+                ui.notify('Engenharia injetada! Clique em Update para salvar o Environment.', type='positive')
+                
+            except Exception as ex:
+                logger.exception(ex)
+                ui.notify(f"Erro ao processar: {str(ex)}", type="negative")
+                
+        @safe_operation
         async def _handle_delete_profile(profile: InspectionProfileModel):
             """Handles delete operation with confirmation"""
 
@@ -276,13 +319,34 @@ def get_view(node: StandardClient):
             if inspection_profile is not None:
                 environment.set_value(inspection_profile.environment)
 
-            with ui.row().classes("w-full"):
+            # --- AQUI ESTÁ A MUDANÇA NA UI (Padrão Botão Nativo) ---
+            with ui.row().classes("w-full items-center gap-4"):
                 ui.space()
+                
+                if inspection_profile is not None:
+                    # 1. Classe CSS para deixar o uploader "fantasma" na tela
+                    ui.add_head_html('<style>.uploader-fantasma { width: 0; height: 0; opacity: 0; position: absolute; overflow: hidden; z-index: -1; }</style>')
+                    
+                    # 2. O Uploader Invisível
+                    ui.upload(
+                        auto_upload=True,
+                        max_files=1,
+                        on_upload=_handle_pnp_upload,
+                    ).props('accept=".txt"').classes('uploader-fantasma')
+
+                    # 3. O Botão Real e Amigável!
+                    # O "run_javascript" procura o input de arquivo escondido e clica nele!
+                    ui.button(
+                        'Importar P&P',
+                        icon='upload_file',
+                        on_click=lambda: ui.run_javascript("document.querySelector('.uploader-fantasma input[type=file]').click()")
+                    ).props('color="primary"').classes('px-6')
+
                 ui.button(
                     "Save" if inspection_profile is None else "Update",
                     on_click=_handle_create_edit_profile,
                     color="positive",
-                )
+                ).classes('px-6')
 
         ui.markdown("##### **Registered profiles**")
         profile_list_container = ui.list().classes("w-full").props("dense")
