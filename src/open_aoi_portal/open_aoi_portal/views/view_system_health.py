@@ -2,7 +2,7 @@ import logging
 import platform
 import psutil
 import requests
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from sqlalchemy import text # IMPORTANTE: Importação necessária para o banco
 from nicegui import ui, app
 from open_aoi_core.controllers.accessor import AccessorController
@@ -79,25 +79,43 @@ def get_view(node):
             
             terminal = ui.log(max_lines=500).classes('w-full h-96 bg-black text-green-400 font-mono text-xs p-2 border-4 border-gray-800')
             
-            # Handler customizado para jogar os logs na tela
+            # Handler customizado para jogar os logs na tela com UTC-3
             class WebTerminalHandler(logging.Handler):
                 def emit(self, record):
                     try:
-                        msg = self.format(record)
-                        terminal.push(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
+                        # Pega apenas a mensagem limpa
+                        msg = record.getMessage() 
+                        
+                        # Aplica o Fuso Horário de Brasília (UTC-3)
+                        tz_br = timezone(timedelta(hours=-3))
+                        hora_local = datetime.now(tz_br).strftime('%H:%M:%S')
+                        
+                        # Formata a string com o nível do log (INFO, WARNING) para ficar mais profissional
+                        terminal.push(f"[{hora_local}] [{record.levelname}] {msg}")
                     except:
                         pass
 
-            # Prende o nosso Handler no Log Raiz do Python
             root_logger = logging.getLogger()
-            root_logger.setLevel(logging.INFO) # Força o sistema a não ignorar mensagens INFO
             
             # Evita duplicar handlers se você der F5 na página
             if not any(isinstance(h, WebTerminalHandler) for h in root_logger.handlers):
-                root_logger.addHandler(WebTerminalHandler())
+                web_handler = WebTerminalHandler()
+                
+                # 1. Prende no Log Raiz
+                root_logger.addHandler(web_handler)
+                root_logger.setLevel(logging.INFO)
+                
+                # 2. GRAMPO: Prende nos logs "escondidos" do Servidor Web (Uvicorn) e NiceGUI
+                # Isso vai capturar todos os cliques, salvamentos no banco e tráfego web
+                for logger_name in ["uvicorn.access", "uvicorn.error", "nicegui"]:
+                    specific_logger = logging.getLogger(logger_name)
+                    specific_logger.addHandler(web_handler)
+                    specific_logger.setLevel(logging.INFO)
             
             with ui.row().classes('w-full mt-2'):
                 ui.button('Limpar Terminal', on_click=terminal.clear, icon='delete').props('outline size=sm')
-                ui.button('Gerar Log de Teste', on_click=lambda: logging.info("Conexão entre terminal Web e Backend estabelecida com sucesso!")).props('outline size=sm color=secondary')
+                ui.button('Gerar Log de Teste', on_click=lambda: logging.info("Sistema de escuta de rede e fuso horário operacionais!")).props('outline size=sm color=secondary')
+
+    return view
 
     return view
