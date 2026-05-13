@@ -90,7 +90,7 @@ def get_view(node):
                         tz_br = timezone(timedelta(hours=-3))
                         hora_local = datetime.now(tz_br).strftime('%H:%M:%S')
                         
-                        # Formata a string com o nível do log (INFO, WARNING) para ficar mais profissional
+                        # Formata a string com o nível do log (INFO, WARNING)
                         terminal.push(f"[{hora_local}] [{record.levelname}] {msg}")
                     except:
                         pass

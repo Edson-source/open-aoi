@@ -58,14 +58,21 @@ def get_view(node: StandardClient):
         @safe_operation
         async def _handle_inspection():
             """Handles inspection request"""
+            # 1. BLOQUEIO DE SEGURANÇA IMEDIATO
             inspection_button.disable()
+            loading_spinner.set_visibility(True)
+            status_label.set_text("🤖 IA Processando... Aguarde.")
+            status_label.style('color: #f2c037') # Cor de aviso (Amarelo)
 
             # Validate inputs
             try:
                 assert camera_selection.validate()
             except AssertionError:
                 ui.notify("Camera is required.", type="warning")
+                # Restaura estado
                 inspection_button.enable()
+                loading_spinner.set_visibility(False)
+                status_label.set_text("")
                 return
 
             # Trigger and await inspection (use threads to not block UI event loops)
@@ -79,7 +86,11 @@ def get_view(node: StandardClient):
                 )
             except SystemServiceException as e:
                 ui.notify(str(e), type="warning")
+                # Restaura estado em caso de falha de conexão
                 inspection_button.enable()
+                loading_spinner.set_visibility(False)
+                status_label.set_text("❌ Falha na comunicação com o ROS2.")
+                status_label.style('color: #c10015') # Cor de erro (Vermelho)
                 return
 
             # Check inspection status
@@ -88,7 +99,11 @@ def get_view(node: StandardClient):
                     f"Inspection failed [{response.error}]: {response.error_description}",
                     type="negative",
                 )
+                # Restaura estado em caso de erro interno
                 inspection_button.enable()
+                loading_spinner.set_visibility(False)
+                status_label.set_text("❌ Erro no processamento de imagem.")
+                status_label.style('color: #c10015')
                 return
             else:
                 ui.notify(
@@ -110,7 +125,11 @@ def get_view(node: StandardClient):
 
             await _inject_inspection_log(response.inspection_log_list)
 
+            # 2. LIBERAÇÃO DE SUCESSO
             inspection_button.enable()
+            loading_spinner.set_visibility(False)
+            status_label.set_text("✅ Processamento concluído.")
+            status_label.style('color: #21ba45') # Cor de sucesso (Verde)
 
         # Local injections
         @safe_operation
@@ -183,6 +202,12 @@ def get_view(node: StandardClient):
                             on_click=_handle_inspection,
                             color="white",
                         ).classes("w-full")
+                    
+                    # 3. CRIAÇÃO DA ÁREA DE FEEDBACK VISUAL ABAIXO DO BOTÃO
+                    with ui.row().classes("w-full items-center justify-center gap-2 mt-2"):
+                        loading_spinner = ui.spinner(size='md', color='primary')
+                        loading_spinner.set_visibility(False)
+                        status_label = ui.label('').classes('font-bold')
 
                 ui.markdown(f"#### **Results**")
                 ui.markdown("Inspection results will be displayed here.")
