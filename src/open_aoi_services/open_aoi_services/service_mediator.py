@@ -1,9 +1,8 @@
 """
     This script is a definition of moderator node. Node inspection communication of other nodes with each other.
     The basic function is to perform product inspection, which consists of the following steps:
-    - Identify camera from request (by camera id or I/O pin id, which is related to camera)
-    - Get test image
-    - Identify product from test image
+    - Get test image from frontend request
+    - Identify product profile from request
     - Get related inspection profile, template and inspection zone list
     - Iterate over inspection zones and get each used inspection handler
     - Pass inspection handler with related inspection zones to inspection executor and wait for logs
@@ -21,17 +20,15 @@ from open_aoi_interfaces.srv import InspectionTrigger
 from open_aoi_interfaces.msg import InspectionTarget
 from open_aoi_core.services import StandardService
 from open_aoi_core.content.populate_content import populate
-from open_aoi_core.models import CameraModel, InspectionProfileModel, TemplateModel
+from open_aoi_core.models import InspectionProfileModel, TemplateModel
 from open_aoi_core.constants import (
     MediatorServiceConstants,
-    ImageAcquisitionConstants,
     InspectionExecutionConstants,
 )
 from open_aoi_core.models import InspectionTargetModel, engine
 from open_aoi_core.controllers.inspection_profile import InspectionProfileController
 from open_aoi_core.controllers.inspection import InspectionController
 from open_aoi_core.controllers.inspection_log import InspectionLogController
-from open_aoi_core.controllers.camera import CameraController
 from open_aoi_core.utils_ros import cv2_to_imgmsg, imgmsg_to_cv2
 from open_aoi_core.utils_basic import Profiler
 
@@ -63,10 +60,9 @@ class Service(StandardService):
             self.inspection,
         )
 
-        # Dependencies (removed: product_identification, GPIO)
+        # Dependencies (removed: camera_acquisition, product_identification, GPIO)
         self.await_dependencies(
             [
-                self.image_acquisition_capture_cli,
                 self.inspection_execution_execute_inspection_cli,
             ]
         )
@@ -87,77 +83,25 @@ class Service(StandardService):
                         self.logger.warning(f"Failed to create database structure and populate content ({str(e)}). Retrying...")
                         time.sleep(1)
 
-        # --- ALTERAÇÃO: DESATIVADO O TIMER DE MONITORAMENTO DE PINS GPIO ---
-        # self.watch_pin_list_update_service = self.create_timer(
-        #     1,
-        #     self.update_watch_pin_list,
-        # )
-
-    def _request_camera(self, request, response, camera_controller) -> CameraModel:
-        """Retrieve camera based on request"""
-
-        if request.camera_id_valid:
-            try:
-                camera = camera_controller.retrieve(request.camera_id)
-                assert camera is not None, "Camera with specified id does not exist."
-                return camera
-            except Exception as e:
-                self.logger.error(str(e))
-                response.error = MediatorServiceConstants.Error.GENERAL
-                response.error_description = "Failed to retrieve related camera by id."
-                raise RuntimeError()
-        elif request.io_pin_valid:
-            try:
-                camera = camera_controller.retrieve_by_io_pin_trigger(request.io_pin)
-                assert camera is not None, "Camera with specified id does not exist."
-                return camera
-            except Exception as e:
-                self.logger.error(str(e))
-                response.error = MediatorServiceConstants.Error.GENERAL
-                response.error_description = (
-                    "Failed to retrieve related camera by I/O pin."
-                )
-                raise RuntimeError()
-        else:
-            self.logger.warning("Camera identification not provided")
-            response.error = MediatorServiceConstants.Error.GENERAL
-            response.error_description = "No camera identification provided."
-            raise RuntimeError()
-
-    def _request_test_image(
-        self, request, response, camera: CameraModel
-    ) -> ImageMessage:
-        """Trigger image service and await response"""
-        future = self.image_acquisition_capture_image(camera.ip_address)
-        sub_response = self.await_future(future)
-        if sub_response.error != ImageAcquisitionConstants.Error.NONE:
-            response.error = MediatorServiceConstants.Error.CAPTURE_FAILED
-            response.error_description = (
-                f"Failed to capture image. {response.error_description}"
-            )
-            raise RuntimeError()
-        return sub_response.image
-
-    def _request_inspection_profile_by_camera(
-        self, request, response, camera: CameraModel, inspection_profile_controller: InspectionProfileController
+    def _request_inspection_profile(
+        self, request, response, inspection_profile_controller: InspectionProfileController
     ) -> InspectionProfileModel:
-        """Retrieve inspection profile associated with camera"""
+        """Retrieve inspection profile specified in the request"""
         try:
-            # Get the default inspection profile for this camera
-            inspection_profile = inspection_profile_controller.retrieve_by_camera(camera.id)
+            # Obtém o perfil de inspeção com base no ID que virá da tela do operador
+            inspection_profile = inspection_profile_controller.retrieve(request.inspection_profile_id)
             assert (
                 inspection_profile is not None
-            ), f"No inspection profile found for camera {camera.id}. Please assign a profile in camera settings."
+            ), f"No inspection profile found for id {request.inspection_profile_id}."
             assert inspection_profile.is_active, "Inspection profile is not active."
         except Exception as e:
             self.logger.error(str(e))
             response.error = MediatorServiceConstants.Error.GENERAL
             response.error_description = (
-                "Failed to retrieve inspection profile. Is profile active and associated with camera?"
+                "Failed to retrieve inspection profile. Is profile active and valid?"
             )
             raise RuntimeError()
         return inspection_profile
-
 
 
     def _request_inspection_handlers_with_targets(
@@ -350,26 +294,19 @@ class Service(StandardService):
             inspection_profile_controller = InspectionProfileController(session)
             inspection_controller = InspectionController(session)
             inspection_log_controller = InspectionLogController(session)
-            camera_controller = CameraController(session)
 
             p = Profiler()
 
             try:
-                # Camera identification
-                camera = self._request_camera(request, response, camera_controller)
-                self.logger.info(
-                    f"Camera {camera.id} retrieved: {camera.title}. [{p.tick()}]"
-                )
+                # --- NOVA ARQUITETURA DE REDE ---
+                # A imagem agora já vem pronta dentro do request gerado pelo Frontend!
+                test_image_message = request.test_image
+                self.logger.info(f"Test image received from frontend. [{p.tick()}]")
 
-                # Capture test image
-                test_image_message = self._request_test_image(request, response, camera)
-                self.logger.info(f"Test image captured as message. [{p.tick()}]")
-
-                # Inspection profile retrieval (based on camera association)
-                inspection_profile = self._request_inspection_profile_by_camera(
+                # O perfil também vem atrelado ao request (operador selecionou no menu)
+                inspection_profile = self._request_inspection_profile(
                     request,
                     response,
-                    camera,
                     inspection_profile_controller,
                 )
                 self.logger.info(
@@ -443,10 +380,6 @@ class Service(StandardService):
             except RuntimeError:
                 self.logger.info(f"Error ocurred while processing request.")
                 return response
-
-    def update_watch_pin_list(self):
-        """Callback to update GPIO interface - DESATIVADO PARA WINDOWS"""
-        pass
 
 
 def main(args=None):

@@ -1,9 +1,11 @@
-# Moderator node inspection trigger interface
-int64 camera_id
-bool camera_id_valid
-int64 io_pin
-bool io_pin_valid
+# Moderator node inspection trigger interface (Frontend-Driven Architecture)
+
+# Request (O que o Frontend envia para o ROS2)
+int64 inspection_profile_id
+sensor_msgs/Image test_image
+
 ---
+# Response (O que o ROS2 devolve para o Frontend)
 bool overall_passed
 
 sensor_msgs/Image image

@@ -116,10 +116,6 @@ async def inject_header(accessor: AccessorModel):
                 "flat align=left icon=home"
             ).classes("w-full justify-start")
             if accessor.role.allow_system_operations:
-                ui.button("Devices", on_click=lambda: ui.navigate.to(DEVICES_PAGE)).props(
-                    "flat align=left icon=photo_camera"
-                ).classes("w-full justify-start")
-            if accessor.role.allow_system_operations:
                 ui.button("Modules", on_click=lambda: ui.navigate.to(MODULES_PAGE)).props(
                     "flat align=left icon=widgets"
                 ).classes("w-full justify-start")

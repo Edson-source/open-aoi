@@ -12,6 +12,4 @@ INSPECTION_PROFILE_EDIT_PAGE = "/inspection/profile/{profile_id}"
 INSPECTION_PAGE = "/inspection"
 INSPECTION_DETAIL_PAGE = "/inspection/{inspection_id}"
 
-DEVICES_PAGE = "/devices"
-
 SYSTEM_HEALTH_PAGE = "/system/health"

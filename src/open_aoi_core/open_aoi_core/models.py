@@ -1,6 +1,5 @@
 from datetime import datetime
 from typing import Optional, List
-import ipaddress
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import (
@@ -280,12 +279,6 @@ class InspectionModel(Base, InspectionImageSourceMixin):
         back_populates="inspection"
     )
 
-    # Related camera
-    camera_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("Camera.id"), nullable=True
-    )
-    camera: Mapped[Optional["CameraModel"]] = relationship()
-
     @property
     def overall_passed(self):
         return all(
@@ -318,43 +311,6 @@ class TemplateModel(Base, TemplateImageSourceMixin):
         ForeignKey("Accessor.id"), nullable=False
     )
     created_by: Mapped["AccessorModel"] = relationship()
-
-
-class CameraModel(Base):
-    """
-    Represent available cameras (devices)
-    """
-
-    __tablename__ = "Camera"
-
-    title: Mapped[str] = mapped_column(String(SystemLimit.TITLE_LENGTH), nullable=False)
-    description: Mapped[str] = mapped_column(
-        String(SystemLimit.DESCRIPTION_LENGTH), nullable=False
-    )
-
-    ip_address: Mapped[str] = mapped_column(String(15), nullable=False)
-
-    # I/O logic. If trigger pin is null, it will not be triggering inspection
-    io_pin_trigger: Mapped[int] = mapped_column(Integer(), nullable=True)
-    io_pin_accept: Mapped[int] = mapped_column(Integer(), nullable=True)
-    io_pin_reject: Mapped[int] = mapped_column(Integer(), nullable=True)
-
-    # Default inspection profile for this camera
-    default_inspection_profile_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("InspectionProfile.id"), nullable=True
-    )
-    default_inspection_profile: Mapped[Optional["InspectionProfileModel"]] = relationship()
-
-    created_by_accessor_id: Mapped[int] = mapped_column(
-        ForeignKey("Accessor.id"), nullable=False
-    )
-    created_by: Mapped["AccessorModel"] = relationship()
-
-    @validates("ip_address")
-    def validate_email(self, key, value):
-        if not ipaddress.ip_address(value):
-            raise ValueError("IP address is not valid.")
-        return value
 
 
 class InspectionProfileModel(Base):

@@ -196,30 +196,23 @@ class MediatorClient(BaseClient):
 
     def mediator_inspection(
         self,
-        camera_id: Optional[int] = None,
-        io_pin: Optional[int] = None,
+        inspection_profile_id: int,
+        test_image: ImageMessage,
     ):
         """
-        Dispatch inspection request. Inspection may be triggered directly for camera of indirectly for pin,
-        which should be assigned to camera in database. Provide ONE of two identifications (camera id or pin number)
-        - raise: SystemServiceException if any exception occur.
+        Dispatch inspection request to ROS2 mediator with captured image and profile.
         """
-        assert camera_id is not None or io_pin is not None
         try:
             req = InspectionTrigger.Request()
 
-            req.camera_id = camera_id if camera_id is not None else 0
-            req.camera_id_valid = True if camera_id is not None else False
-
-            req.io_pin = io_pin if io_pin is not None else 0
-            req.io_pin_valid = True if io_pin is not None else False
+            req.inspection_profile_id = inspection_profile_id
+            req.test_image = test_image
 
             self.logger.info("Inspection request dispatched")
             return self.mediator_inspection_cli.call_async(req)
         except Exception as e:
             self.logger.error(str(e))
             raise SystemServiceException("Failed to inspect product.") from e
-
 
 class StandardClient(
     Node,

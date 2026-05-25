@@ -5,7 +5,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
 from open_aoi_core.models import (
-    CameraModel,
     TemplateModel,
     AccessorModel,
     InspectionProfileModel,

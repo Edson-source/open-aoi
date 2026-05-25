@@ -1,13 +1,16 @@
 """
-    This view is used for manual inspection control. Inspection is related to camera and inspection profile. User is suppose to 
-    select camera and trigger inspection. This will invoke mediator inspection service, acquire image from selected camera, 
-    materialize related template and so on...
+    This view is used for manual inspection control. Inspection is related to the selected profile and local webcam. 
+    User is supposed to select the profile and trigger inspection. This will capture an image from the browser,
+    invoke the mediator inspection service, and display results.
 """
 
 import logging
 import functools
+import numpy as np
 from datetime import datetime
 from typing import Optional, List
+import base64
+import io
 
 from PIL import Image
 from nicegui import ui, app
@@ -15,13 +18,13 @@ from fastapi.responses import RedirectResponse
 
 from open_aoi_interfaces.msg import InspectionLog
 from open_aoi_core.exceptions import AuthenticationException, SystemServiceException
-from open_aoi_core.controllers.camera import CameraController
 from open_aoi_core.controllers.accessor import AccessorController
 from open_aoi_core.controllers.inspection_target import InspectionTargetController
+from open_aoi_core.controllers.inspection_profile import InspectionProfileController
 from open_aoi_core.models import InspectionTargetModel
 from open_aoi_core.constants import MediatorServiceConstants
 from open_aoi_core.services import StandardClient
-from open_aoi_core.utils_ros import imgmsg_to_cv2
+from open_aoi_core.utils_ros import imgmsg_to_cv2, cv2_to_imgmsg
 from open_aoi_portal.settings import ACCESS_PAGE, HOME_PAGE
 from open_aoi_portal.common import (
     inject_header,
@@ -41,8 +44,8 @@ def get_view(node: StandardClient):
         session = get_session()
 
         accessor_controller = AccessorController(session)
-        camera_controller = CameraController(session)
         inspection_target_controller = InspectionTargetController(session)
+        inspection_profile_controller = InspectionProfileController(session)
 
         try:
             accessor = accessor_controller.identify_session_accessor(app.storage.user)
@@ -54,7 +57,6 @@ def get_view(node: StandardClient):
             return RedirectResponse(HOME_PAGE)
 
         # Memória temporária da sessão de inspeção atual
-        # 'pending' guardará a inspeção atual antes do operador confirmar
         session_data = {'logs': [], 'pending': None}
 
         # ------------------------------------
@@ -70,36 +72,65 @@ def get_view(node: StandardClient):
             session_data['pending'] = None
             confirm_button.set_visibility(False)
             _atualizar_status_sessao()
-            ui.notify("Sessão resetada.", type="info")
+            
+            # Alterna a visualização para a câmera ao vivo
+            image_element.set_visibility(False)
+            camera_ui.set_visibility(True)
+            
+            ui.notify("Sessão resetada. Câmera ao vivo reativada.", type="info")
 
         @safe_operation
         async def _handle_inspection():
-            """Handles inspection request"""
+            """Handles inspection request and local image capture"""
             
             if not oc_input.value:
                 ui.notify("Por favor, preencha a Ordem de Compra antes de inspecionar.", type="warning")
                 return
 
-            inspection_button.disable()
-            confirm_button.set_visibility(False) # Esconde o confirmar antigo durante um novo processamento
-            loading_spinner.set_visibility(True)
-            status_label.set_text("🤖 IA Processando... Aguarde.")
-            status_label.style('color: #f2c037')
-
-            try:
-                assert camera_selection.validate()
-            except AssertionError:
-                ui.notify("Camera is required.", type="warning")
-                inspection_button.enable()
-                loading_spinner.set_visibility(False)
-                status_label.set_text("")
+            if not profile_selection.value:
+                ui.notify("Selecione um Perfil de Inspeção válido.", type="warning")
                 return
 
+            inspection_button.disable()
+            confirm_button.set_visibility(False) 
+            loading_spinner.set_visibility(True)
+            status_label.set_text("📸 Capturando imagem e processando IA...")
+            status_label.style('color: #f2c037')
+
+            # 1. Captura a imagem diretamente da webcam do navegador
+            try:
+                base64_str = await ui.run_javascript('window.captureWebcamImage()', timeout=5.0)
+                if not base64_str:
+                    raise ValueError("A captura de vídeo retornou vazia.")
+                
+                img_data = base64.b64decode(base64_str.split(',')[1])
+                pil_image = Image.open(io.BytesIO(img_data))
+            except Exception as e:
+                logger.error(f"Erro ao capturar imagem: {e}")
+                ui.notify("Falha ao capturar imagem da câmera. Verifique permissões.", type="negative")
+                inspection_button.enable()
+                loading_spinner.set_visibility(False)
+                status_label.set_text("❌ Falha na Câmera.")
+                status_label.style('color: #c10015')
+                return
+
+            # Alterna visualização para a imagem congelada
+            camera_ui.set_visibility(False)
+            image_element.set_visibility(True)
+
+            # 2. Converte a imagem PIL para o formato ROS2 (SensorMsgs)
+            cv_img = np.array(pil_image)
+            image_message = cv2_to_imgmsg(cv_img)
+
+            # 3. Envia o pacote para o ROS2
             try:
                 response = await to_thread(
                     functools.partial(
                         node.await_future,
-                        node.mediator_inspection(camera_selection.value),
+                        node.mediator_inspection(
+                            inspection_profile_id=profile_selection.value, 
+                            test_image=image_message
+                        ),
                     )
                 )
             except SystemServiceException as e:
@@ -120,7 +151,6 @@ def get_view(node: StandardClient):
             else:
                 ui.notify("Análise concluída! Verifique o resultado antes de confirmar.", type="info")
                 
-                # --- EXTRAÇÃO DOS DADOS PARA REVISÃO EM TEMPO REAL ---
                 detalhes_zonas = []
                 for log_msg in response.inspection_log_list:
                     target_model = inspection_target_controller.retrieve(log_msg.id)
@@ -132,7 +162,6 @@ def get_view(node: StandardClient):
                         "motivo": log_msg.log
                     })
 
-                # Coloca na Área de Estágio (Ainda não incrementa o lote oficial)
                 session_data['pending'] = {
                     "status": "PASS" if response.overall_passed else "FAIL",
                     "timestamp": datetime.now().strftime('%H:%M:%S'),
@@ -150,7 +179,6 @@ def get_view(node: StandardClient):
 
             await _inject_inspection_log(response.inspection_log_list)
 
-            # Libera o botão de inspeção e exibe o botão de confirmação humana
             inspection_button.enable()
             loading_spinner.set_visibility(False)
             confirm_button.set_visibility(True)
@@ -158,25 +186,26 @@ def get_view(node: StandardClient):
             status_label.style('color: #f2c037')
 
         def _confirmar_montagem():
-            """Grava permanentemente a inspeção pendente no lote oficial"""
             if not session_data['pending']:
                 ui.notify("Nenhuma inspeção pendente para confirmar.", type="warning")
                 return
             
             log_entry = session_data['pending']
-            # Atribui o ID sequencial oficial apenas no momento da confirmação
             log_entry['id'] = len(session_data['logs']) + 1
             
             session_data['logs'].append(log_entry)
-            session_data['pending'] = None # Limpa a área de estágio
+            session_data['pending'] = None 
             
-            # Atualiza os componentes visuais
             confirm_button.set_visibility(False)
             status_label.set_text("✅ Montagem gravada com sucesso!")
             status_label.style('color: #21ba45')
             
             _atualizar_status_sessao()
             ui.notify(f"Montagem #{log_entry['id']} confirmada!", type="positive")
+            
+            # Retorna a câmera para a próxima placa
+            image_element.set_visibility(False)
+            camera_ui.set_visibility(True)
 
         def _gerar_relatorio():
             if not session_data['logs']:
@@ -286,7 +315,6 @@ def get_view(node: StandardClient):
 
         # ------------------------------------
 
-        camera_list = camera_controller.list()
 
         await inject_header(accessor)
         with ui.grid(columns=3).classes("w-full gap-4"):
@@ -308,14 +336,16 @@ def get_view(node: StandardClient):
                 
                 # --- SETUP ---
                 ui.markdown(f"#### **Setup**")
-                camera_selection = ui.select(
-                    dict([(camera.id, camera.title) for camera in camera_list]),
-                    label="Please, select camera",
-                    validation={"Camera is required": lambda value: value is not None},
-                ).classes("w-full")
 
                 with ui.column().classes("w-full"):
-                    with ui.row().classes("w-full"):
+                    # Busca os perfis de inspeção ativos no banco
+                    active_profiles = inspection_profile_controller.list_active()
+                    profile_selection = ui.select(
+                        {p.id: p.title for p in active_profiles},
+                        label="Selecione o Modelo da Placa / Perfil",
+                    ).classes("w-full")
+
+                    with ui.row().classes("w-full mt-2"):
                         inspection_button = ui.button("Inspect", on_click=_handle_inspection, color="white").classes("w-full")
                     
                     with ui.row().classes("w-full items-center justify-center mt-2"):
@@ -325,14 +355,13 @@ def get_view(node: StandardClient):
                     with ui.row().classes("w-full text-center justify-center"):
                         status_label = ui.label('').classes('font-bold')
                     
-                    # --- NOVO BOTÃO DE CONFIRMAÇÃO ---
                     with ui.row().classes("w-full mt-2"):
                         confirm_button = ui.button(
                             "Confirmar Montagem", 
                             on_click=_confirmar_montagem, 
                             icon="check_circle"
                         ).props("color=positive").classes("w-full")
-                        confirm_button.set_visibility(False) # Começa oculto
+                        confirm_button.set_visibility(False)
 
                 ui.markdown(f"#### **Results**")
                 inspection_log_container = ui.list().classes("w-full").props("dense")
@@ -341,6 +370,40 @@ def get_view(node: StandardClient):
                         ui.markdown("**No results to show.**")
 
             with ui.column().classes("col-span-2"):
+                
+                # 1. A Estrutura Visual (HTML puro, sem script)
+                camera_ui = ui.html('''
+                    <div style="width: 100%; display: flex; justify-content: center;">
+                        <video id="webcam" autoplay playsinline style="width: 100%; max-width: 600px; border: 2px solid #ccc; border-radius: 8px;"></video>
+                        <canvas id="webcam-canvas" style="display:none;"></canvas>
+                    </div>
+                ''').classes("w-full flex justify-center")
+                
+                # 2. A Lógica de Captura (JavaScript seguro no Body)
+                ui.add_body_html('''
+                    <script>
+                        setTimeout(() => {
+                            const video = document.getElementById('webcam');
+                            if (video && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                                navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 } } })
+                                    .then(stream => { video.srcObject = stream; })
+                                    .catch(err => { console.error("Erro na webcam:", err); });
+                            }
+                        }, 500);
+
+                        window.captureWebcamImage = function() {
+                            const video = document.getElementById('webcam');
+                            const canvas = document.getElementById('webcam-canvas');
+                            if (!video || !video.videoWidth) return null;
+                            canvas.width = video.videoWidth;
+                            canvas.height = video.videoHeight;
+                            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                            return canvas.toDataURL('image/jpeg', 0.9);
+                        };
+                    </script>
+                ''')
+                
                 image_element = ui.interactive_image().classes("w-full")
+                image_element.set_visibility(False)
 
     return view

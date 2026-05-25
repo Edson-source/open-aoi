@@ -9,7 +9,6 @@ from open_aoi_core.settings import STORAGE_SECRET
 from open_aoi_core.services import StandardService
 from open_aoi_portal.views.view_home import get_view as get_view_home
 from open_aoi_portal.views.view_access import get_view as get_view_access
-from open_aoi_portal.views.view_devices import get_view as get_view_devices
 from open_aoi_portal.views.view_inspection_handler import get_view as get_view_modules
 from open_aoi_portal.views.view_template import get_view as get_view_template
 from open_aoi_portal.views.view_inspection_zone_editor import (
@@ -48,9 +47,6 @@ class Service(StandardService):
             )
             ui.page(ACCESS_PAGE, title=f"Access | {APP_TITLE}")(
                get_view_access(self)
-            )
-            ui.page(DEVICES_PAGE, title=f"Devices | {APP_TITLE}")(
-                get_view_devices(self)
             )
             ui.page(MODULES_PAGE, title=f"Modules | {APP_TITLE}")(
                 get_view_modules(self)
