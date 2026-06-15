@@ -127,21 +127,22 @@ def get_view(node):
                     except:
                         pass
 
-            root_logger = logging.getLogger()
+            web_handler = WebTerminalHandler()
             
-            if not any(isinstance(h, WebTerminalHandler) for h in root_logger.handlers):
-                web_handler = WebTerminalHandler()
+            # Lista exata dos canais que queremos monitorar (Sem o root_logger para evitar eco)
+            canais_de_log = ["ui.system_health", "uvicorn.access", "uvicorn.error", "nicegui"]
+            
+            for nome_canal in canais_de_log:
+                canal = logging.getLogger(nome_canal)
                 
-                root_logger.addHandler(web_handler)
-                root_logger.setLevel(logging.INFO)
+                # O Pulo do Gato: Varre e destrói handlers antigos antes de adicionar o novo
+                # Isso mata os "fantasmas" gerados ao dar F5 ou trocar de página
+                canal.handlers = [h for h in canal.handlers if not isinstance(h, WebTerminalHandler)]
                 
-                for logger_name in ["uvicorn.access", "uvicorn.error", "nicegui", "ui.system_health"]:
-                    specific_logger = logging.getLogger(logger_name)
-                    specific_logger.addHandler(web_handler)
-                    specific_logger.setLevel(logging.INFO)
+                canal.addHandler(web_handler)
+                canal.setLevel(logging.INFO)
             
             with ui.row().classes('w-full mt-2'):
                 ui.button('Limpar Terminal', on_click=terminal.clear, icon='delete').props('outline size=sm')
-                ui.button('Gerar Log de Teste', on_click=lambda: logging.info("Sistema de escuta de rede e fuso horário operacionais!")).props('outline size=sm color=secondary')
-
+                ui.button('Gerar Log de Teste', on_click=lambda: logger.info("Sistema de escuta de rede operando limpo e sem eco!")).props('outline size=sm color=secondary')
     return view
