@@ -3,11 +3,7 @@ import json
 from collections import defaultdict
 from sqlalchemy import text
 
-# ================= CONFIGURAÇÕES DE CALIBRAÇÃO =================
-PIXELS_PER_MM = 20.0  
-OFFSET_X_PX = 100     
-OFFSET_Y_PX = 50      
-IMAGE_HEIGHT = 1200   
+# ================= CONFIGURAÇÕES =================
 HANDLER_ID = 4  # ID do seu módulo Sliding Window OCR
 
 FOOTPRINT_MAP = {
@@ -19,10 +15,10 @@ FOOTPRINT_MAP = {
     "8SOIC_-_REFLOW": (5.0, 6.0),
     "SOD123FL_-_REFLOW": (3.5, 1.6),
 }
-# ===============================================================
+# =================================================
 
-def process_pnp_content(session, file_content: str, template_id: int, accessor_id: int, current_env: str) -> str:
-    """Lê a string do arquivo P&P, injeta no DB via SQLAlchemy e retorna o novo Environment"""
+def process_pnp_content(session, file_content: str, template_id: int, accessor_id: int, current_env: str, fiducial_x: float, fiducial_y: float, ppm: float) -> str:
+    """Lê a string do arquivo P&P, injeta no DB via SQLAlchemy usando a calibração da tela, e retorna o novo Environment"""
     components = []
     designator_counts = defaultdict(int)
     
@@ -72,21 +68,29 @@ def process_pnp_content(session, file_content: str, template_id: int, accessor_i
     boxes = []
     expected_labels = {}
     
-    # 2. Conversão CAD -> Pixels
+    # 2. Conversão CAD -> Pixels (Usando o Fiducial e o PPM)
     for i, comp in enumerate(components):
-        x_px = int((comp['x_mm'] * PIXELS_PER_MM) + OFFSET_X_PX)
-        y_px = int(IMAGE_HEIGHT - ((comp['y_mm'] * PIXELS_PER_MM) + OFFSET_Y_PX))
+        # Eixo X cresce para a direita (Fiducial + Distância)
+        pixel_center_x = fiducial_x + (comp['x_mm'] * ppm)
         
+        # Eixo Y inverte: Placa física cresce pra cima, Tela do PC cresce pra baixo (Fiducial - Distância)
+        pixel_center_y = fiducial_y - (comp['y_mm'] * ppm)
+        
+        # Define as dimensões do componente
         w_mm, h_mm = FOOTPRINT_MAP.get(comp['footprint'], (2.0, 2.0))
         if comp['rotation'] in [90.0, 270.0]:
             w_mm, h_mm = h_mm, w_mm
             
-        w_px = int(w_mm * PIXELS_PER_MM)
-        h_px = int(h_mm * PIXELS_PER_MM)
+        w_px = int(w_mm * ppm)
+        h_px = int(h_mm * ppm)
+        
+        # Calcula o canto superior esquerdo para o banco de dados
+        stat_left = int(pixel_center_x - (w_px / 2))
+        stat_top = int(pixel_center_y - (h_px / 2))
         
         boxes.append({
             "designator": comp['designator'],
-            "stat_left": x_px - (w_px // 2), "stat_top": y_px - (h_px // 2),
+            "stat_left": stat_left, "stat_top": stat_top,
             "stat_width": w_px, "stat_height": h_px, "rotation": comp['rotation']
         })
         

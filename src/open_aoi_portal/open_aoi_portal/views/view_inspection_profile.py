@@ -51,12 +51,15 @@ def get_view(node: StandardClient):
         except AssertionError:
             return RedirectResponse(HOME_PAGE)
 
+        # Variável de estado na memória (será populada pelo banco mais abaixo)
+        fiducial_state = {'x': None, 'y': None, 'ppm': 8.5}
+
         # -------------------
         # Handlers
         @safe_operation
         async def _handle_create_edit_profile():
             """Function is used to create or edit inspection profile"""
-            nonlocal inspection_profile  # For editing profile will be initiated externally
+            nonlocal inspection_profile  
             try:
                 assert profile_title.validate()
                 assert profile_description.validate()
@@ -91,6 +94,7 @@ def get_view(node: StandardClient):
                 )
                 inspection_profile_controller.commit()
                 ui.notify("New profile created", type="positive")
+                ui.navigate.to(INSPECTION_PROFILE_EDIT_PAGE.format(profile_id=inspection_profile.id))
             else:
                 inspection_profile.environment = environment_value
                 inspection_profile_controller.commit()
@@ -104,8 +108,13 @@ def get_view(node: StandardClient):
                 ui.notify("Por favor, salve o perfil primeiro antes de importar a engenharia.", type="warning")
                 return
             
+            if fiducial_state['x'] is None or fiducial_state['y'] is None:
+                ui.notify("⚠️ Clique no ponto fiducial da imagem antes de importar o P&P!", type="warning")
+                e.sender.reset()
+                return
+            
             try:
-                ui.notify(f'Processando arquivo: {e.name}...', type='info')
+                ui.notify(f'Processando arquivo: {e.name} com PPM {fiducial_state["ppm"]}...', type='info')
                 
                 raw_bytes = e.content.read()
                 try:
@@ -126,15 +135,15 @@ def get_view(node: StandardClient):
                     file_content=content,
                     template_id=template_id,
                     accessor_id=accessor.id,
-                    current_env=environment.value
+                    current_env=environment.value,
+                    fiducial_x=fiducial_state['x'],
+                    fiducial_y=fiducial_state['y'],
+                    ppm=fiducial_state['ppm']
                 )
                 
                 environment.set_value(new_env)
-                
-                # --- NOVO: Limpa o componente de upload ---
                 e.sender.reset() 
-                
-                ui.notify('Engenharia injetada! Clique em Update para salvar o Environment.', type='positive')
+                ui.notify('Engenharia injetada! Verifique as zonas na aba de Inspection Templates.', type='positive')
                 
             except Exception as ex:
                 logger.exception(ex)
@@ -320,7 +329,7 @@ def get_view(node: StandardClient):
                 environment.set_value(inspection_profile.environment)
 
             # =========================================================================
-            # INÍCIO DO BLOCO DE TUNING VISUAL (OPÇÃO 2)
+            # LÓGICA DE PERSISTÊNCIA (LENDO DO BANCO PARA A RAM)
             # =========================================================================
             def parse_env_value(key, default, cast_type):
                 if environment.value:
@@ -332,21 +341,35 @@ def get_view(node: StandardClient):
                                 pass
                 return default
 
+            # Restaura os valores do banco (se existirem) ao carregar a página
+            fiducial_state['ppm'] = parse_env_value('PPM', 8.5, float)
+            fiducial_state['x'] = parse_env_value('FIDUCIAL_X', None, float)
+            fiducial_state['y'] = parse_env_value('FIDUCIAL_Y', None, float)
+
+            # Função centralizada para injetar os valores na string de Environment
             def update_environment(e=None):
                 lines = environment.value.split('\n') if environment.value else []
                 keys_to_manage = [
                     'SLIDING_WINDOW_MATCH_THRESHOLD', 
                     'SEARCH_MARGIN',
                     'OCR_CONFIDENCE',
-                    'ROTATION_TOLERANCE'
+                    'ROTATION_TOLERANCE',
+                    'PPM', 'FIDUCIAL_X', 'FIDUCIAL_Y'
                 ]
                 
                 clean_lines = [l for l in lines if not any(l.startswith(f"{k}=") for k in keys_to_manage)]
                 
+                # Salva os sliders visuais
                 clean_lines.append(f"SLIDING_WINDOW_MATCH_THRESHOLD={visual_slider.value:.2f}")
                 clean_lines.append(f"SEARCH_MARGIN={int(margin_slider.value)}")
                 clean_lines.append(f"OCR_CONFIDENCE={ocr_slider.value:.2f}")
                 clean_lines.append(f"ROTATION_TOLERANCE={int(rot_slider.value)}")
+                
+                # Salva a Calibração e Coordenadas
+                clean_lines.append(f"PPM={fiducial_state['ppm']:.2f}")
+                if fiducial_state['x'] is not None and fiducial_state['y'] is not None:
+                    clean_lines.append(f"FIDUCIAL_X={fiducial_state['x']:.2f}")
+                    clean_lines.append(f"FIDUCIAL_Y={fiducial_state['y']:.2f}")
                 
                 environment.set_value('\n'.join([l for l in clean_lines if l.strip()]))
 
@@ -354,56 +377,89 @@ def get_view(node: StandardClient):
                 with ui.expansion('⚙️ Tuning de Robustez da IA', icon='settings_suggest').classes('w-full border rounded-md mt-4'):
                     with ui.column().classes('w-full p-4 gap-2'):
                         
-                        # 1. Match Visual (Sensibilidade de detecção)
                         with ui.row().classes('w-full items-center'):
                             ui.label('Fidelidade Visual (Template):').classes('w-1/3 font-bold')
                             visual_slider = ui.slider(min=0.1, max=1.0, step=0.05, value=parse_env_value('SLIDING_WINDOW_MATCH_THRESHOLD', 0.70, float), on_change=update_environment).classes('w-1/2')
                             ui.label().bind_text_from(visual_slider, 'value', backward=lambda v: f"{v:.2f}")
 
-                        # 2. Margem de Busca (Folga mecânica)
                         with ui.row().classes('w-full items-center'):
                             ui.label('Margem de Busca (Folga):').classes('w-1/3 font-bold')
                             margin_slider = ui.slider(min=0, max=150, step=5, value=parse_env_value('SEARCH_MARGIN', 40, int), on_change=update_environment).classes('w-1/2')
                             ui.label().bind_text_from(margin_slider, 'value', backward=lambda v: f"{int(v)} px")
 
-                        # 3. OCR Confidence (Rigidez da leitura)
                         with ui.row().classes('w-full items-center'):
                             ui.label('Confiança do OCR (Texto):').classes('w-1/3 font-bold')
                             ocr_slider = ui.slider(min=0.1, max=1.0, step=0.05, value=parse_env_value('OCR_CONFIDENCE', 0.60, float), on_change=update_environment).classes('w-1/2')
                             ui.label().bind_text_from(ocr_slider, 'value', backward=lambda v: f"{int(v*100)}%")
 
-                        # 4. Tolerância de Rotação (Giro da placa)
                         with ui.row().classes('w-full items-center'):
                             ui.label('Tolerância de Rotação:').classes('w-1/3 font-bold')
                             rot_slider = ui.slider(min=0, max=20, step=1, value=parse_env_value('ROTATION_TOLERANCE', 5, int), on_change=update_environment).classes('w-1/2')
                             ui.label().bind_text_from(rot_slider, 'value', backward=lambda v: f"± {int(v)}°")
-            # =========================================================================
-            # FIM DO BLOCO DE TUNING VISUAL
-            # =========================================================================
             
-            # --- AQUI ESTÁ A MUDANÇA NA UI (Padrão Botão Nativo) ---
-            with ui.row().classes("w-full items-center gap-4"):
-                ui.space()
-                
-                if inspection_profile is not None:
-                    # 1. Classe CSS para deixar o uploader "fantasma" na tela
-                    ui.add_head_html('<style>.uploader-fantasma { width: 0; height: 0; opacity: 0; position: absolute; overflow: hidden; z-index: -1; }</style>')
+            # =========================================================================
+            # CALIBRAÇÃO E IMPORTAÇÃO DO PICK & PLACE
+            # =========================================================================
+            if inspection_profile is not None and inspection_profile.template_id:
+                ui.markdown("##### **🎯 Calibração e Importação (Pick & Place)**")
+                with ui.card().classes('w-full bg-blue-50 border border-blue-200 mt-2'):
+                    ui.markdown("**1. Defina o Fator de Escala (PPM).**")
                     
-                    # 2. O Uploader Invisível
-                    ui.upload(
-                        auto_upload=True,
-                        max_files=1,
-                        on_upload=_handle_pnp_upload,
-                    ).props('accept=".txt"').classes('uploader-fantasma')
+                    def _update_ppm(e):
+                        fiducial_state['ppm'] = e.value
+                        update_environment() # Guarda silenciosamente na caixa de texto
 
-                    # 3. O Botão Real e Amigável!
-                    # O "run_javascript" procura o input de arquivo escondido e clica nele!
-                    ui.button(
-                        'Importar P&P',
-                        icon='upload_file',
-                        on_click=lambda: ui.run_javascript("document.querySelector('.uploader-fantasma input[type=file]').click()")
-                    ).props('color="primary"').classes('px-6')
+                    ppm_input = ui.number('Pixels por Milímetro (PPM) (ex.: 1920 / 300 = 6.40)', value=fiducial_state['ppm'], format='%.2f', step=0.1, on_change=_update_ppm).classes('w-48 bg-white')
+                    
+                    ui.markdown("**2. Clique exatamente no ponto fiducial (0,0) na imagem abaixo.**")
+                    try:
+                        img_data = inspection_profile.template.materialize_image()
+                        
+                        def on_mouse_click(e):
+                            if e.type == 'click':
+                                fiducial_state['x'] = e.image_x
+                                fiducial_state['y'] = e.image_y
+                                update_environment() # Guarda silenciosamente na caixa de texto
+                                
+                                mira_svg = f'''
+                                    <circle cx="{e.image_x}" cy="{e.image_y}" r="15" stroke="#f2c037" stroke-width="3" fill="none" />
+                                    <line x1="{e.image_x - 25}" y1="{e.image_y}" x2="{e.image_x + 25}" y2="{e.image_y}" stroke="#f2c037" stroke-width="3" />
+                                    <line x1="{e.image_x}" y1="{e.image_y - 25}" x2="{e.image_x}" y2="{e.image_y + 25}" stroke="#f2c037" stroke-width="3" />
+                                '''
+                                interactive_img.content = mira_svg
+                                ui.notify(f"🎯 Ponto Zero ancorado em X: {e.image_x:.0f}, Y: {e.image_y:.0f}. Salve o Perfil!", type="info")
 
+                        interactive_img = ui.interactive_image(img_data, on_mouse=on_mouse_click).classes("w-full border-2 border-primary rounded-md mt-2 cursor-crosshair")
+                        
+                        # Se já havia um clique salvo no banco, desenha a mira na tela ao dar F5
+                        if fiducial_state['x'] is not None and fiducial_state['y'] is not None:
+                            interactive_img.content = f'''
+                                <circle cx="{fiducial_state['x']}" cy="{fiducial_state['y']}" r="15" stroke="#f2c037" stroke-width="3" fill="none" />
+                                <line x1="{fiducial_state['x'] - 25}" y1="{fiducial_state['y']}" x2="{fiducial_state['x'] + 25}" y2="{fiducial_state['y']}" stroke="#f2c037" stroke-width="3" />
+                                <line x1="{fiducial_state['x']}" y1="{fiducial_state['y'] - 25}" x2="{fiducial_state['x']}" y2="{fiducial_state['y'] + 25}" stroke="#f2c037" stroke-width="3" />
+                            '''
+
+                    except Exception as e:
+                        logger.error(f"Erro ao carregar imagem para fiducial: {e}")
+                        ui.label("Erro ao carregar a imagem do template para calibração.").classes('text-red-500 font-bold')
+
+                    ui.markdown("**3. Importe o arquivo P&P.**")
+                    with ui.row().classes("w-full items-center"):
+                        ui.add_head_html('<style>.uploader-fantasma { width: 0; height: 0; opacity: 0; position: absolute; overflow: hidden; z-index: -1; }</style>')
+                        
+                        ui.upload(
+                            auto_upload=True,
+                            max_files=1,
+                            on_upload=_handle_pnp_upload,
+                        ).props('accept=".txt"').classes('uploader-fantasma')
+
+                        ui.button(
+                            'Importar Pick & Place',
+                            icon='upload_file',
+                            on_click=lambda: ui.run_javascript("document.querySelector('.uploader-fantasma input[type=file]').click()")
+                        ).props('color="primary"').classes('px-6')
+
+            with ui.row().classes("w-full mt-4 justify-end"):
                 ui.button(
                     "Save" if inspection_profile is None else "Update",
                     on_click=_handle_create_edit_profile,
