@@ -136,60 +136,53 @@ def get_view(node: StandardClient):
                 with ui.timeline(side="right"):
                     ui.timeline_entry(
                         (
-                            "In order to begin create camera device. "
-                            "Camera should be connected to hosting computer and have reachable IP address. ",
-                        ),
-                        title="Camera",
+                            "Templates são imagens douradas do produto que você deseja inspecionar. "
+                            "A partir do template, o sistema irá extrair as características do produto e comparar com as imagens capturadas durante a inspeção. "
+                            "Crie um template para cada produto que você deseja inspecionar. "),
+                        title="Template",
                         subtitle="Step 1.",
                     )
                     ui.timeline_entry(
                         (
-                            "Continue with creating template. Templates are golden images of the product you want to inspect. "
-                            "Template image will be captured with the camera you created earlier. "
+                            "Opcionalmente carregue um módulo personalizado para usar na inspeção. "
+                            "Modulos personalizados são arquivos python, que serão invocados para realizar a inspeção. "
+                            "Se você não tem um módulo personalizado, não se preocupe, o sistema já conta com um módulo de inspeção baseado em template. "
                         ),
-                        title="Template",
+                        title="Módulos personalizados (opcional)",
                         subtitle="Step 2.",
                     )
                     ui.timeline_entry(
                         (
-                            "Optionally load custom module to use for inspection. "
-                            "Custom modules are python files, that will be invoked to perform inspection. "
-                            "If no custom logic is required for your application, skip this step. "
+                            "(Opcional) Depois de criar o template, clique no botão de editar para criar as chamadas zonas de inspeção. "
+                            "Zonas de inspeção são pequenos retângulos na imagem onde o defeito é esperado. "
+                            "Selecione o módulo de inspeção para cada zona, de acordo com o tipo de defeito que você deseja identificar. "
                         ),
-                        title="Custom modules (optional)",
+                        title="Zonas de inspeção",
                         subtitle="Step 3.",
                     )
                     ui.timeline_entry(
                         (
-                            "After template is created, hit edit button to create so called inspection zones. "
-                            "Inspection zone is a small rectangular on the image where the defect is expected. "
-                            "Select desired inspection handler (module), each module is responsible for single type of defects. "
+                            "O passo final de preparação é identificar seu produto e atribuir um template de inspeção a ele. "
+                            "Isto é feito com perfis de inspeção. Crie um perfil para cada produto e passe o código de barras do produto para identificação. "
                         ),
-                        title="Inspection zones",
+                        title="Perfil de inspeção",
                         subtitle="Step 4.",
                     )
                     ui.timeline_entry(
                         (
-                            "The last preparation step is to identify your product and assign it an inspection template. "
-                            "This is done with inspection profiles. Create profile for each product and pass barcode of the product for identification. "
-                        ),
-                        title="Inspection profile",
-                        subtitle="Step 5.",
-                    )
-                    ui.timeline_entry(
-                        (
-                            "Give it a shot with manual trigger. Go to live inspection and trigger desired camera. "
-                            "The image will be captured, product will be identified and the inspection conducted! "
-                            "Automatic pin triggers are defined at step 1. and are related to camera."
+                            "Depois de tudo estar pronto, é hora de testar!"
+                            "Vá para a inspeção ao vivo e acione a câmera desejada. "
+                            "A imagem será capturada, o produto será identificado e a inspeção será realizada! "
+                            "Os gatilhos automáticos de pino são definidos no passo 1. e estão relacionados à câmera."
                         ),
                         title="Test",
-                        subtitle="Step 7.",
+                        subtitle="Step 5.",
                         icon="rocket",
                     )
 
-        ui.markdown("##### **Recent inspections**")
+        ui.markdown("##### **Inspeções recentes**")
 
-        last_update = ui.markdown("not updated")
+        last_update = ui.markdown("Sem atualizações.")
         inspection_list_container = ui.list().classes("w-full").props("dense")
         next_page_container = ui.row().classes("w-full")
 

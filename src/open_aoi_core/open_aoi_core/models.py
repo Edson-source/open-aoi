@@ -219,9 +219,10 @@ class InspectionZoneModel(Base):
     )
     rotation: Mapped[float] = mapped_column(Numeric(precision=10, scale=2))
 
-    # Related inspection targets (lead to inspection handler)
+    # CASCADE ADICIONADO: Se a zona for deletada, limpa os targets
     inspection_target_list: Mapped[List["InspectionTargetModel"]] = relationship(
-        back_populates="inspection_zone",  # Cascade -prevent delete if any target use this inspection zone
+        back_populates="inspection_zone", 
+        cascade="all, delete-orphan" 
     )
 
     # Accessor relation for log purposes
@@ -274,9 +275,10 @@ class InspectionModel(Base, InspectionImageSourceMixin):
         back_populates="inspection_list"
     )
 
-    # List of related logs
+    # CASCADE ADICIONADO: Se a inspeção for deletada, limpa os logs gerados por ela
     inspection_log_list: Mapped[List["InspectionLogModel"]] = relationship(
-        back_populates="inspection"
+        back_populates="inspection",
+        cascade="all, delete-orphan"
     )
 
     @property
@@ -297,14 +299,16 @@ class TemplateModel(Base, TemplateImageSourceMixin):
 
     blob: Mapped[str] = mapped_column(String(100), nullable=True)
 
-    # Related inspection zones
+    # CASCADE ADICIONADO: Se o template for deletado, apaga todas as Zonas de Inspeção filhas
     inspection_zone_list: Mapped[List["InspectionZoneModel"]] = relationship(
-        back_populates="template",  # Delete cascade - prevent if inspection zone use template
+        back_populates="template", 
+        cascade="all, delete-orphan"
     )
 
-    # Related inspection profiles
-    inspection_profile_list: Mapped["InspectionProfileModel"] = relationship(
-        back_populates="template",  # Cascade should prevent delete operation if profiles are found
+    # CASCADE ADICIONADO: Se o template for deletado, apaga os Perfis associados a ele
+    inspection_profile_list: Mapped[List["InspectionProfileModel"]] = relationship(
+        back_populates="template", 
+        cascade="all, delete-orphan"
     )
 
     created_by_accessor_id: Mapped[int] = mapped_column(
@@ -342,11 +346,12 @@ class InspectionProfileModel(Base):
     template_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("Template.id"), nullable=True
     )
-    template: Mapped[Optional["TemplateModel"]] = relationship()
+    template: Mapped[Optional["TemplateModel"]] = relationship(back_populates="inspection_profile_list")
 
-    # Related inspection records
+    # CASCADE ADICIONADO: Se o perfil for deletado, apaga o histórico de testes (InspectionModel) associado a ele
     inspection_list: Mapped[List["InspectionModel"]] = relationship(
-        back_populates="inspection_profile"
+        back_populates="inspection_profile",
+        cascade="all, delete-orphan"
     )
 
     created_by_accessor_id: Mapped[int] = mapped_column(

@@ -43,38 +43,24 @@ class Controller:
 
     def delete(self, entity: Base):
         """
-        Delete provided entity after this operation was allowed (to keep database integrity some controllers will prevent deletion)
-        - raise: SystemIntegrityException if delete operation was not allowed.
+        Delete provided entity.
+        Rely on SQLAlchemy cascade='all, delete-orphan' to handle dependencies.
         """
-
-        if self.allow_delete_hook(entity.id):
-            self.session.query(self._model).filter(self._model.id == entity.id).delete()
-            self.post_delete_hook(entity)
-        else:
-            raise SystemIntegrityException(
-                "Unable to delete. Object is a dependency for other objects."
-            )
+        # Bypass manual allow_delete_hook and delete directly via session state
+        self.session.delete(entity)
+        self.post_delete_hook(entity)
 
     def delete_by_id(self, id: int):
         """
-        Delete entity by id after this operation was allowed (to keep database integrity some controllers will prevent deletion)
-        - raise: SystemIntegrityException if id was not found or delete operation was not allowed.
+        Delete entity by id.
+        Rely on SQLAlchemy cascade='all, delete-orphan' to handle dependencies.
         """
-
-        if self.allow_delete_hook(id):
-            entity = self.retrieve(id)
-            try:
-                assert entity is not None
-            except AssertionError as e:
-                raise SystemIntegrityException(
-                    "Unable to delete entity. Entity was not found."
-                )
-            self.session.query(self._model).filter(self._model.id == id).delete()
-            self.post_delete_hook(entity)
-        else:
-            raise SystemIntegrityException(
-                "Unable to delete. Object is a dependency for other objects."
-            )
+        entity = self.retrieve(id)
+        if entity is None:
+            raise SystemIntegrityException("Unable to delete entity. Entity was not found.")
+            
+        self.session.delete(entity)
+        self.post_delete_hook(entity)
 
     def commit(self):
         """Alias to session.commit()"""
@@ -114,6 +100,7 @@ class Controller:
 
     def allow_delete_hook(self, id: int) -> bool:
         """Hook that is called before deleting the model. Should return False to prevent delete operation."""
+        # Mantido por compatibilidade de interface, mas ignorado no delete()
         return True
 
     def post_delete_hook(self, obj: Base):
