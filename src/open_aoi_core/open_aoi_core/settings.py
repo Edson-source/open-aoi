@@ -48,6 +48,11 @@ DEFAULT_MODULES = {
         "description": "Module uses template matching to find the component anywhere on the image, then applies OCR to read the label.",
         "type": "missing_component",
     },
+    f"{MODULES_PATH}/sliding_window_matching.py": {
+        "title": "Sliding window matching (dynamic search, default module)",
+        "description": "Module uses template matching to find the component anywhere on the image, ignoring exact box position.",
+        "type": "missing_component",
+    },
 }
 
 
